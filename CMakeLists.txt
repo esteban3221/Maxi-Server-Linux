@@ -27,7 +27,15 @@ set(SOURCES
 
     #===================MODEL===================
     src/model/log.cpp
+    src/model/level_cash.cpp
+    src/model/log_historial.cpp
+    src/model/pago_pendiente.cpp
+    src/model/roles.cpp
+    src/model/usuario_historial.cpp
+    src/model/usuarios_roles.cpp
+    src/model/usuarios.cpp
     #===================VIEW====================
+    # aqui van cositas jejej xD
     #================CONTROLLER=================
     src/shared/global.cpp
     src/controller/validator.cpp
