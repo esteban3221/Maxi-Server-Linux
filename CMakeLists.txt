@@ -26,6 +26,7 @@ set(SOURCES
     src/main.cpp
 
     #===================MODEL===================
+    src/model/log.cpp
     #===================VIEW====================
     #================CONTROLLER=================
     src/shared/global.cpp

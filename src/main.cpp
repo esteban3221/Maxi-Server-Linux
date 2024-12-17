@@ -1,11 +1,24 @@
 
 #include <iostream>
-#include "validator.hpp"
+#include "log.hpp"
 
 int main(int argc, char *argv[])
 {
-    Validator Coin("Coin");
-    std::cout << Coin.Command_Post("Prueba").first << '\n';
+    Log lo;
+    auto contenedor = lo.get_log();
+
+    for (auto &&i : contenedor)
+    {
+        std::cout << "ID: " << i.id
+        << " ID User: " << i.id_user
+        << " Estatus: " << i.estatus
+        << " Tipo: " << i.tipo
+        << " Total: " << i.total
+        << " Cambio: " << i.cambio
+        << " Ingreso: " << i.ingreso
+        << " Fecha: " << i.fecha << std::endl;
+    }
+    
 
     return 0;
 }

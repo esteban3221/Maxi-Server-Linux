@@ -6,7 +6,7 @@
 class Validator
 {
 private:
-    cpr::Response r;
+    cpr::Response r_;
     const std::string VALIDATOR;
 public:
     std::pair<int, std::string> Command_Post(const std::string &command);
