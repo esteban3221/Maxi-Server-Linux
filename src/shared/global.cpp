@@ -2,6 +2,12 @@
 
 namespace Global
 {
+    namespace Rest
+    {
+        crow::SimpleApp app;
+        std::future<void> future;
+    } // namespace Rest
+
     namespace Api_consume
     {
         std::string token;

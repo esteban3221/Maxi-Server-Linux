@@ -8,26 +8,43 @@ Log::~Log()
 {
 }
 
-std::vector<Log_> Log::get_log()
+std::vector<std::shared_ptr<Model::Log_t>> Log::get_log()
 {
-    std::vector<Log_> vec_log;
+    std::vector<std::shared_ptr<Model::Log_t>> logVector;
 
     for (size_t i = 0; i < 10; i++)
     {
-        Log_ log;
+        auto log1 = std::make_shared<Model::Log_t>([&i](Model::Log_t &log)
+        {
+            log.id = i;
+            log.id_user = 101;
+            log.tipo = "venta";
+            log.ingreso = 1000;
+            log.cambio = 200;
+            log.total = 800;
+            log.estatus = "completo";
+            log.fecha = "2024-12-30"; 
+        });
 
-        log.id = i;
-        log.id_user = 1;
-        log.tipo = "1";
-        log.ingreso = 1;
-        log.cambio = 1;
-        log.total = 1;
-        log.estatus = "1";
-        log.fecha = "1";
-
-        vec_log.push_back(log);
+        logVector.emplace_back(log1);
     }
-    
 
-    return vec_log;
+    return logVector;
+}
+
+void Log::imprime_log()
+{
+    for (auto &&i : get_log())
+    {
+        std::cout   << " " << i.get()->id 
+                    << " " << i.get()->id_user 
+                    << " " << i.get()->tipo 
+                    << " " << i.get()->ingreso 
+                    << " " << i.get()->cambio 
+                    << " " << i.get()->total 
+                    << " " << i.get()->estatus
+                    << " " << i.get()->fecha
+                    << std::endl;
+    }
+     
 }

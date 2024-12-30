@@ -35,10 +35,13 @@ set(SOURCES
     src/model/usuarios_roles.cpp
     src/model/usuarios.cpp
     #===================VIEW====================
-    # aqui van cositas jejej xD
+    src/view/main_window.cpp
     #================CONTROLLER=================
     src/shared/global.cpp
     src/controller/validator.cpp
+
+    #TEST
+    src/controller/rest_api.cpp
 )
 
 include_directories(include 

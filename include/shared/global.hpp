@@ -1,4 +1,4 @@
-
+#pragma once
 #include <crow.h>
 #include <libnotify/notify.h>
 #include <nlohmann/json.hpp>
@@ -6,6 +6,15 @@
 
 namespace Global
 {
+    namespace Rest
+    {
+        extern crow::SimpleApp app;
+
+        //manejador asyncrono de app
+        extern std::future<void> future;
+    } // namespace Rest
+    
+
     namespace Api_consume
     {
         extern std::string token;
