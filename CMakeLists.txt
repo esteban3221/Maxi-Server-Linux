@@ -37,9 +37,11 @@ set(SOURCES
     #===================VIEW====================
     src/view/main_window.cpp
     #================CONTROLLER=================
-    src/shared/global.cpp
+    
     src/controller/validator.cpp
 
+    #================GLOBAL=================
+    src/shared/global.cpp
     #TEST
     src/controller/rest_api.cpp
 )

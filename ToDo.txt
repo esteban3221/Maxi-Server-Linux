@@ -1,0 +1,9 @@
+ToDo
+
+1.- Crear la Api Rest de Consumo a validadores
+2.- Crear la Api Rest de Consumo a sistema
+3.- Crear logica de negocio a controladores
+4.- Crear test's
+5.- Crear interfaces graficas
+6.- Crear logica de interfaces
+

@@ -1,27 +1,43 @@
 #pragma once
+#include <iostream>
 #include <vector>
 #include <functional>
+#include <memory>
+#include <glibmm.h>
+#include <giomm.h>
 
-namespace Model
+#include "coneccion.hpp"
+
+class MLevelCash : public Glib::Object
 {
-    struct Level_cash_t
+public:
+    u_int16_t m_denominacion;
+    u_int16_t m_cant_alm;
+    u_int16_t m_cant_recy;
+    u_int16_t m_nivel_inmo;
+
+    static Glib::RefPtr<MLevelCash> create(u_int16_t denominacion, u_int16_t cant_alm, u_int16_t cant_recy, u_int16_t nivel_inmo)
     {
-        int denominacion;
-        int cant_alm;
-        int cant_recy;
-        int nivel_inmo;
+        return Glib::make_refptr_for_instance<MLevelCash>(new MLevelCash(denominacion, cant_alm, cant_recy, nivel_inmo));
+    }
 
-        Level_cash_t() = default;
-        explicit Level_cash_t(const std::function<void(Level_cash_t&)>& initializer) { initializer(*this); };
-    };
-} // namespace Model
+protected:
+    MLevelCash(u_int16_t denominacion, u_int16_t cant_alm, u_int16_t cant_recy, u_int16_t nivel_inmo)
+        : m_denominacion(denominacion), m_cant_alm(cant_alm), m_cant_recy(cant_recy), m_nivel_inmo(nivel_inmo)
+    {
+    }
+}; // ModelColumns
 
-class Level_cash
+class LevelCash
 {
 private:
-    /* data */
-public:
-    Level_cash(/* args */);
-    ~Level_cash();
+    const std::string TIPO;
 
+public:
+    LevelCash(const std::string &tipo);
+    ~LevelCash();
+
+    // std::vector<std::shared_ptr<Model::LevelCash_t>> get_log();
+    Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash();
+    void update_level_cash(const MLevelCash &level);
 };

@@ -1,28 +1,42 @@
 #pragma once
 #include <iostream>
 #include <functional>
+#include <glibmm.h>
+#include <giomm.h>
 
-namespace Model
-{
-    struct Pago_pendiente_t
-{
-    int id;
-    int id_log;
-    int remanente;
-    std::string status;
+#include "coneccion.hpp"
 
-    Pago_pendiente_t() = default;
-    explicit Pago_pendiente_t(const std::function<void(Pago_pendiente_t&)>& initializer) { initializer(*this); };
+
+class MPagoPendiente : public Glib::Object
+{
+public:
+    size_t m_id;
+    int m_id_log;
+    int m_remanente;
+    Glib::ustring m_status;
+
+        static Glib::RefPtr<MPagoPendiente> create(size_t id, int id_log, int remanente, const Glib::ustring & status)
+    {
+        return Glib::make_refptr_for_instance<MPagoPendiente>(new MPagoPendiente(id, id_log, remanente, status));
+    }
+
+protected:
+    MPagoPendiente(size_t id, int id_log, int remanente, const Glib::ustring & status)
+        : m_id(id), m_id_log(id_log), m_remanente(remanente), m_status(status)
+    {
+    }
+
 };
-} // namespace Model
 
 
 
-class Pago_pendiente
+class PagoPendiente
 {
 private:
     /* data */
 public:
-    Pago_pendiente(/* args */);
-    ~Pago_pendiente();
+    PagoPendiente(/* args */);
+    ~PagoPendiente();
+    Glib::RefPtr<Gio::ListStore<MPagoPendiente>> get_log_historial();
+    void update_log_historial(const MPagoPendiente &list);
 };

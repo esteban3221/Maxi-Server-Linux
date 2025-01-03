@@ -2,18 +2,28 @@
 #include <iostream>
 #include <vector>
 #include <functional>
+#include <glibmm.h>
+#include <giomm.h>
 
-namespace Model
+#include "coneccion.hpp"
+
+class MRoles : public Glib::Object
 {
-    struct Roles_t
-    {
-        int id;
-        std::string rol;
+public:
+    size_t m_id;
+    Glib::ustring m_rol;
 
-        Roles_t() = default;
-        explicit Roles_t(const std::function<void(Roles_t&)>& initializer) { initializer(*this); };
-    };
-} // namespace Model
+    static Glib::RefPtr<MRoles> create(size_t id,const Glib::ustring &rol)
+    {
+        return Glib::make_refptr_for_instance<MRoles>(new MRoles(id, rol));
+    }
+
+protected:
+    MRoles(size_t id,const Glib::ustring &rol)
+        : m_id(id), m_rol(rol)
+    {
+    }
+};
 
 class Roles
 {
@@ -22,4 +32,5 @@ private:
 public:
     Roles(/* args */);
     ~Roles();
+    Glib::RefPtr<Gio::ListStore<MRoles>> get_roles();
 };

@@ -2,49 +2,62 @@
 
 Log::Log(/* args */)
 {
+    Glib::init();
 }
 
 Log::~Log()
 {
 }
 
-std::vector<std::shared_ptr<Model::Log_t>> Log::get_log()
+Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log()
 {
-    std::vector<std::shared_ptr<Model::Log_t>> logVector;
+    auto &database = Database::getInstance();
+    database.sqlite3->command("select * from log");
+    auto m_list = Gio::ListStore<MLog>::create();
 
-    for (size_t i = 0; i < 10; i++)
+    auto contenedor_data = database.sqlite3->get_result();
+
+    for (size_t i = 0; i < contenedor_data["id"].size(); i++)
     {
-        auto log1 = std::make_shared<Model::Log_t>([&i](Model::Log_t &log)
-        {
-            log.id = i;
-            log.id_user = 101;
-            log.tipo = "venta";
-            log.ingreso = 1000;
-            log.cambio = 200;
-            log.total = 800;
-            log.estatus = "completo";
-            log.fecha = "2024-12-30"; 
-        });
-
-        logVector.emplace_back(log1);
+        m_list->append(MLog::create(
+            std::stoull(contenedor_data["id"][i]),
+            std::stoull(contenedor_data["idUser"][i]),
+            contenedor_data["Tipo"][i],
+            std::stoi(contenedor_data["Ingreso"][i]),
+            std::stoi(contenedor_data["Cambio"][i]),
+            std::stoi(contenedor_data["Total"][i]),
+            contenedor_data["Estatus"][i],
+            Glib::DateTime::create_from_iso8601(contenedor_data["Fecha"][i])));
     }
 
-    return logVector;
+    return m_list;
 }
 
-void Log::imprime_log()
+void Log::insert_log(const MLog &list)
 {
-    for (auto &&i : get_log())
-    {
-        std::cout   << " " << i.get()->id 
-                    << " " << i.get()->id_user 
-                    << " " << i.get()->tipo 
-                    << " " << i.get()->ingreso 
-                    << " " << i.get()->cambio 
-                    << " " << i.get()->total 
-                    << " " << i.get()->estatus
-                    << " " << i.get()->fecha
-                    << std::endl;
-    }
-     
+    auto &database = Database::getInstance();
+    database.sqlite3->command("INSERT INTO from log VALUES(null,?,?,?,?,?,?,?,?)",
+                              list.m_id_user,
+                              list.m_tipo.c_str(),
+                              list.m_ingreso,
+                              list.m_cambio,
+                              list.m_total,
+                              list.m_estatus.c_str(),
+                              list.m_fecha.format_iso8601().c_str()
+                              );
+}
+
+void Log::update_log(const MLog &list)
+{
+    auto &database = Database::getInstance();
+    database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
+                              list.m_id_user,
+                              list.m_tipo.c_str(),
+                              list.m_ingreso,
+                              list.m_cambio,
+                              list.m_total,
+                              list.m_estatus.c_str(),
+                              list.m_fecha.format_iso8601().c_str(),
+                              list.m_id
+                              );
 }

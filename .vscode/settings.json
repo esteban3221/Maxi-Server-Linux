@@ -79,6 +79,16 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "variant": "cpp"
-    }
+        "variant": "cpp",
+        "*.ipp": "cpp"
+    },
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "Maxi Viejo",
+            "database": "/home/esteban/Documentos/backend_vue_c--/build/maxicajero.db"
+        }
+    ]
 }

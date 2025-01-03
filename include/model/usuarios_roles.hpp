@@ -1,25 +1,39 @@
 #pragma once
 #include <iostream>
 #include <functional>
+#include <glibmm.h>
+#include <giomm.h>
 
-namespace Model
+#include "coneccion.hpp"
+#include "roles.hpp"
+
+class MUsuariosRoles : public Glib::Object
 {
-    struct Usuarios_roles_t
+public:
+    size_t m_id;
+    size_t m_id_usuario;
+    u_int16_t m_id_rol;
+
+    static Glib::RefPtr<MUsuariosRoles> create(size_t id, size_t id_usuario, u_int16_t id_rol)
     {
-        size_t id;
-        size_t id_usuario;
-        u_int16_t id_rol;
+        return Glib::make_refptr_for_instance<MUsuariosRoles>(new MUsuariosRoles(id, id_usuario, id_rol));
+    }
 
-        Usuarios_roles_t() = default;
-        explicit Usuarios_roles_t(const std::function<void(Usuarios_roles_t&)>& initializer) { initializer(*this); };
-    };
-} // namespace Model
+protected:
+    MUsuariosRoles(size_t id, size_t id_usuario, u_int16_t id_rol)
+        : m_id(id), m_id_usuario(id_usuario), m_id_rol(id_rol)
+    {
+    }
+};
 
-class Usuarios_roles
+class UsuariosRoles
 {
 private:
     /* data */
 public:
-    Usuarios_roles(/* args */);
-    ~Usuarios_roles();
+    UsuariosRoles(/* args */);
+    ~UsuariosRoles();
+
+    Glib::RefPtr<MUsuariosRoles> get_usuario_roles_by_id(size_t);
+    void update_usuario_roles(size_t, const Glib::RefPtr<Gio::ListStore<MRoles>> &);
 };

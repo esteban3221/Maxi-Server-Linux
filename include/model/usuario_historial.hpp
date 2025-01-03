@@ -1,33 +1,78 @@
 #pragma once
 #include <iostream>
 #include <functional>
+#include <glibmm.h>
+#include <giomm.h>
 
-namespace Model
+#include "coneccion.hpp"
+
+class MUsuarioHistorial : public Glib::Object
 {
-    struct Usuario_historial_t
-    {
-        size_t id;
-        size_t original_id;
-        std::string old_username;
-        std::string old_password;
-        std::string new_username;
-        std::string new_password;
-        std::string fecha_modificacion;
-        std::string usuario_operacion;
-        std::string tipo_cambio;
+public:
+    size_t m_id;
+    size_t m_original_id;
+    Glib::ustring m_old_username;
+    Glib::ustring m_old_password;
+    Glib::ustring m_new_username;
+    Glib::ustring m_new_password;
+    Glib::DateTime m_fecha_modificacion;
+    Glib::ustring m_usuario_operacion;
+    Glib::ustring m_tipo_cambio;
 
-        Usuario_historial_t() = default;
-        explicit Usuario_historial_t(const std::function<void(Usuario_historial_t&)>& initializer) { initializer(*this); };
-    };
-    
-
-    class Usuario_historial
+    static Glib::RefPtr<MUsuarioHistorial> create(
+        size_t id,
+        size_t original_id,
+        const Glib::ustring &old_username,
+        const Glib::ustring &old_password,
+        const Glib::ustring &new_username,
+        const Glib::ustring &new_password,
+        const Glib::DateTime &fecha_modificacion,
+        const Glib::ustring &usuario_operacion,
+        const Glib::ustring &tipo_cambio)
     {
-    private:
-        /* data */
-    public:
-        Usuario_historial(/* args */);
-        ~Usuario_historial();
-    };
-    
-} // namespace Model
+        return Glib::make_refptr_for_instance<MUsuarioHistorial>(new MUsuarioHistorial(
+            id,
+            original_id,
+            old_username,
+            old_password,
+            new_username,
+            new_password,
+            fecha_modificacion,
+            usuario_operacion,
+            tipo_cambio));
+    }
+
+protected:
+    MUsuarioHistorial(
+        size_t id,
+        size_t original_id,
+        const Glib::ustring &old_username,
+        const Glib::ustring &old_password,
+        const Glib::ustring &new_username,
+        const Glib::ustring &new_password,
+        const Glib::DateTime &fecha_modificacion,
+        const Glib::ustring &usuario_operacion,
+        const Glib::ustring &tipo_cambio)
+        : m_id(id),
+          m_original_id(original_id),
+          m_old_username(old_username),
+          m_old_password(old_password),
+          m_new_username(new_username),
+          m_new_password(new_password),
+          m_fecha_modificacion(fecha_modificacion),
+          m_usuario_operacion(usuario_operacion),
+          m_tipo_cambio(tipo_cambio)
+    {
+    }
+};
+
+class UsuarioHistorial
+{
+private:
+    /* data */
+public:
+    UsuarioHistorial(/* args */);
+    ~UsuarioHistorial();
+
+    Glib::RefPtr<Gio::ListStore<MUsuarioHistorial>> get_usuario_historial();
+};
