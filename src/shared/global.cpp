@@ -8,7 +8,18 @@ namespace Global
         std::future<void> future;
     } // namespace Rest
 
-    namespace Api_consume
+    namespace EValidador
+    {
+        std::atomic<bool> is_running;
+        std::atomic<bool> is_busy;
+
+        Balance balance;
+        Conf bill,coin;
+
+        
+    } // namespace EstadoValidador
+
+    namespace ApiConsume
     {
         std::string token;
         const std::string URI = "http://localhost:5000";
@@ -16,7 +27,7 @@ namespace Global
 
         void autentica()
         {
-            nlohmann::json json;
+            crow::json::wvalue json;
 
             json["Username"] = "admin";
             json["Password"] = "password";
@@ -24,20 +35,20 @@ namespace Global
             auto body = json.dump();
 
             auto r = cpr::Post(cpr::Url{URI + "/api/Users/Authenticate"},
-                          cpr::Header{{"Content-Type", "application/json"},
-                                      {"Authorization", "Bearer " + token}},
-                          cpr::Body{body});
+                               cpr::Header{{"Content-Type", "application/json"},
+                                           {"Authorization", "Bearer " + token}},
+                               cpr::Body{body});
 
-            if (r.status_code == 200)
+            if (r.status_code == crow::status::OK)
             {
-                auto rcb = nlohmann::json::parse(r.text);
-                token = rcb["token"].get<std::string>();
+                auto rcb = crow::json::load(r.text);
+                token = rcb["token"].s();
             }
             else
-                throw "Controlador API REST no iniciado o error en el mismo";
+                throw "Controlador API REST no iniciado o error en el Servidor";
         }
 
-    } // namespace Api_consume
+    } // namespace ApiConsume
 
     namespace System
     {
@@ -91,49 +102,6 @@ namespace Global
 
     namespace User
     {
-        // crow::status validUser(const crow::request &req, Session::context &session, std::string &userName)
-        // {
-        //     auto auth_header = req.get_header_value("Authorization");
-        //     if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
-        //         return crow::status::NOT_FOUND;
-
-        //     auto keys = session.keys();
-        //     for (const auto &key : keys)
-        //     {
-        //         userName = key;
-        //         if (auth_header.substr(7) == session.string(key))
-        //             return crow::status::OK;
-        //     }
-        //     return crow::status::UNAUTHORIZED;
-        // }
-
-        // std::pair<crow::status, std::string> validPermissions(const crow::request &req, Session::context &session, const std::vector<Rol> &vecRol)
-        // {
-        //     std::string userName;
-
-        //     if (auto status = validUser(req, session, userName); status != crow::status::OK)
-        //         return {status, userName};
-        //     else
-        //     {
-        //         Model::usuarios_roles rol;
-        //         auto rolesPorUsuario = rol.obten_roles_by_usuarios(userName);
-        //         std::unordered_set<Rol> rolesNecesarios(vecRol.begin(), vecRol.end());
-        //         for (const auto &rol_ : rolesPorUsuario["id_rol"])
-        //         {
-        //             Helper::User::Rol rolUsuarioEnum = static_cast<Helper::User::Rol>(std::stoi(rol_));
-
-        //             if (rolesNecesarios.find(rolUsuarioEnum) != rolesNecesarios.end())
-        //             {
-        //                 rolesNecesarios.erase(rolUsuarioEnum); // Remueve el rol encontrado de rolesNecesarios
-        //             }
-        //         }
-        //         if (rolesNecesarios.empty())
-        //         {
-        //             return {crow::status::OK, userName}; // Todos los roles necesarios están presentes, devuelve OK
-        //         }
-        //     }
-        //     return {crow::status::UNAUTHORIZED, userName};
-        // }
 
     } // namespace User
 

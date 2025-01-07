@@ -12,7 +12,7 @@ Rest_api::Rest_api(/* args */)
     //     return response;
     //   });
 
-    Global::Rest::future = Global::Rest::app.port(8080).run_async();
+    
 
 }
 
