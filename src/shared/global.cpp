@@ -22,6 +22,7 @@ namespace Global
     namespace ApiConsume
     {
         std::string token;
+        
         const std::string URI = "http://localhost:5000";
         const std::string BASE_URL = URI + "/api/CashDevice";
 
@@ -45,7 +46,7 @@ namespace Global
                 token = rcb["token"].s();
             }
             else
-                throw "Controlador API REST no iniciado o error en el Servidor";
+                throw std::runtime_error( "Controlador API REST no iniciado o error en el Servidor");
         }
 
     } // namespace ApiConsume

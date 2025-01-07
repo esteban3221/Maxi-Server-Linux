@@ -15,6 +15,7 @@ private:
 
     Database(void)
     {
+        sqlite3 = std::make_unique<SQLite3::SQLite>("data.db");
         this->sqlite3->open();
 
         if (not this->sqlite3->is_created())
@@ -287,7 +288,7 @@ private:
     }
 
 public:
-    std::unique_ptr<SQLite3::SQLite> sqlite3 = std::make_unique<SQLite3::SQLite>("data.db");
+    std::unique_ptr<SQLite3::SQLite> sqlite3;
     static Database &getInstance()
     {
         static Database instance; // Instancia única de la clase

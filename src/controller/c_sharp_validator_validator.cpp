@@ -1,18 +1,29 @@
-#include "validator.hpp"
+#include "c_sharp_validator.hpp"
 
-Validator::Validator(const std::string &validator) : VALIDATOR(validator) , ingreso_parcial(0)
+Validator::Validator(const std::string &validator, const std::source_location location = std::source_location::current())
+    : VALIDATOR(validator), ingreso_parcial(0)
 {
+    if (instance_count > 2)
+        std::cout << YELLOW << "Advertencia: " << RESET << "Mas de 2 instancias de validadores detectadas, Posible fuga? \n"
+                  << location.file_name() << '('
+                  << location.line() << ':'
+                  << location.column() << ") \n";
+
+    ++instance_count;
 }
 
 Validator::~Validator()
 {
+    --instance_count;
 }
 
-void Validator::imprime_debug(int status, const std::string &body)
+void Validator::imprime_debug(int status, const std::string &comando ,const std::string &body)
 {
     std::cout << BOLDBLACK << "======== DEBUG ========"
+              << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
               << BOLDBLACK << "Responde Code: " << (status != crow::status::OK ? RED : GREEN) << status << '\n'
-              << BOLDBLACK << "Body: " << WHITE << body << '\n';
+              << BOLDBLACK << "Body: " << WHITE << body << '\n'
+              << RESET;
 }
 
 std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json = "", bool debug = false)
@@ -23,7 +34,7 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
                    cpr::Body{json});
 
     if (debug)
-        imprime_debug(r_.status_code, r_.text);
+        imprime_debug(r_.status_code, command, r_.text);
 
     return {r_.status_code, r_.text};
 }
@@ -35,7 +46,7 @@ std::pair<int, std::string> Validator::command_get(const std::string &command, b
                               {"Authorization", "Bearer " + Global::ApiConsume::token}});
 
     if (debug)
-        imprime_debug(r_.status_code, r_.text);
+        imprime_debug(r_.status_code, command, r_.text);
 
     return {r_.status_code, r_.text};
 }
@@ -121,4 +132,24 @@ void Validator::acepta_dinero(const std::string &state, bool recy = false)
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         command_post("AcceptFromEscrow");
     }
+}
+
+Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual()
+{
+    auto m_list = Gio::ListStore<MLevelCash>::create();
+    auto json_string = command_get("GetAllLevels", true).second;
+    auto json = crow::json::load(json_string);
+
+    //@@@Por ver cual es la devolucin completa del json
+    for (auto &&i : json["levels"])
+    {
+        m_list->append(MLevelCash::create(
+            i["value"].i(), // denomonacion
+            i["stored"].i(), //cassete
+            100, //i["value"].i(), // recyclado
+            20 //i["value"].i() // tope dinero
+        ));
+    }
+
+    return m_list;
 }

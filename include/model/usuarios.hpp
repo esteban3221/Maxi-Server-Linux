@@ -3,6 +3,7 @@
 #include <functional>
 #include <glibmm.h>
 #include <giomm.h>
+#include <memory>
 
 #include "coneccion.hpp"
 
@@ -35,7 +36,12 @@ public:
 
     Glib::RefPtr<Gio::ListStore<MUsuarios>> get_usuarios();
 
-    void insert_level_cash(const MUsuarios &usuario);
-    void update_level_cash(const MUsuarios &usuario);
-    void delete_level_cash(const MUsuarios &usuario);
+    /// @brief Verifica si existe un usuario a travez de su contraseña
+    /// @param passw
+    /// @return Nombre de usuario si es que existe, Si no vacio ""
+    const std::string &existe_usuario(const std::string &) const;
+
+    size_t insert_usuario(const Glib::RefPtr<MUsuarios> &usuario);
+    void update_usuario(const Glib::RefPtr<MUsuarios> &usuario);
+    void delete_usuario(const Glib::RefPtr<MUsuarios> &usuario);
 };

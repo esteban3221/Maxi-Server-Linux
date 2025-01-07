@@ -35,12 +35,12 @@ set(SOURCES
     src/view/main_window.cpp
     #================CONTROLLER=================
     
-    src/controller/validator.cpp
+    src/controller/c_sharp_validator_validator.cpp
+    src/controller/session.cpp
 
     #================GLOBAL=================
     src/shared/global.cpp
-    #TEST
-    src/controller/rest_api.cpp
+    
 )
 
 include_directories(include 
