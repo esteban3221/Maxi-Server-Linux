@@ -1,9 +1,9 @@
 #pragma once
 #include <crow.h>
 #include <libnotify/notify.h>
-#include <nlohmann/json.hpp>
 #include <cpr/cpr.h>
 #include <atomic>
+#include <gtkmm.h>
 
 
 #define RESET   "\033[0m"
@@ -35,6 +35,11 @@ namespace Global
         extern std::future<void> future;
     } // namespace Rest
 
+    namespace Widget
+    {
+        extern Gtk::Stack *v_main_stack;
+    } // namespace Widget
+    
     //por conveniencia esta en ingles
     namespace EValidador
     {

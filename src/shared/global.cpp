@@ -14,10 +14,13 @@ namespace Global
         std::atomic<bool> is_busy;
 
         Balance balance;
-        Conf bill,coin;
-
-        
+        Conf bill,coin;        
     } // namespace EstadoValidador
+
+    namespace Widget
+    {
+        Gtk::Stack *v_main_stack = nullptr;
+    } // namespace Widget
 
     namespace ApiConsume
     {

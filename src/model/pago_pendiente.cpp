@@ -27,12 +27,12 @@ Glib::RefPtr<Gio::ListStore<MPagoPendiente>> PagoPendiente::get_log_historial()
     return m_list;
 }
 
-void PagoPendiente::update_log_historial(const MPagoPendiente &list)
+void PagoPendiente::update_log_historial(const Glib::RefPtr<MPagoPendiente> &list)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("UPDATE pagoPendiente set IdLog = ?, Remanente = ?, Estatus = ? WHERE Id = ?",
-                              list.m_id_log,
-                              list.m_remanente,
-                              list.m_status.c_str(),
-                              list.m_id);
+                              list->m_id_log,
+                              list->m_remanente,
+                              list->m_status.c_str(),
+                              list->m_id);
 }

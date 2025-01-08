@@ -38,5 +38,5 @@ public:
     PagoPendiente(/* args */);
     ~PagoPendiente();
     Glib::RefPtr<Gio::ListStore<MPagoPendiente>> get_log_historial();
-    void update_log_historial(const MPagoPendiente &list);
+    void update_log_historial(const Glib::RefPtr<MPagoPendiente> &list);
 };

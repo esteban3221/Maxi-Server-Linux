@@ -127,5 +127,5 @@ public:
     ~LogHistorial();
 
     Glib::RefPtr<Gio::ListStore<MLogHistorial>> get_log_historial();
-    void insert_log_historial(const MLogHistorial &log_historial);
+    void insert_log_historial(const Glib::RefPtr<MLogHistorial> &log_historial);
 };

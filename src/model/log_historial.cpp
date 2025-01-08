@@ -47,29 +47,29 @@ Glib::RefPtr<Gio::ListStore<MLogHistorial>> LogHistorial::get_log_historial()
 
 /// @brief Inserta a BD (Fecha se debe de pasar normal, esta funcion ya hace la conversion a iso8601)
 /// @param list 
-void LogHistorial::insert_log_historial(const MLogHistorial &list)
+void LogHistorial::insert_log_historial(const Glib::RefPtr<MLogHistorial> &list)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("INSERT INTO log_historial VALUES(null, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? )",
-                              list.m_original_id,
+                              list->m_original_id,
 
-                              list.m_old_id_user,
-                              list.m_old_tipo.c_str(),
-                              list.m_old_ingreso,
-                              list.m_old_cambio,
-                              list.m_old_total,
-                              list.m_old_estatus,
-                              list.m_old_fecha.format_iso8601().c_str(),
+                              list->m_old_id_user,
+                              list->m_old_tipo.c_str(),
+                              list->m_old_ingreso,
+                              list->m_old_cambio,
+                              list->m_old_total,
+                              list->m_old_estatus,
+                              list->m_old_fecha.format_iso8601().c_str(),
 
-                              list.m_new_id_user,
-                              list.m_new_tipo.c_str(),
-                              list.m_new_ingreso,
-                              list.m_new_cambio,
-                              list.m_new_total,
-                              list.m_new_estatus,
-                              list.m_new_fecha.format_iso8601().c_str(),
+                              list->m_new_id_user,
+                              list->m_new_tipo.c_str(),
+                              list->m_new_ingreso,
+                              list->m_new_cambio,
+                              list->m_new_total,
+                              list->m_new_estatus,
+                              list->m_new_fecha.format_iso8601().c_str(),
 
-                              list.m_fecha_modificacion.format_iso8601().c_str(),
-                              list.m_usuario_operacion.c_str(),
-                              list.m_tipo_cambio.c_str());
+                              list->m_fecha_modificacion.format_iso8601().c_str(),
+                              list->m_usuario_operacion.c_str(),
+                              list->m_tipo_cambio.c_str());
 }

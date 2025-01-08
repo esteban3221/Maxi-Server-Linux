@@ -33,31 +33,31 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log()
     return m_list;
 }
 
-void Log::insert_log(const MLog &list)
+void Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("INSERT INTO from log VALUES(null,?,?,?,?,?,?,?,?)",
-                              list.m_id_user,
-                              list.m_tipo.c_str(),
-                              list.m_ingreso,
-                              list.m_cambio,
-                              list.m_total,
-                              list.m_estatus.c_str(),
-                              list.m_fecha.format_iso8601().c_str()
+                              list->m_id_user,
+                              list->m_tipo.c_str(),
+                              list->m_ingreso,
+                              list->m_cambio,
+                              list->m_total,
+                              list->m_estatus.c_str(),
+                              list->m_fecha.format_iso8601().c_str()
                               );
 }
 
-void Log::update_log(const MLog &list)
+void Log::update_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
-                              list.m_id_user,
-                              list.m_tipo.c_str(),
-                              list.m_ingreso,
-                              list.m_cambio,
-                              list.m_total,
-                              list.m_estatus.c_str(),
-                              list.m_fecha.format_iso8601().c_str(),
-                              list.m_id
+                              list->m_id_user,
+                              list->m_tipo.c_str(),
+                              list->m_ingreso,
+                              list->m_cambio,
+                              list->m_total,
+                              list->m_estatus.c_str(),
+                              list->m_fecha.format_iso8601().c_str(),
+                              list->m_id
                               );
 }

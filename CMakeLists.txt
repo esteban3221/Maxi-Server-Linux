@@ -32,12 +32,16 @@ set(SOURCES
     src/model/usuarios_roles.cpp
     src/model/usuarios.cpp
     #===================VIEW====================
+    src/view/base/venta_pago.cpp
+
     src/view/main_window.cpp
     #================CONTROLLER=================
-    
     src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
 
+    src/controller/main_window.cpp
+    src/controller/venta.cpp
+    src/controller/pago.cpp
     #================GLOBAL=================
     src/shared/global.cpp
     

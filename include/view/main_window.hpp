@@ -1,13 +1,18 @@
 #pragma once
 #include <gtkmm.h>
-#include "global.hpp"
-#include "session.hpp"
 
-class Main_window : public Gtk::Window
+
+class VMainWindow : public Gtk::Window
 {
-private:
-    Sesion sesion;
+
+protected:
+    
+    Gtk::Box *v_box_principal = nullptr;
+    Gtk::Label *v_lbl_version = nullptr, *v_lbl_main = nullptr;
+    Gtk::Button *v_btn_logo_nip = nullptr, *v_btn_pill = nullptr;
+    Gtk::Image *v_img_main_logo = nullptr;
+
 public:
-    Main_window(/* args */);
-    ~Main_window();
+    VMainWindow(/* args */);
+    ~VMainWindow();
 };
