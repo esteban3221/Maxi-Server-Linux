@@ -32,12 +32,14 @@ set(SOURCES
     #===================VIEW====================
     src/view/base/venta_pago.cpp
     src/view/main_window.cpp
+    src/view/refill.cpp
     #================CONTROLLER=================
     src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
     src/controller/main_window.cpp
     src/controller/venta.cpp
     src/controller/pago.cpp
+    src/controller/refill.cpp
     #================GLOBAL=================
     src/shared/global.cpp
 )

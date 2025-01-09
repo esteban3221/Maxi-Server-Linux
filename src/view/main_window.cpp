@@ -27,6 +27,11 @@ VMainWindow::VMainWindow(/* args */)
     Global::Widget::v_main_stack->add(*pago,"1","Pago");
     Global::Widget::v_main_stack->add(*venta,"2","Venta");    
 
+    builder = Gtk::Builder::create_from_file("../test/ui/refill.ui");
+    auto refill = Gtk::Builder::get_widget_derived<Refill>(builder,"boxVistaEfectivo");
+
+    Global::Widget::v_main_stack->add(*refill,"3","Refill");  
+
     //test
     Gtk::HeaderBar header;
     Gtk::StackSwitcher switcher;

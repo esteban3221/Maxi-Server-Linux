@@ -1,7 +1,7 @@
 #include "controller/venta.hpp"
 #include "venta.hpp"
 
-Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder) 
+Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Venta");
 }

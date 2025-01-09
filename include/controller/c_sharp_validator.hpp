@@ -12,7 +12,7 @@
 class Validator
 {
 private:
-    static int instance_count;
+    static inline int instance_count;
     cpr::Response r_;
     std::string validator;
 
@@ -34,7 +34,7 @@ public:
     void deten_cobro_v6();
 
     //version con net 8
-    const crow::json::rvalue & inicia_dispositivo_v8(Global::EValidador::Conf &conf);
+    crow::json::rvalue inicia_dispositivo_v8(Global::EValidador::Conf &conf);
     void deten_cobro_v8();
 
     void init(Global::EValidador::Conf conf);
@@ -42,8 +42,6 @@ public:
 
     Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual();
 
-    Validator(const std::string &validator, const std::source_location location);
+    Validator(const std::string &validator, const std::source_location location = std::source_location::current());
     ~Validator();
 };
-
-int Validator::instance_count = 0;

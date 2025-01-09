@@ -1,6 +1,6 @@
 #include "c_sharp_validator.hpp"
 
-Validator::Validator(const std::string &validator, const std::source_location location = std::source_location::current())
+Validator::Validator(const std::string &validator, const std::source_location location)
     : validator(validator), ingreso_parcial(0)
 {
     if (instance_count > 2)
@@ -19,7 +19,7 @@ Validator::~Validator()
 
 void Validator::imprime_debug(int status, const std::string &comando ,const std::string &body)
 {
-    std::cout << BOLDBLACK << "======== DEBUG ========"
+    std::cout << BOLDBLACK << "======== DEBUG ========\n"
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
               << BOLDBLACK << "Responde Code: " << (status != crow::status::OK ? RED : GREEN) << status << '\n'
               << BOLDBLACK << "Body: " << WHITE << body << '\n'
@@ -173,7 +173,7 @@ http://localhost:5000/api/CashDevice/OpenConnection
 }
 */
 
-const crow::json::rvalue &Validator::inicia_dispositivo_v8(Global::EValidador::Conf &conf)
+crow::json::rvalue Validator::inicia_dispositivo_v8(Global::EValidador::Conf &conf)
 {
     crow::json::wvalue data_in = 
     {

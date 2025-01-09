@@ -5,6 +5,7 @@
 
 #include "controller/venta.hpp"
 #include "controller/pago.hpp"
+#include "controller/refill.hpp"
 
 class MainWindow : public VMainWindow
 {
