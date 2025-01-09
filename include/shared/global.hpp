@@ -57,7 +57,10 @@ namespace Global
         {
             std::string puerto = "/dev/ttyUSB";
             uint32_t ssp = 0;
-            std::string nombre;
+            std::string dispositivo;
+            std::string log_ruta;
+            bool habilita_recolector;
+            bool auto_acepta_billetes;
         }extern bill, coin;
     } // namespace EstadoValidador
     

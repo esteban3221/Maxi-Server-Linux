@@ -14,7 +14,7 @@ class Validator
 private:
     static int instance_count;
     cpr::Response r_;
-    const std::string VALIDATOR;
+    std::string validator;
 
     uint32_t ingreso_parcial;
 
@@ -28,8 +28,15 @@ public:
     std::pair<int, std::string> command_post(const std::string &command, const std::string &json, bool);
 
     void poll(std::function<void(const std::string &, const crow::json::rvalue &)> &func);
-    void inicia_cobro();
-    void deten_cobro();
+
+    //version con net 6
+    void inicia_dispositivo_v6();
+    void deten_cobro_v6();
+
+    //version con net 8
+    const crow::json::rvalue & inicia_dispositivo_v8(Global::EValidador::Conf &conf);
+    void deten_cobro_v8();
+
     void init(Global::EValidador::Conf conf);
     void acepta_dinero(const std::string &state, bool recy);
 

@@ -1,7 +1,7 @@
 #include "main_window.hpp"
 
 
-VMainWindow::VMainWindow(/* args */) //: Global::Widget::v_main_stack (Gtk::manage(new Gtk::Stack))
+VMainWindow::VMainWindow(/* args */) 
 {
     this->set_title("MaxiCajero");
     this->set_default_size(800,600);

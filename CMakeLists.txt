@@ -11,17 +11,15 @@ find_package(cpr REQUIRED)
 pkg_check_modules(GTKMM gtkmm-4.0)
 pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 find_package(SQLite3 REQUIRED)
-
+find_package(GTest REQUIRED) # Google Test instalado en el sistema
 
 include_directories(
     ${GTKMM_INCLUDE_DIRS}
     ${LIBNOTIFY_INCLUDE_DIRS}
 )
 
-
 set(SOURCES
     src/main.cpp
-
     #===================MODEL===================
     src/model/log.cpp
     src/model/level_cash.cpp
@@ -33,18 +31,15 @@ set(SOURCES
     src/model/usuarios.cpp
     #===================VIEW====================
     src/view/base/venta_pago.cpp
-
     src/view/main_window.cpp
     #================CONTROLLER=================
     src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
-
     src/controller/main_window.cpp
     src/controller/venta.cpp
     src/controller/pago.cpp
     #================GLOBAL=================
     src/shared/global.cpp
-    
 )
 
 include_directories(include 
@@ -70,3 +65,7 @@ target_link_libraries(Maxicajero
                         Crow::Crow
 )
 target_include_directories(Maxicajero PRIVATE ${GTKMM_INCLUDE_DIRS})
+
+# Habilitar pruebas
+enable_testing()
+add_subdirectory(test)
