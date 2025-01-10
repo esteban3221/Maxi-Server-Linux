@@ -19,3 +19,13 @@ void Venta::on_btn_cancel_click()
 {
     std::cout << "Click cancela desde Venta\n";
 }
+
+crow::response Venta::inicia(const crow::request &req)
+{
+    return crow::response();
+}
+
+crow::response Venta::deten(const crow::request &req)
+{
+    return crow::response();
+}

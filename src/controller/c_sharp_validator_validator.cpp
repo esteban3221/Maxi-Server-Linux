@@ -1,15 +1,24 @@
 #include "c_sharp_validator.hpp"
 
+namespace Global
+{
+    namespace Device
+    {
+        Validator dv_coin(""), dv_bill("");
+    } // namespace Device
+}
+
 Validator::Validator(const std::string &validator, const std::source_location location)
     : validator(validator), ingreso_parcial(0)
 {
+    ++instance_count;
+
     if (instance_count > 2)
         std::cout << YELLOW << "Advertencia: " << RESET << "Mas de 2 instancias de validadores detectadas, Posible fuga? \n"
-                  << location.file_name() << '('
-                  << location.line() << ':'
-                  << location.column() << ") \n";
+                  << WHITE << "Ruta: " << RESET << location.file_name() << '(' << location.line() << ':' << location.column() << ") \n";
+    
 
-    ++instance_count;
+
 }
 
 Validator::~Validator()
@@ -17,7 +26,7 @@ Validator::~Validator()
     --instance_count;
 }
 
-void Validator::imprime_debug(int status, const std::string &comando ,const std::string &body)
+void Validator::imprime_debug(int status, const std::string &comando, const std::string &body)
 {
     std::cout << BOLDBLACK << "======== DEBUG ========\n"
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
@@ -173,29 +182,38 @@ http://localhost:5000/api/CashDevice/OpenConnection
 }
 */
 
-crow::json::rvalue Validator::inicia_dispositivo_v8(Global::EValidador::Conf &conf)
+crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Conf &conf)
 {
-    crow::json::wvalue data_in = 
-    {
-        {"ComPort", conf.puerto},
-        {"SspAddress", conf.ssp},
-        {"LogFilePath", conf.log_ruta},
-        {"EnableAcceptor", conf.habilita_recolector},
-        {"EnablePayout", conf.habilita_recolector},
-        {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
-    };
-
+    crow::json::wvalue data_in =
+        {
+            {"ComPort", conf.puerto},
+            {"SspAddress", conf.ssp},
+            {"LogFilePath", conf.log_ruta},
+            {"EnableAcceptor", conf.habilita_recolector},
+            {"EnablePayout", conf.habilita_recolector},
+            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
+        };
+    this->conf = conf;
     auto data_out = command_post("OpenConnection", data_in.dump(), true);
 
     auto json = crow::json::load(data_out.second);
-    this->validator =  data_out.first == crow::status::OK ? std::string(json["deviceID"].s()) : "";
+    this->validator = data_out.first == crow::status::OK ? std::string(json["deviceID"].s()) : "";
 
     return json;
 }
 
 void Validator::deten_cobro_v8()
 {
+}
 
+const Global::EValidador::Conf &Validator::get_data_conf()
+{
+    return this->conf;
+}
+
+const crow::json::rvalue &Validator::get_status_coneccion()
+{
+    return this->json_data_status_coneccion;
 }
 
 void Validator::inicia_dispositivo_v6()
@@ -241,15 +259,14 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual()
     auto json_string = command_get("GetAllLevels", true).second;
     auto json = crow::json::load(json_string);
 
-    //@@@Por ver cual es la devolucin completa del json
     for (auto &&i : json["levels"])
     {
         m_list->append(MLevelCash::create(
-            i["value"].i(), // denomonacion
-            i["stored"].i(), //cassete
-            100, //i["value"].i(), // recyclado
-            20 //i["value"].i() // tope dinero
-        ));
+            i["value"].i(),  // denomonacion
+            0,               // cassete
+            i["stored"].i(), // i["value"].i(), // recyclado
+            0                // i["value"].i() // tope dinero
+            ));
     }
 
     return m_list;

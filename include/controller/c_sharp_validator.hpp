@@ -16,7 +16,10 @@ private:
     cpr::Response r_;
     std::string validator;
 
+    crow::json::rvalue json_data_status_coneccion;
+
     uint32_t ingreso_parcial;
+    Global::EValidador::Conf conf;
 
     void imprime_debug(int status, const std::string &comando, const std::string &body);
 
@@ -34,8 +37,11 @@ public:
     void deten_cobro_v6();
 
     //version con net 8
-    crow::json::rvalue inicia_dispositivo_v8(Global::EValidador::Conf &conf);
+    crow::json::rvalue inicia_dispositivo_v8(const Global::EValidador::Conf &conf);
     void deten_cobro_v8();
+
+    const Global::EValidador::Conf &get_data_conf();
+    const crow::json::rvalue &get_status_coneccion();
 
     void init(Global::EValidador::Conf conf);
     void acepta_dinero(const std::string &state, bool recy);
@@ -45,3 +51,12 @@ public:
     Validator(const std::string &validator, const std::source_location location = std::source_location::current());
     ~Validator();
 };
+
+
+namespace Global
+{
+    namespace Device
+    {
+        extern Validator dv_coin ,dv_bill;
+    } // namespace Device
+}

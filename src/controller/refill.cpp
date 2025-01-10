@@ -6,12 +6,22 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     init_data(v_tree_reciclador_monedas,"Level_Coin");
     init_data(v_tree_reciclador_billetes,"Level_Bill");
 
-    v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
-    { 
-        std::cout << "Se clicko id: " << num << '\n';
-        auto item = v_tree_reciclador_monedas->get_model()->get_selection(num,1);
-        
-    });
+    // // ejemplo de como obtener los datos del modelo usado
+    // v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
+    // { 
+    //     std::cout << "Se clicko id: " << num << '\n';
+    //     auto selection_model = v_tree_reciclador_monedas->get_model();
+    //     auto single_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_model);
+
+    //     //obtener la lista para añadir o eliminar varios items
+    //     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_selection->get_model());
+    //     list_store->append(MLevelCash::create(900,20,12,23));
+
+    //     //obtener item de la lista seleccionado para leer(const) o modificar dato
+    //     auto m_list = single_selection->get_typed_object<const MLevelCash>(num);
+
+    //     std::cout << "Denom " << m_list->m_denominacion <<'\n';
+    // });
 }
 
 Refill::~Refill()
@@ -44,7 +54,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
     factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_recy));
     vcolumn->append_column(column);
 
-    column = Gtk::ColumnViewColumn::create("Inmobilidad", factory);
+    column = Gtk::ColumnViewColumn::create("Ingreso", factory);
     factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
     factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_inmo));
     vcolumn->append_column(column);

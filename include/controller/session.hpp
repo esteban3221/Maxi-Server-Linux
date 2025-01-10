@@ -5,6 +5,7 @@
 
 #include "usuarios.hpp"
 #include "global.hpp"
+#include "c_sharp_validator.hpp"
 
 namespace RestApp = Global::Rest;
 class Sesion //: public sigc::trackable

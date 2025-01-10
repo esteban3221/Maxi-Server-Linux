@@ -5,7 +5,6 @@
 #include <atomic>
 #include <gtkmm.h>
 
-
 #define RESET   "\033[0m"
 #define BLACK   "\033[30m"      /* Black */
 #define RED     "\033[31m"      /* Red */
@@ -26,6 +25,7 @@
 
 namespace Global
 {
+    
     namespace Rest
     {
         //manejador de entradas a la api rest
@@ -40,7 +40,7 @@ namespace Global
         extern Gtk::Stack *v_main_stack;
     } // namespace Widget
     
-    //por conveniencia esta en ingles
+    //por conveniencia algunas cosas estan en ingles
     namespace EValidador
     {
         extern std::atomic<bool> is_running;
@@ -61,10 +61,9 @@ namespace Global
             std::string log_ruta;
             bool habilita_recolector;
             bool auto_acepta_billetes;
-        }extern bill, coin;
+        };
     } // namespace EstadoValidador
     
-
     namespace ApiConsume
     {
         extern std::string token;

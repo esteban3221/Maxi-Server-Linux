@@ -2,7 +2,7 @@
 #include "view/refill.hpp"
 #include "level_cash.hpp"
 
-class Refill : public VRefill
+class Refill final : public VRefill
 {
 private:
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);

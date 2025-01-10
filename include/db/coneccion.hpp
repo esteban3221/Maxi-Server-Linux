@@ -9,8 +9,6 @@ private:
     Database(const Database &) = delete;
     Database &operator=(const Database &) = delete;
 
-    
-
     ~Database(void) {}
 
     Database(void)
@@ -284,6 +282,10 @@ private:
                                    "descripcion TEXT NOT NULL UNIQUE,\n"
                                    "valor TEXT NOT NULL UNIQUE\n"
                                    ")");
+            this->sqlite3->command("INSERT into configuracion values(null,'Puerto bill','/dev/ttyUSB0'),"
+                                   "(null,'SSP bill','0'),"
+                                   "(null,'Puerto coin','/dev/ttyUSB1'),"
+                                   "(null,'SSP coin','16')");
         }
     }
 
