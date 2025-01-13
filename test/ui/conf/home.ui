@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 0.95.0 -->
+<interface>
+  <!-- interface-name home.ui -->
+  <requires lib="gtk" version="4.12"/>
+  <object class="GtkBox" id="left_box">
+    <property name="orientation">vertical</property>
+    <property name="spacing">5</property>
+    <child>
+      <object class="GtkButton" id="btn_back_config">
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">5</property>
+            <child>
+              <object class="GtkImage">
+                <property name="icon-name">go-previous-symbolic</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Regresar</property>
+              </object>
+            </child>
+          </object>
+        </property>
+        <property name="halign">fill</property>
+        <property name="has-frame">false</property>
+        <property name="margin-end">10</property>
+        <property name="margin-start">10</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparator"/>
+    </child>
+    <child>
+      <object class="GtkStackSidebar" id="stackside">
+        <property name="vexpand">true</property>
+      </object>
+    </child>
+  </object>
+</interface>

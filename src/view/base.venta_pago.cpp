@@ -1,4 +1,4 @@
-#include "view/base/venta_pago.hpp"
+#include "view/base.venta_pago.hpp"
 
 
 BVentaPago::BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : m_builder{refBuilder},

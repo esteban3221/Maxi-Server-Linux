@@ -35,6 +35,10 @@ VMainWindow::VMainWindow(/* args */)
     auto refill = Gtk::Builder::get_widget_derived<Refill>(builder, "boxVistaEfectivo");
 
     Global::Widget::v_main_stack->add(*refill, "4", "Refill");
+
+    auto config = Gtk::manage(new Config); 
+    Global::Widget::v_main_stack->add(*config, "5", "Configuracion");
+
     Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::ROTATE_LEFT_RIGHT);
 
     // test

@@ -31,9 +31,13 @@ set(SOURCES
     src/model/usuarios.cpp
     src/model/configuracion.cpp
     #===================VIEW====================
-    src/view/base/venta_pago.cpp
+    src/view/base.venta_pago.cpp
     src/view/main_window.cpp
     src/view/refill.cpp
+    src/view/config.cpp
+
+    src/view/config/base.validador.cpp
+    src/view/config/validador.cpp
     #================CONTROLLER=================
     src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
@@ -42,6 +46,9 @@ set(SOURCES
     src/controller/pago.cpp
     src/controller/pago_manual.cpp
     src/controller/refill.cpp
+    src/controller/config.cpp
+
+    src/controller/config/validador.cpp
     #================GLOBAL=================
     src/shared/global.cpp
 )

@@ -1,5 +1,5 @@
 #pragma once
-#include "view/base/venta_pago.hpp"
+#include "view/base.venta_pago.hpp"
 #include <iostream>
 
 class PagoManual final : public BVentaPago
