@@ -8,11 +8,10 @@
 class VValidador : public Gtk::Box
 {
 protected:
-    Gtk::Label *v_lbl_data [9] = {nullptr};
+    Gtk::Label *v_lbl_data [11] = {nullptr};
     Gtk::Label *v_lbl_titulo = nullptr;
     Gtk::DropDown *v_drop_puerto = nullptr;
 
-    void set_data_lbl(const crow::json::rvalue &json);
     void on_show();
     Glib::ustring get_puerto_seleccionado();
 private:
@@ -28,4 +27,6 @@ public:
     virtual ~VValidador();
 
     void set_id_conf(uint16_t id);
+    void set_data_lbl(const crow::json::rvalue &json);
+    void set_data_lbl(const std::string &json);
 };

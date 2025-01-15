@@ -3,8 +3,8 @@
 
 class VDetallesValidador : public Gtk::Box
 {
-private:
-    /* data */
+protected:
+    VValidador *v_box_bill = nullptr, *v_box_coin = nullptr;
 public:
     VDetallesValidador(/* args */);
     ~VDetallesValidador();

@@ -13,6 +13,11 @@ namespace Global
         std::atomic<bool> is_running;
         std::atomic<bool> is_busy;
 
+        std::atomic<bool> is_retry_connected;
+        std::atomic<bool> is_connected;
+        std::atomic<bool> is_wrong_port;
+        std::atomic<bool> is_driver_correct;
+
         Balance balance;
     } // namespace EstadoValidador
 

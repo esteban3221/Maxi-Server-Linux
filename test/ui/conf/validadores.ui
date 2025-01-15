@@ -335,7 +335,7 @@
                   <object class="GtkLabel">
                     <property name="halign">start</property>
                     <property name="hexpand">true</property>
-                    <property name="label">Reloj Interno</property>
+                    <property name="label">Revision</property>
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
@@ -345,6 +345,71 @@
                 </child>
                 <child>
                   <object class="GtkLabel" id="lbl_data_8">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <property name="label">--</property>
+                    <property name="valign">center</property>
+                    <property name="xalign">0</property>
+                    <style>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkListBoxRow">
+            <child>
+              <object class="GtkBox">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="halign">start</property>
+                    <property name="hexpand">true</property>
+                    <property name="label">Revision Modulo</property>
+                    <property name="valign">center</property>
+                    <property name="xalign">0</property>
+                    <style>
+                      <class name="title-4"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_data_9">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <property name="label">--</property>
+                    <property name="valign">center</property>
+                    <property name="xalign">0</property>
+                    <style>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkListBoxRow">
+            <child>
+              <object class="GtkBox">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="halign">start</property>
+                    <property name="hexpand">true</property>
+                    <property name="label">Reloj Interno</property>
+                    <property name="valign">center</property>
+                    <property name="xalign">0</property>
+                    <style>
+                      <class name="title-4"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_data_10">
+                    <property name="ellipsize">start</property>
                     <property name="halign">end</property>
                     <property name="hexpand">true</property>
                     <property name="label">--</property>
