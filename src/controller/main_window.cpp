@@ -47,6 +47,7 @@ MainWindow::MainWindow(/* args */)
 
 MainWindow::~MainWindow()
 {
+    std::system("killall dotnet");
     Global::Rest::app.stop();
-    Global::Rest::future.get();
+    //Global::Rest::future.get();
 }

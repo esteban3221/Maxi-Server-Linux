@@ -279,8 +279,8 @@ private:
 
             this->sqlite3->command("CREATE TABLE configuracion (\n"
                                    "id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
-                                   "descripcion TEXT NOT NULL UNIQUE,\n"
-                                   "valor TEXT NOT NULL UNIQUE\n"
+                                   "descripcion TEXT NOT NULL,\n"
+                                   "valor TEXT NOT NULL\n"
                                    ")");
             this->sqlite3->command("INSERT into configuracion values(null,'Puerto bill','/dev/ttyUSB0'),"
                                    "(null,'SSP bill','0'),"

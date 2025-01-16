@@ -12,13 +12,15 @@
     <property name="spacing">10</property>
     <child>
       <object class="GtkListBox" id="list_configurable">
+        <property name="activate-on-single-click">False</property>
+        <property name="selection-mode">none</property>
         <child>
           <object class="GtkListBoxRow">
             <property name="child">
               <object class="GtkLabel" id="lbl_titulo">
                 <property name="label">Sin Definir</property>
                 <style>
-                  <class name="title-1"/>
+                  <class name="title-3"/>
                 </style>
               </object>
             </property>
@@ -46,8 +48,8 @@
     </child>
     <child>
       <object class="GtkListBox" id="list_detalles">
-        <property name="accessible-role">list-box</property>
         <property name="activate-on-single-click">False</property>
+        <property name="selection-mode">none</property>
         <child>
           <object class="GtkListBoxRow">
             <child>
@@ -60,7 +62,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -83,7 +85,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -115,7 +117,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -147,7 +149,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -179,7 +181,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -211,7 +213,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -243,7 +245,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -275,7 +277,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -307,7 +309,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -339,7 +341,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -371,7 +373,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>
@@ -403,7 +405,7 @@
                     <property name="valign">center</property>
                     <property name="xalign">0</property>
                     <style>
-                      <class name="title-4"/>
+                      <class name="title-5"/>
                     </style>
                   </object>
                 </child>

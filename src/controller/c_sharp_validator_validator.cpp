@@ -4,7 +4,7 @@ namespace Global
 {
     namespace Device
     {
-        Validator dv_coin(""), dv_bill("");
+        Validator dv_coin("HOPPER"), dv_bill("SPECTRAL");
     } // namespace Device
 }
 
@@ -194,10 +194,10 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
             {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
         };
     this->conf = conf;
-    auto data_out = command_post("OpenConnection", data_in.dump(), true);
+    auto data_out = command_post("OpenConnection", data_in.dump());
 
     auto json = crow::json::load(data_out.second);
-    this->validator = data_out.first == crow::status::OK ? std::string(json["deviceID"].s()) : "";
+    this->validator = data_out.first == crow::status::OK ? std::string(json["deviceID"].s()) : validator;
 
     return json;
 }
