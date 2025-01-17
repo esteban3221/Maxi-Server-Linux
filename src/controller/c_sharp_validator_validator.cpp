@@ -16,9 +16,6 @@ Validator::Validator(const std::string &validator, const std::source_location lo
     if (instance_count > 2)
         std::cout << YELLOW << "Advertencia: " << RESET << "Mas de 2 instancias de validadores detectadas, Posible fuga? \n"
                   << WHITE << "Ruta: " << RESET << location.file_name() << '(' << location.line() << ':' << location.column() << ") \n";
-    
-
-
 }
 
 Validator::~Validator()
@@ -60,7 +57,7 @@ std::pair<int, std::string> Validator::command_get(const std::string &command, b
     return {r_.status_code, r_.text};
 }
 
-void Validator::poll(std::function<void(const std::string &, const crow::json::rvalue &)> &func)
+void Validator::poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func)
 {
     Global::EValidador::balance.ingreso.store(0);
     Global::EValidador::balance.total.store(0);
@@ -68,11 +65,11 @@ void Validator::poll(std::function<void(const std::string &, const crow::json::r
 
     while (Global::EValidador::is_running.load())
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         if (auto status = command_get("GetDeviceStatus"); status.first == crow::status::OK)
         {
-            std::cout << " TEST: " << status.second << std::endl;
+            if(status.second != "[]") std::cout << " TEST: " << status.second << '\n';
             auto json_data = crow::json::load(status.second);
             for (const auto &i : json_data)
             {
@@ -191,8 +188,7 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
             {"LogFilePath", conf.log_ruta},
             {"EnableAcceptor", conf.habilita_recolector},
             {"EnablePayout", conf.habilita_recolector},
-            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
-        };
+            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}};
     this->conf = conf;
     auto data_out = command_post("OpenConnection", data_in.dump());
 
@@ -218,23 +214,24 @@ const crow::json::rvalue &Validator::get_status_coneccion()
 
 void Validator::inicia_dispositivo_v6()
 {
-    command_post("ConnectDevice", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
     command_post("StartDevice", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    command_post("EnablePayout", "", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    command_post("EnableAcceptor", "", true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 void Validator::deten_cobro_v6()
 {
     command_post("HaltPayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     command_post("DisableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     command_post("DisablePayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 void Validator::acepta_dinero(const std::string &state, bool recy = false)
@@ -248,13 +245,14 @@ void Validator::acepta_dinero(const std::string &state, bool recy = false)
         json["Route"] = (int)recy;
 
         command_post("SetDenominationRoute", json.dump(), true);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
         command_post("AcceptFromEscrow");
     }
 }
 
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual()
 {
+    Global::ApiConsume::autentica();
     auto m_list = Gio::ListStore<MLevelCash>::create();
     auto json_string = command_get("GetAllLevels", true).second;
     auto json = crow::json::load(json_string);

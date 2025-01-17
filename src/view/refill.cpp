@@ -7,9 +7,9 @@ VRefill::VRefill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refB
 
     v_lbl_total_parcial_monedas = refBuilder->get_widget<Gtk::Label>("lblTotalMXN1");
     v_lbl_total_parcial_billetes = refBuilder->get_widget<Gtk::Label>("lblTotalMXN2");
-    v_lbl_total_monedas = refBuilder->get_widget<Gtk::Label>("lblTotalMXN3");
-    v_lbl_total_billetes = refBuilder->get_widget<Gtk::Label>("lblTotalMXN4");
-    v_lbl_total = refBuilder->get_widget<Gtk::Label>("lblTotalMXN5");
+    v_lbl_total_monedas = refBuilder->get_widget<Gtk::Label>("lblTotalMXN4");
+    v_lbl_total_billetes = refBuilder->get_widget<Gtk::Label>("lblTotalMXN5");
+    v_lbl_total = refBuilder->get_widget<Gtk::Label>("lblTotalMXN3");
 }
 
 VRefill::~VRefill()

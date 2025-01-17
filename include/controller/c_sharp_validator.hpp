@@ -30,7 +30,7 @@ public:
     std::pair<int, std::string> command_get(const std::string &command, bool debug);
     std::pair<int, std::string> command_post(const std::string &command, const std::string &json, bool);
 
-    void poll(std::function<void(const std::string &, const crow::json::rvalue &)> &func);
+    void poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func);
 
     //version con net 6
     void inicia_dispositivo_v6();
