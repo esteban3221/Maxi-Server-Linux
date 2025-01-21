@@ -5,6 +5,7 @@
 #include <cpr/cpr.h>
 #include <functional>
 #include <source_location>
+#include <mutex>
 
 #include "global.hpp"
 #include "level_cash.hpp"
@@ -15,10 +16,10 @@ private:
     static inline int instance_count;
     cpr::Response r_;
     std::string validator;
+    std::mutex poll_mutedx;
 
     crow::json::rvalue json_data_status_coneccion;
 
-    uint32_t ingreso_parcial;
     Global::EValidador::Conf conf;
 
     void imprime_debug(int status, const std::string &comando, const std::string &body) const;

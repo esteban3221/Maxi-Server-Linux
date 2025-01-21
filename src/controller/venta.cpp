@@ -36,15 +36,22 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         status == "ESCROW")
     {
         std::cout << "Se recibio: " << data["value"].i() << '\n';
-        Global::Device::dv_bill.acepta_dinero(status);
+        balance.ingreso_parcial.store(data["value"].i());
+        Global::Device::dv_bill.acepta_dinero(status,true);
 
         balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
         async_gui.dispatch_to_gui([this]()
         {
             v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
-            auto faltante = balance.total.load() - balance.ingreso.load();
+            auto faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
             v_lbl_faltante->set_text(std::to_string(faltante));
         });
+
+        if(balance.ingreso.load() >= balance.total.load())
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            on_btn_cancel_click();
+        }
     }
 }
 
@@ -53,7 +60,10 @@ crow::response Venta::inicia(const crow::request &req)
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
     balance.total.store(bodyParams["value"].i());
+    balance.ingreso.store(0);
+
     is_busy.store(true);
+    is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]() 
     { 
@@ -66,12 +76,10 @@ crow::response Venta::inicia(const crow::request &req)
     });
     
     Global::Device::dv_coin.inicia_dispositivo_v6();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     Global::Device::dv_bill.inicia_dispositivo_v6();
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
     auto future1 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -85,5 +93,6 @@ crow::response Venta::deten(const crow::request &req)
 {
     Global::EValidador::is_running.store(false);
     Global::Device::dv_coin.deten_cobro_v6();
+    Global::Device::dv_bill.deten_cobro_v6();
     return crow::response();
 }

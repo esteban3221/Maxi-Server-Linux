@@ -9,7 +9,7 @@ namespace Global
 }
 
 Validator::Validator(const std::string &validator, const std::source_location location)
-    : validator(validator), ingreso_parcial(0)
+    : validator(validator)
 {
     ++instance_count;
 
@@ -27,6 +27,7 @@ void Validator::imprime_debug(int status, const std::string &comando, const std:
 {
     std::cout << BOLDBLACK << "======== DEBUG ========\n"
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
+              << BOLDBLACK << "Validador: " << WHITE << validator << '\n'
               << BOLDBLACK << "Responde Code: " << (status != crow::status::OK ? RED : GREEN) << status << '\n'
               << BOLDBLACK << "Body: " << WHITE << body << '\n'
               << RESET;
@@ -63,11 +64,13 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
 
     while (Global::EValidador::is_running.load() /*|| (Global::EValidador::balance.ingreso.load() >= Global::EValidador::balance.total.load())*/)
     {
+        std::lock_guard<std::mutex> lock(poll_mutedx);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        auto status = command_get("GetDeviceStatus");
 
-        if (auto status = command_get("GetDeviceStatus"); status.first == crow::status::OK)
+        if ( status.first == crow::status::OK)
         {
-            if(status.second != "[]") std::cout << " TEST: " << status.second << '\n';
+            /**/ 
             auto json_data = crow::json::load(status.second);
             for (const auto &i : json_data)
             {
@@ -213,23 +216,23 @@ const crow::json::rvalue &Validator::get_status_coneccion()
 void Validator::inicia_dispositivo_v6()
 {
     command_post("StartDevice", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
     command_post("EnablePayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
     command_post("EnableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
 }
 
 void Validator::deten_cobro_v6()
 {
     command_post("HaltPayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     command_post("DisableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     command_post("DisablePayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
 void Validator::acepta_dinero(const std::string &state, bool recy)
@@ -238,7 +241,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
     {
         crow::json::wvalue json;
 
-        json["Value"] = ingreso_parcial;
+        json["Value"] = Global::EValidador::balance.ingreso_parcial;
         json["CountryCode"] = "MXN";
         json["Route"] = (int)recy;
 
@@ -250,7 +253,6 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
 
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const
 {
-    Global::ApiConsume::autentica();
     auto m_list = Gio::ListStore<MLevelCash>::create();
     auto json_string = command_get("GetAllLevels", true).second;
     auto json = crow::json::load(json_string);
@@ -264,6 +266,5 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() cons
             0                // i["value"].i() // tope dinero
             ));
     }
-
     return m_list;
 }

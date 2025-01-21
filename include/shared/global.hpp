@@ -64,6 +64,7 @@ namespace Global
         struct Balance
         {
             std::atomic<uint32_t> ingreso = 0;
+            std::atomic<uint32_t> ingreso_parcial = 0;
             std::atomic<uint32_t> total = 0;
             std::atomic<int32_t> cambio = 0;
         } extern balance;
