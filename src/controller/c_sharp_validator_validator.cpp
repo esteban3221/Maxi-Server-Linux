@@ -23,7 +23,7 @@ Validator::~Validator()
     --instance_count;
 }
 
-void Validator::imprime_debug(int status, const std::string &comando, const std::string &body)
+void Validator::imprime_debug(int status, const std::string &comando, const std::string &body) const
 {
     std::cout << BOLDBLACK << "======== DEBUG ========\n"
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
@@ -32,7 +32,7 @@ void Validator::imprime_debug(int status, const std::string &comando, const std:
               << RESET;
 }
 
-std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json = "", bool debug = false)
+std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug ) 
 {
     r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL + "/" + command + "?deviceID=" + validator},
                    cpr::Header{{"Content-Type", "application/json"},
@@ -45,25 +45,23 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
     return {r_.status_code, r_.text};
 }
 
-std::pair<int, std::string> Validator::command_get(const std::string &command, bool debug = false)
+std::pair<int, std::string> Validator::command_get(const std::string &command, bool debug ) const
 {
-    r_ = cpr::Get(cpr::Url{Global::ApiConsume::BASE_URL + "/" + command + "?deviceID=" + validator},
+    const auto r = cpr::Get(cpr::Url{Global::ApiConsume::BASE_URL + "/" + command + "?deviceID=" + validator},
                   cpr::Header{{"Content-Type", "application/json"},
                               {"Authorization", "Bearer " + Global::ApiConsume::token}});
 
     if (debug)
-        imprime_debug(r_.status_code, command, r_.text);
+        imprime_debug(r.status_code, command, r.text);
 
-    return {r_.status_code, r_.text};
+    return {r.status_code, r.text};
 }
 
 void Validator::poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func)
 {
-    Global::EValidador::balance.ingreso.store(0);
-    Global::EValidador::balance.total.store(0);
     Global::EValidador::balance.cambio.store(0);
 
-    while (Global::EValidador::is_running.load())
+    while (Global::EValidador::is_running.load() /*|| (Global::EValidador::balance.ingreso.load() >= Global::EValidador::balance.total.load())*/)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -234,7 +232,7 @@ void Validator::deten_cobro_v6()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
-void Validator::acepta_dinero(const std::string &state, bool recy = false)
+void Validator::acepta_dinero(const std::string &state, bool recy)
 {
     if (state == "ESCROW")
     {
@@ -250,7 +248,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy = false)
     }
 }
 
-Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual()
+Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const
 {
     Global::ApiConsume::autentica();
     auto m_list = Gio::ListStore<MLevelCash>::create();

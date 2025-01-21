@@ -21,14 +21,14 @@ private:
     uint32_t ingreso_parcial;
     Global::EValidador::Conf conf;
 
-    void imprime_debug(int status, const std::string &comando, const std::string &body);
+    void imprime_debug(int status, const std::string &comando, const std::string &body) const;
 
 public:
     Validator(const Validator &) = delete;
     Validator &operator=(const Validator &) = delete;
 
-    std::pair<int, std::string> command_get(const std::string &command, bool debug);
-    std::pair<int, std::string> command_post(const std::string &command, const std::string &json, bool);
+    std::pair<int, std::string> command_get(const std::string &command, bool debug = false) const;
+    std::pair<int, std::string> command_post(const std::string &command, const std::string &json = "", bool = false);
 
     void poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func);
 
@@ -44,9 +44,9 @@ public:
     const crow::json::rvalue &get_status_coneccion();
 
     void init(Global::EValidador::Conf conf);
-    void acepta_dinero(const std::string &state, bool recy);
+    void acepta_dinero(const std::string &state, bool recy = false);
 
-    Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual();
+    Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual() const;
 
     Validator(const std::string &validator, const std::source_location location = std::source_location::current());
     ~Validator();

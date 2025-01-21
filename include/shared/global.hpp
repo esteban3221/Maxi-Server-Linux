@@ -39,7 +39,17 @@ namespace Global
     {
         // manejador global de vistas
         extern Gtk::Stack *v_main_stack;
+        namespace Refill
+        {
+            extern Gtk::ColumnView *v_tree_reciclador_monedas, *v_tree_reciclador_billetes;
+        } // namespace Refill
     } // namespace Widget
+
+    namespace Utility
+    {
+        extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
+    } // namespace Utility
+    
 
     // por conveniencia algunas cosas estan en ingles
     namespace EValidador

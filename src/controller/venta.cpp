@@ -29,20 +29,55 @@ void Venta::on_btn_cancel_click()
 
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
+    using namespace Global::EValidador;
+    //Monedero
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
         std::cout << "Se recibio: " << data["value"].i() << '\n';
+        Global::Device::dv_bill.acepta_dinero(status);
+
+        balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
+        async_gui.dispatch_to_gui([this]()
+        {
+            v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
+            auto faltante = balance.total.load() - balance.ingreso.load();
+            v_lbl_faltante->set_text(std::to_string(faltante));
+        });
     }
 }
 
 crow::response Venta::inicia(const crow::request &req)
 {
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(*this); });
-    Global::Device::dv_coin.inicia_dispositivo_v6();
-    Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll));
+    using namespace Global::EValidador;
+    auto bodyParams = crow::json::load(req.body);
+    balance.total.store(bodyParams["value"].i());
+    is_busy.store(true);
 
+    async_gui.dispatch_to_gui([this, bodyParams]() 
+    { 
+        auto s_total = std::to_string(bodyParams["value"].i());
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+        v_lbl_monto_total->set_text(s_total);
+        v_lbl_faltante->set_text(s_total);
+        v_lbl_cambio->set_text("0");
+        v_lbl_recibido->set_text("0");
+    });
+    
+    Global::Device::dv_coin.inicia_dispositivo_v6();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    Global::Device::dv_bill.inicia_dispositivo_v6();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    
+    auto future1 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+
+    future1.wait();
+    future2.wait();
+
+    is_busy.store(false);
+    /// @@@ agregar lo del cambio 
     return crow::response();
 }
 

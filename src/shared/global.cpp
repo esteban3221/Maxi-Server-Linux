@@ -24,12 +24,47 @@ namespace Global
     namespace Widget
     {
         Gtk::Stack *v_main_stack = nullptr;
+
+        namespace Refill
+        {
+            Gtk::ColumnView *v_tree_reciclador_monedas = nullptr, *v_tree_reciclador_billetes = nullptr;
+        } // namespace Refill
+
     } // namespace Widget
+
+    namespace Utility
+    {
+        crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador)
+        {
+            std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
+
+            int index = reciclador.size() - 1; // Índice para insertar en el vector
+            for (auto it = reciclador.rbegin(); it != reciclador.rend(); ++it, --index)
+            {
+                int denominacion = it->first / 100;         // Denominación del billete
+                int &cantidadDisponible = it->second; // Cantidad disponible en el reciclador
+
+                while (cambio >= denominacion && cantidadDisponible > 0)
+                {
+                    cambio -= denominacion; // Reducir el cambio
+                    cantidadDisponible--;   // Usar un billete del reciclador
+                    billsToReturn[index]++; // Incrementar el contador de billetes devueltos
+                }
+            }
+
+            // Convertimos el vector a JSON
+            crow::json::wvalue response;
+            response = billsToReturn;
+
+            return response; // Retornamos el JSON con el array
+        }
+
+    } // namespace Utility
 
     namespace ApiConsume
     {
         std::string token;
-        
+
         const std::string URI = "http://localhost:5000";
         const std::string BASE_URL = URI + "/api/CashDevice";
 
@@ -53,7 +88,7 @@ namespace Global
                 token = rcb["token"].s();
             }
             else
-                throw std::runtime_error( "Controlador API REST no iniciado o error en el Servidor");
+                throw std::runtime_error("Controlador API REST no iniciado o error en el Servidor");
         }
 
     } // namespace ApiConsume

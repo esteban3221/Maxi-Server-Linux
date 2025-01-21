@@ -2,8 +2,8 @@
 
 VRefill::VRefill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : Gtk::Box(cobject)
 {
-    v_tree_reciclador_monedas = refBuilder->get_widget<Gtk::ColumnView>("treeRecicladorMonedas");
-    v_tree_reciclador_billetes = refBuilder->get_widget<Gtk::ColumnView>("treeRecicladorBilletes");
+    Global::Widget::Refill::v_tree_reciclador_monedas  = refBuilder->get_widget<Gtk::ColumnView>("treeRecicladorMonedas");
+    Global::Widget::Refill::v_tree_reciclador_billetes = refBuilder->get_widget<Gtk::ColumnView>("treeRecicladorBilletes");
 
     v_lbl_total_parcial_monedas = refBuilder->get_widget<Gtk::Label>("lblTotalMXN1");
     v_lbl_total_parcial_billetes = refBuilder->get_widget<Gtk::Label>("lblTotalMXN2");

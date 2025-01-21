@@ -12,6 +12,8 @@ BVentaPago::BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     v_lbl_timeout = m_builder->get_widget<Gtk::Label>("lbl_timeout");
     v_lbl_titulo = m_builder->get_widget<Gtk::Label>("lbl_titulo");
 
+    v_BXRW4 = m_builder->get_widget<Gtk::ListBoxRow>("BXRW4");
+
     v_btn_timeout_cancel = m_builder->get_widget<Gtk::Button>("btn_timeout_cancel");
     v_btn_timeout_retry = m_builder->get_widget<Gtk::Button>("btn_timeout_retry");
 

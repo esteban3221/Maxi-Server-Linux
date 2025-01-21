@@ -8,8 +8,8 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
                                                                                         parcial_bill(0),
                                                                                         parcial_coin(0)
 {
-    init_data(v_tree_reciclador_monedas, "Level_Coin");
-    init_data(v_tree_reciclador_billetes, "Level_Bill");
+    init_data(Global::Widget::Refill::v_tree_reciclador_monedas, "Level_Coin");
+    init_data(Global::Widget::Refill::v_tree_reciclador_billetes, "Level_Bill");
 
     this->signal_map().connect(sigc::mem_fun(*this, &Refill::on_show));
 
@@ -37,10 +37,10 @@ Refill::~Refill()
 
 void Refill::calcula_total()
 {
-    auto selection_bill_model = v_tree_reciclador_billetes->get_model();
+    auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
     auto single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
 
-    auto selection_coin_model = v_tree_reciclador_monedas->get_model();
+    auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
     auto single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
 
     total_bill = 0;
@@ -93,11 +93,12 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         vcolumn->append_column(column);
     }
 
+    if(tabla == "Level_Bill")
     {
         auto factory = Gtk::SignalListItemFactory::create();
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_alm));
-        auto column = Gtk::ColumnViewColumn::create("Almacenado", factory);
+        auto column = Gtk::ColumnViewColumn::create("Casette", factory);
         vcolumn->append_column(column);
     }
 
@@ -125,10 +126,10 @@ void Refill::on_show()
         auto level_coin = Global::Device::dv_coin.get_level_cash_actual();
         auto level_bill = Global::Device::dv_bill.get_level_cash_actual();
 
-        auto selection_bill_model = v_tree_reciclador_billetes->get_model();
+        auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
         auto single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
 
-        auto selection_coin_model = v_tree_reciclador_monedas->get_model();
+        auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
         auto single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
 
         for (size_t i = 0; i < level_bill->get_n_items(); i++)
@@ -136,7 +137,7 @@ void Refill::on_show()
             auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
             single_bill_selection->set_selected(i);
             m_list->m_cant_recy = level_bill->get_item(i)->m_cant_recy;
-            v_tree_reciclador_billetes->queue_draw();
+            Global::Widget::Refill::v_tree_reciclador_billetes->queue_draw();
         }
 
         for (size_t i = 0; i < level_coin->get_n_items(); i++)
@@ -144,7 +145,7 @@ void Refill::on_show()
             auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
             single_coin_selection->set_selected(i);
             m_list->m_cant_recy = level_coin->get_item(i)->m_cant_recy;
-            v_tree_reciclador_monedas->queue_draw();
+            Global::Widget::Refill::v_tree_reciclador_monedas->queue_draw();
         }
 
         calcula_total();
