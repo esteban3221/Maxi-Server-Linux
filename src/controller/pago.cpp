@@ -59,56 +59,62 @@ void Pago::calcula_cambios(std::atomic_int32_t &salida_coin, std::atomic_int32_t
     Global::Device::dv_bill.deten_cobro_v6();
 }
 
-void Pago::pago_poll(const std::string &state, const crow::json::rvalue &json)
+bool Pago::pago_poll()
 {
-    auto dum = crow::json::wvalue(json);
-    std::cout << dum.dump() << "\n-\n";
+    int total_coin = 0, total_bill = 0;
+    auto actual_level_coin = Global::Device::dv_coin.get_level_cash_actual();
+    auto actual_level_bill = Global::Device::dv_bill.get_level_cash_actual();
 
-    for (auto &&i : json)
+    for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
     {
-        if (i.has("value"))
-        {
-            Global::EValidador::balance.cambio.store(json["value"].i() / 100);
-
-            async_gui.dispatch_to_gui([this]()
-                                      {
-                    auto total_salida = Global::EValidador::balance.cambio.load();
-                    auto faltante = Global::EValidador::balance.total.load() - total_salida ;
-
-                    v_lbl_faltante->set_text(std::to_string(faltante));
-                    v_lbl_recibido->set_text(std::to_string(total_salida)); });
-
-            Global::EValidador::is_running.store(false);
-        }
-        else if (i.has("data"))
-        {
-            if(Global::EValidador::balance.cambio.load() >= Global::EValidador::balance.total.load())
-                Global::EValidador::is_running.store(false);
-        }
+        auto m_list = actual_level_coin->get_item(i);
+        total_coin += m_list->m_cant_recy - s_level_mon[m_list->m_denominacion];
     }
 
-    // else if (state == "ERROR" && json.has("data"))
-    // {
-    //     async_gui.dispatch_to_gui([this]()
-    //     {
-    //         v_lbl_mensaje_fin->set_visible();
-    //         v_lbl_mensaje_fin->set_text("Error al iniciar Pago");
-    //     });
-    //     terminado.store(true);
-    // }
+    for (size_t i = 0; i < actual_level_bill->get_n_items(); i++)
+    {
+        auto m_list = actual_level_bill->get_item(i);
+        total_bill += m_list->m_cant_recy - s_level_bill[m_list->m_denominacion];
+    }
+
+    int32_t faltante = total_bill + total_coin;
+    int32_t total = Global::EValidador::balance.total.load() - faltante;
+
+    async_gui.dispatch_to_gui([this, total, faltante]()
+                              {
+        v_lbl_faltante->set_text(std::to_string(faltante));
+        v_lbl_recibido->set_text(std::to_string(total)); });
+
+    bool is_activo{faltante != 0};
+
+    if (not is_activo)
+    {
+        Global::Device::dv_coin.deten_cobro_v6();
+        Global::Device::dv_bill.deten_cobro_v6();
+    }
+
+    return is_activo;
 }
 
 crow::response Pago::inicia(const crow::request &req)
 {
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
-    balance.total.store(bodyParams["value"].i());
-    Global::EValidador::is_running.store(true);
 
     int cambio = bodyParams["value"].i();
+    if (cambio <= 0)
+        return crow::response("Nada que devolver");
 
-    auto s_level_mon = cantidad_recyclador(Global::Device::dv_coin);
-    auto s_level_bill = cantidad_recyclador(Global::Device::dv_bill);
+    balance.total.store(bodyParams["value"].i());
+    is_running.store(true);
+    balance.ingreso.store(0);
+    is_busy.store(true);
+
+    if (conn.empty())
+        conn.disconnect();
+
+    s_level_mon = cantidad_recyclador(Global::Device::dv_coin);
+    s_level_bill = cantidad_recyclador(Global::Device::dv_bill);
 
     async_gui.dispatch_to_gui([this, cambio]()
                               { 
@@ -121,30 +127,19 @@ crow::response Pago::inicia(const crow::request &req)
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
-    std::atomic_bool terminado_coin{false}, terminado_bill{false};
-    std::atomic_int32_t salida_coin{0}, salida_bill{0}, total{0};
-    std::future<void> future1, future2, future3;
-
     if (r_bill.dump() != "[0,0,0,0,0,0]")
     {
         Global::Device::dv_bill.inicia_dispositivo_v6();
         Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true);
-
-        //auto future2 = std::async(std::launch::async, [this](){ Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::pago_poll)); });
     }
 
     if (r_coin.dump() != "[0,0,0,0]")
     {
         Global::Device::dv_coin.inicia_dispositivo_v6();
         Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true);
-
-        //auto future1 = std::async(std::launch::async, [this](){ Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::pago_poll)); });
     }
 
-    if (future1.valid())
-        future1.wait();
-    if (future2.valid())
-        future2.wait();
+    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 300);
 
     crow::json::wvalue data_in =
         {

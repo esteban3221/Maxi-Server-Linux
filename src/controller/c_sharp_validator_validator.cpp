@@ -220,11 +220,12 @@ void Validator::inicia_dispositivo_v6()
     command_post("EnablePayout", "", true);
     std::this_thread::sleep_for(std::chrono::milliseconds(400));
     command_post("EnableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
 }
 
 void Validator::deten_cobro_v6()
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
     command_post("HaltPayout", "", true);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -246,7 +247,6 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
         json["Route"] = (int)recy;
 
         command_post("SetDenominationRoute", json.dump(), true);
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
         command_post("AcceptFromEscrow");
     }
 }

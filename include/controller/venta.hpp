@@ -14,6 +14,14 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
+    bool pago_poll();
+    void da_cambio();
+
+    sigc::connection conn;
+
+    std::map<int, int> cantidad_recyclador(const Validator &val);
+    std::map<int, int> s_level_mon, s_level_bill;
+
     void func_poll(const std::string &status, const crow::json::rvalue &data);
 
     crow::response inicia(const crow::request &req);
