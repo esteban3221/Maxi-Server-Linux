@@ -16,8 +16,11 @@ private:
 
     bool pago_poll();
     void da_cambio();
+    void verifica_pago();
 
     sigc::connection conn;
+    std::atomic_int32_t faltante;
+    std::chrono::steady_clock::time_point start_time;
 
     std::map<int, int> cantidad_recyclador(const Validator &val);
     std::map<int, int> s_level_mon, s_level_bill;

@@ -43,7 +43,7 @@ bool Venta::pago_poll()
         total_bill += m_list->m_cant_recy - s_level_bill[m_list->m_denominacion];
     }
 
-    int32_t faltante = total_bill + total_coin;
+    faltante = total_bill + total_coin;
     int32_t total = Global::EValidador::balance.total.load() - faltante;
 
     bool is_activo{faltante != 0};
@@ -55,6 +55,25 @@ bool Venta::pago_poll()
     }
 
     return is_activo;
+}
+
+void Venta::verifica_pago()
+{
+    while (conn.connected())
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+
+        if (elapsed_seconds > 90)
+        {
+            std::cout << "El timeout sigue activo después de " << elapsed_seconds << " segundos." << std::endl;
+            Global::System::showNotify("Pago", ("Falto dar" + std::to_string(faltante)).c_str(), "dialog-information");
+            conn.disconnect();
+        }
+        else
+            std::cout << "El timeout no está activo después de " << elapsed_seconds << " segundos. Todo Bien :3" << std::endl;
+    }
 }
 
 void Venta::da_cambio()
@@ -82,10 +101,14 @@ void Venta::da_cambio()
         Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true);
     }
 
-    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 300);
+    start_time = std::chrono::steady_clock::now();
 
+    std::thread(&Venta::verifica_pago, this).detach();
+
+    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 300);
+    
     if (cambio > 0)
-        Global::System::showNotify("Venta","Pago pendiente",("Falto dar" + std::to_string(cambio)).c_str());
+        Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
     
 }
 

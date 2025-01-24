@@ -13,6 +13,10 @@ private:
     void on_btn_cancel_click() override;
 
     sigc::connection conn;
+    std::atomic_int32_t faltante;
+    std::chrono::steady_clock::time_point start_time;
+
+    void verifica_pago();
 
     std::map<int, int> s_level_mon, s_level_bill;
 

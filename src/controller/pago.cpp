@@ -26,6 +26,25 @@ void Pago::on_btn_cancel_click()
     std::cout << "Click cancela desde Pago\n";
 }
 
+void Pago::verifica_pago()
+{
+    while (conn.connected())
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
+
+        if (elapsed_seconds > 90)
+        {
+            std::cout << "El timeout sigue activo después de " << elapsed_seconds << " segundos." << std::endl;
+            Global::System::showNotify("Pago", ("Falto dar" + std::to_string(faltante)).c_str(), "dialog-information");
+            conn.disconnect();
+        }
+        else
+            std::cout << "El timeout no está activo después de " << elapsed_seconds << " segundos. Todo Bien :3" << std::endl;
+    }
+}
+
 std::map<int, int> Pago::cantidad_recyclador(const Validator &val)
 {
     auto level = val.get_level_cash_actual();
@@ -77,10 +96,10 @@ bool Pago::pago_poll()
         total_bill += m_list->m_cant_recy - s_level_bill[m_list->m_denominacion];
     }
 
-    int32_t faltante = total_bill + total_coin;
+    faltante = total_bill + total_coin;
     int32_t total = Global::EValidador::balance.total.load() - faltante;
 
-    async_gui.dispatch_to_gui([this, total, faltante]()
+    async_gui.dispatch_to_gui([this, total]()
                               {
         v_lbl_faltante->set_text(std::to_string(faltante));
         v_lbl_recibido->set_text(std::to_string(total)); });
@@ -139,7 +158,14 @@ crow::response Pago::inicia(const crow::request &req)
         Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true);
     }
 
+    start_time = std::chrono::steady_clock::now();
+
+    std::thread(&Pago::verifica_pago, this).detach();
+
     conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 300);
+
+    if (cambio > 0)
+        Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
 
     crow::json::wvalue data_in =
         {
