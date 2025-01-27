@@ -48,6 +48,7 @@ namespace Global
     namespace Utility
     {
         extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
+        extern int find_position(const std::unordered_map<int, int>& index_map, int value);
     } // namespace Utility
     
 

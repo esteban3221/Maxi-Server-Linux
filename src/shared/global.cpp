@@ -58,7 +58,14 @@ namespace Global
 
             return response; // Retornamos el JSON con el array
         }
-
+        int find_position(const std::unordered_map<int, int>& index_map, int value) 
+        {
+            auto it = index_map.find(value);
+            if (it != index_map.end()) {
+                return it->second; // Retorna la posición
+            }
+            return -1; // Valor no encontrado
+        }
     } // namespace Utility
 
     namespace ApiConsume

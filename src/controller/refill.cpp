@@ -8,10 +8,15 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
                                                                                         parcial_bill(0),
                                                                                         parcial_coin(0)
 {
+    async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
+
     init_data(Global::Widget::Refill::v_tree_reciclador_monedas, "Level_Coin");
     init_data(Global::Widget::Refill::v_tree_reciclador_billetes, "Level_Bill");
 
     this->signal_map().connect(sigc::mem_fun(*this, &Refill::on_show));
+
+    CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
+    CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::deten));
 
     // ejemplo de como obtener los datos del modelo usado
     // v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
@@ -19,15 +24,15 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     //     std::cout << "Se clicko id: " << num << '\n';
     //     auto selection_model = v_tree_reciclador_monedas->get_model();
     //     auto single_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_model);
-
+    //
     //     //obtener la lista para añadir o eliminar varios items
     //     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_selection->get_model());
     //     list_store->append(MLevelCash::create(900,20,12,23));
-
+    //
     //     //obtener item de la lista seleccionado para leer(const) o modificar dato
     //     auto m_list = single_selection->get_typed_object<MLevelCash>(num);
     //     m_list->m_nivel_inmo = num+1;
-
+    //
     //     std::cout << "Denom " << m_list->m_denominacion <<'\n'; });
 }
 
@@ -38,10 +43,10 @@ Refill::~Refill()
 void Refill::calcula_total()
 {
     auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
-    auto single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
+    single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
 
     auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
-    auto single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
+    single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
 
     total_bill = 0;
     total_coin = 0;
@@ -51,10 +56,10 @@ void Refill::calcula_total()
     for (size_t i = 0; i < single_bill_selection->get_n_items(); i++)
     {
         auto m_list = single_bill_selection->get_typed_object<const MLevelCash>(i);
-        total_bill += m_list->m_cant_alm;
-        total_bill += m_list->m_cant_recy;
+        total_bill += m_list->m_cant_alm * m_list->m_denominacion;
+        total_bill += m_list->m_cant_recy * m_list->m_denominacion;
 
-        parcial_bill += m_list->m_nivel_inmo;
+        parcial_bill += m_list->m_ingreso * m_list->m_denominacion;
     }
 
     v_lbl_total_billetes->set_text(std::to_string(total_bill));
@@ -63,10 +68,10 @@ void Refill::calcula_total()
     for (size_t i = 0; i < single_coin_selection->get_n_items(); i++)
     {
         auto m_list = single_coin_selection->get_typed_object<const MLevelCash>(i);
-        total_coin += m_list->m_cant_alm;
-        total_coin += m_list->m_cant_recy;
+        total_coin += m_list->m_cant_alm * m_list->m_denominacion;
+        total_coin += m_list->m_cant_recy * m_list->m_denominacion;
 
-        parcial_coin += m_list->m_nivel_inmo;
+        parcial_coin += m_list->m_ingreso * m_list->m_denominacion;
     }
 
     v_lbl_total_parcial_monedas->set_text(std::to_string(parcial_coin));
@@ -114,6 +119,14 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         auto factory = Gtk::SignalListItemFactory::create();
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_inmo));
+        auto column = Gtk::ColumnViewColumn::create("Inmovilidad", factory);
+        vcolumn->append_column(column);
+    }
+
+    {
+        auto factory = Gtk::SignalListItemFactory::create();
+        factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
+        factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_ingreso));
         auto column = Gtk::ColumnViewColumn::create("Ingreso", factory);
         vcolumn->append_column(column);
     }
@@ -156,39 +169,63 @@ void Refill::on_show()
     }
 }
 
-void Refill::on_setup_label(const Glib::RefPtr<Gtk::ListItem> &list_item)
+void Refill::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
-    list_item->set_child(*Gtk::make_managed<Gtk::Label>("", Gtk::Align::END));
+    using namespace Global::EValidador;
+    
+    if (status == "COIN_CREDIT" ||
+        status == "VALUE_ADDED" ||
+        status == "ESCROW")
+    {
+        balance.ingreso_parcial.store(data["value"].i());
+        auto ingreso (data["value"].i() / 100);
+        calcula_total();
+        auto select = (ingreso > 10 ? single_bill_selection : single_coin_selection);
+        
+        auto indice = Global::Utility::find_position((ingreso > 10 ? map_bill : map_coin), ingreso);
+        auto m_list = select->get_typed_object<MLevelCash>(indice);
+
+        bool recibe = m_list->m_cant_recy < m_list->m_ingreso;
+        if(recibe)
+        {
+            m_list->m_ingreso++;
+            select->select_item(indice,true);
+        }
+        Global::Device::dv_bill.acepta_dinero(status, recibe);
+    }
 }
 
-void Refill::on_bind_deno(const Glib::RefPtr<Gtk::ListItem> &list_item)
+crow::response Refill::inicia(const crow::request &req)
 {
-    auto col = std::dynamic_pointer_cast<MLevelCash>(list_item->get_item());
-    auto label = dynamic_cast<Gtk::Label *>(list_item->get_child());
+    using namespace Global::EValidador;
 
-    label->set_text(Glib::ustring::format(col->m_denominacion));
+    balance.ingreso.store(0);
+    balance.cambio.store(0);
+
+    async_gui.dispatch_to_gui([this](){
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+    });
+
+    is_busy.store(true);
+    is_running.store(true);
+
+    Global::Device::dv_coin.inicia_dispositivo_v6();
+    Global::Device::dv_bill.inicia_dispositivo_v6();
+
+    auto future1 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+
+    future1.wait();
+    future2.wait();
+
+    return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() + 
+                        " Billetes: " + v_lbl_total_parcial_billetes->get_text());
 }
 
-void Refill::on_bind_alm(const Glib::RefPtr<Gtk::ListItem> &list_item)
+crow::response Refill::deten(const crow::request &req)
 {
-    auto col = std::dynamic_pointer_cast<MLevelCash>(list_item->get_item());
-    auto label = dynamic_cast<Gtk::Label *>(list_item->get_child());
-
-    label->set_text(Glib::ustring::format(col->m_cant_alm));
-}
-
-void Refill::on_bind_recy(const Glib::RefPtr<Gtk::ListItem> &list_item)
-{
-    auto col = std::dynamic_pointer_cast<MLevelCash>(list_item->get_item());
-    auto label = dynamic_cast<Gtk::Label *>(list_item->get_child());
-
-    label->set_text(Glib::ustring::format(col->m_cant_recy));
-}
-
-void Refill::on_bind_inmo(const Glib::RefPtr<Gtk::ListItem> &list_item)
-{
-    auto col = std::dynamic_pointer_cast<MLevelCash>(list_item->get_item());
-    auto label = dynamic_cast<Gtk::Label *>(list_item->get_child());
-
-    label->set_text(Glib::ustring::format(col->m_nivel_inmo));
+    Global::EValidador::is_running.store(false);
+    Global::Device::dv_coin.deten_cobro_v6();
+    Global::Device::dv_bill.deten_cobro_v6();
+    return crow::response();
 }

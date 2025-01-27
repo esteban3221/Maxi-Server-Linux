@@ -23,7 +23,8 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> LevelCash::get_level_cash()
             std::stoi(contenedor_data["Denominacion"][i]),
             std::stoi(contenedor_data["Cant_Alm"][i]),
             std::stoi(contenedor_data["Cant_Recy"][i]),
-            std::stoi(contenedor_data["Nivel_Inmo"][i])));
+            std::stoi(contenedor_data["Nivel_Inmo"][i]),
+            0));
     }
 
     return m_list_log;

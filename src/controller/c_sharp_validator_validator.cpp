@@ -263,8 +263,8 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() cons
             i["value"].i(),  // denomonacion
             0,               // cassete
             i["stored"].i(), // i["value"].i(), // recyclado
-            0                // i["value"].i() // tope dinero
-            ));
+            0,                // i["value"].i() // tope dinero
+            0));
     }
     return m_list;
 }

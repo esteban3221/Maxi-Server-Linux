@@ -159,9 +159,7 @@ crow::response Pago::inicia(const crow::request &req)
     }
 
     start_time = std::chrono::steady_clock::now();
-
     std::thread(&Pago::verifica_pago, this).detach();
-
     conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 300);
 
     if (cambio > 0)

@@ -102,9 +102,7 @@ void Venta::da_cambio()
     }
 
     start_time = std::chrono::steady_clock::now();
-
     std::thread(&Venta::verifica_pago, this).detach();
-
     conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 300);
     
     if (cambio > 0)
