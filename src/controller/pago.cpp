@@ -146,21 +146,36 @@ crow::response Pago::inicia(const crow::request &req)
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    int status_bill, status_coin;
     if (r_bill.dump() != "[0,0,0,0,0,0]")
     {
         Global::Device::dv_bill.inicia_dispositivo_v6();
-        Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true);
+        status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+        if (status_bill != crow::status::OK)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+        }
     }
 
     if (r_coin.dump() != "[0,0,0,0]")
     {
         Global::Device::dv_coin.inicia_dispositivo_v6();
-        Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true);
+        status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+        if (status_coin != crow::status::OK)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+        }
     }
 
     start_time = std::chrono::steady_clock::now();
-    std::thread(&Pago::verifica_pago, this).detach();
     conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 300);
+    std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
+                { Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); })
+        .detach();
 
     if (cambio > 0)
         Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");

@@ -57,25 +57,6 @@ bool Venta::pago_poll()
     return is_activo;
 }
 
-void Venta::verifica_pago()
-{
-    while (conn.connected())
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
-
-        if (elapsed_seconds > 90)
-        {
-            std::cout << "El timeout sigue activo después de " << elapsed_seconds << " segundos." << std::endl;
-            Global::System::showNotify("Pago", ("Falto dar" + std::to_string(faltante)).c_str(), "dialog-information");
-            conn.disconnect();
-        }
-        else
-            std::cout << "El timeout no está activo después de " << elapsed_seconds << " segundos. Todo Bien :3" << std::endl;
-    }
-}
-
 void Venta::da_cambio()
 {
     s_level_mon = cantidad_recyclador(Global::Device::dv_coin);
@@ -83,31 +64,40 @@ void Venta::da_cambio()
 
     int cambio = Global::EValidador::balance.cambio.load();
 
-    if (conn.empty())
+    if (not conn.empty())
         conn.disconnect();
 
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
+    int status_bill,status_coin;
     if (r_bill.dump() != "[0,0,0,0,0,0]")
     {
         Global::Device::dv_bill.inicia_dispositivo_v6();
-        Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true);
+        status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
     }
 
     if (r_coin.dump() != "[0,0,0,0]")
     {
         Global::Device::dv_coin.inicia_dispositivo_v6();
-        Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true);
+        status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
     }
 
+    if (status_bill != crow::status::OK )
+        Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+    if (status_coin != crow::status::OK)
+        Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+
     start_time = std::chrono::steady_clock::now();
-    std::thread(&Venta::verifica_pago, this).detach();
+
     conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 300);
-    
+    std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
+    {
+        Global::System::showNotify("Venta", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information");
+    }).detach();
+
     if (cambio > 0)
-        Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
-    
+        Global::System::showNotify("Venta", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
 }
 
 std::map<int, int> Venta::cantidad_recyclador(const Validator &val)
@@ -179,8 +169,10 @@ crow::response Venta::inicia(const crow::request &req)
     Global::Device::dv_coin.inicia_dispositivo_v6();
     Global::Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]()
+                              { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]()
+                              { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();

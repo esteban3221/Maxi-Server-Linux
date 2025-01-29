@@ -16,8 +16,6 @@ private:
 
     bool pago_poll();
     void da_cambio();
-    void verifica_pago();
-
     sigc::connection conn;
     std::atomic_int32_t faltante;
     std::chrono::steady_clock::time_point start_time;

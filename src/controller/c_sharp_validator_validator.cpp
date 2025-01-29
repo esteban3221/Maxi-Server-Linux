@@ -220,12 +220,13 @@ void Validator::inicia_dispositivo_v6()
     command_post("EnablePayout", "", true);
     std::this_thread::sleep_for(std::chrono::milliseconds(400));
     command_post("EnableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    std::this_thread::sleep_for(std::chrono::milliseconds(900));
 }
 
 void Validator::deten_cobro_v6()
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    std::this_thread::sleep_for(std::chrono::milliseconds(900));
+    
     command_post("HaltPayout", "", true);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -254,7 +255,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const
 {
     auto m_list = Gio::ListStore<MLevelCash>::create();
-    auto json_string = command_get("GetAllLevels", true).second;
+    auto json_string = command_get("GetAllLevels").second;
     auto json = crow::json::load(json_string);
 
     for (auto &&i : json["levels"])
