@@ -70,27 +70,62 @@ void Venta::da_cambio()
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
-    int status_bill,status_coin;
-    if (r_bill.dump() != "[0,0,0,0,0,0]")
-    {
+    int status_bill, status_coin;
+    const int max_intentos = 5; // Límite de reintentos
+
+    // Procesamiento para dv_bill
+    if (r_bill.dump() != "[0,0,0,0,0,0]") {
         Global::Device::dv_bill.inicia_dispositivo_v6();
-        status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+        int intentos_bill = 0;
+
+        do {
+            status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+
+            if (status_bill != crow::status::OK) {
+                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_bill++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_bill >= max_intentos) {
+                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_bill != crow::status::OK);
     }
 
-    if (r_coin.dump() != "[0,0,0,0]")
-    {
+    // Procesamiento para dv_coin
+    if (r_coin.dump() != "[0,0,0,0]") {
         Global::Device::dv_coin.inicia_dispositivo_v6();
-        status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+        int intentos_coin = 0;
+
+        do {
+            status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+
+            if (status_coin != crow::status::OK) {
+                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_coin++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_coin >= max_intentos) {
+                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_coin != crow::status::OK);
     }
 
-    if (status_bill != crow::status::OK )
-        Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
-    if (status_coin != crow::status::OK)
-        Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+    // Verificación final
+    if (status_bill == crow::status::OK && status_coin == crow::status::OK)
+        std::cout << "Ambos dispositivos completaron la operación con éxito." << std::endl;
+    else
+        std::cerr << "Hubo un error en uno o ambos dispositivos." << std::endl;
 
     start_time = std::chrono::steady_clock::now();
 
-    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 300);
+    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Venta::pago_poll), 200);
     std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
     {
         Global::System::showNotify("Venta", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information");
@@ -169,10 +204,8 @@ crow::response Venta::inicia(const crow::request &req)
     Global::Device::dv_coin.inicia_dispositivo_v6();
     Global::Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]()
-                              { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]()
-                              { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this](){ Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this](){ Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -181,7 +214,8 @@ crow::response Venta::inicia(const crow::request &req)
         da_cambio();
 
     is_busy.store(false);
-    /// @@@ agregar lo del cambio
+    balance.ingreso.store(0);
+    balance.cambio.store(0);
     return crow::response();
 }
 

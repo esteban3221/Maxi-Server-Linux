@@ -7,7 +7,7 @@ MainWindow::MainWindow(/* args */)
 
     v_btn_pill->set_opacity(1);
 
-    Glib::signal_timeout().connect([this]() -> bool 
+    conn = Glib::signal_timeout().connect_seconds([this]() -> bool 
     {
         if(Global::EValidador::is_retry_connected.load())
         {
@@ -42,12 +42,13 @@ MainWindow::MainWindow(/* args */)
         }
 
         return true;
-    }, 1000);
+    }, 1);
 }
 
 MainWindow::~MainWindow()
 {
     std::system("killall dotnet");
+    conn.disconnect();
     Global::Rest::app.stop();
     //Global::Rest::future.get();
 }

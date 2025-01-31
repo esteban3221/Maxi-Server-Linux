@@ -149,30 +149,54 @@ crow::response Pago::inicia(const crow::request &req)
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     int status_bill, status_coin;
-    if (r_bill.dump() != "[0,0,0,0,0,0]")
-    {
+    const int max_intentos = 5; // Límite de reintentos
+
+    // Procesamiento para dv_bill
+    if (r_bill.dump() != "[0,0,0,0,0,0]") {
         Global::Device::dv_bill.inicia_dispositivo_v6();
-        status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
-        if (status_bill != crow::status::OK)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
-        }
+        int intentos_bill = 0;
+
+        do {
+            status_bill = Global::Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
+
+            if (status_bill != crow::status::OK) {
+                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_bill++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_bill >= max_intentos) {
+                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_bill != crow::status::OK);
     }
 
-    if (r_coin.dump() != "[0,0,0,0]")
-    {
+    // Procesamiento para dv_coin
+    if (r_coin.dump() != "[0,0,0,0]") {
         Global::Device::dv_coin.inicia_dispositivo_v6();
-        status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
-        if (status_coin != crow::status::OK)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
-        }
+        int intentos_coin = 0;
+
+        do {
+            status_coin = Global::Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
+
+            if (status_coin != crow::status::OK) {
+                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_coin++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_coin >= max_intentos) {
+                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_coin != crow::status::OK);
     }
 
     start_time = std::chrono::steady_clock::now();
-    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 300);
+    conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &Pago::pago_poll), 200);
     std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
                 { Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); })
         .detach();
@@ -183,7 +207,11 @@ crow::response Pago::inicia(const crow::request &req)
     crow::json::wvalue data_in =
         {
             {"Billetes", r_bill},
-            {"Monedas", r_coin}};
+            {"Monedas", r_coin}
+        };
+    
+    balance.ingreso.store(0);
+    balance.cambio.store(0);
 
     return crow::response(data_in);
 }

@@ -17,7 +17,7 @@ class MainWindow : public VMainWindow
 {
 private:
     Sesion sesion;
-
+    sigc::connection conn;
 
 
 public:

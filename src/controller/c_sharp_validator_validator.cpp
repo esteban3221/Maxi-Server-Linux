@@ -33,7 +33,7 @@ void Validator::imprime_debug(int status, const std::string &comando, const std:
               << RESET;
 }
 
-std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug ) 
+std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug)
 {
     r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL + "/" + command + "?deviceID=" + validator},
                    cpr::Header{{"Content-Type", "application/json"},
@@ -46,11 +46,37 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
     return {r_.status_code, r_.text};
 }
 
-std::pair<int, std::string> Validator::command_get(const std::string &command, bool debug ) const
+int Validator::reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos)
+{
+    const int max_intentos = 5;
+    int status;
+    do
+    {
+        status = command_post(comando, datos, true).first;
+
+        if (status != crow::status::OK)
+        {
+            std::cout << "Estado de " << comando << " no OK. Reintentando... (" << intentos + 1 << "/" << max_intentos << ")" << std::endl;
+            intentos++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Espera 500 ms antes de reintentar
+        }
+
+        if (intentos >= max_intentos)
+        {
+            std::cerr << "Número máximo de intentos alcanzado para " << comando << ". Abortando..." << std::endl;
+            break;
+        }
+
+    } while (status != crow::status::OK);
+
+    return status;
+}
+
+std::pair<int, std::string> Validator::command_get(const std::string &command, bool debug) const
 {
     const auto r = cpr::Get(cpr::Url{Global::ApiConsume::BASE_URL + "/" + command + "?deviceID=" + validator},
-                  cpr::Header{{"Content-Type", "application/json"},
-                              {"Authorization", "Bearer " + Global::ApiConsume::token}});
+                            cpr::Header{{"Content-Type", "application/json"},
+                                        {"Authorization", "Bearer " + Global::ApiConsume::token}});
 
     if (debug)
         imprime_debug(r.status_code, command, r.text);
@@ -65,12 +91,13 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
     while (Global::EValidador::is_running.load() /*|| (Global::EValidador::balance.ingreso.load() >= Global::EValidador::balance.total.load())*/)
     {
         std::lock_guard<std::mutex> lock(poll_mutedx);
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        /*Se queda con una cola de eventos y de vez en cuando retiene dinero logicamente hasta que se vuelve a consultar*/
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
         auto status = command_get("GetDeviceStatus");
 
-        if ( status.first == crow::status::OK)
+        if (status.first == crow::status::OK)
         {
-            /**/ 
+            /**/
             auto json_data = crow::json::load(status.second);
             for (const auto &i : json_data)
             {
@@ -215,18 +242,40 @@ const crow::json::rvalue &Validator::get_status_coneccion()
 
 void Validator::inicia_dispositivo_v6()
 {
-    command_post("StartDevice", "", true);
+    int intentos_start = 0, intentos_enable_payout = 0, intentos_enable_acceptor = 0;
+    if (reintenta_comando_post("StartDevice", "", intentos_start) != crow::status::OK)
+    {
+        return; // Si falla, sal de la función
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+    // Ejecuta "EnablePayout" con reintentos
+    if (reintenta_comando_post("EnablePayout", "", intentos_enable_payout) != crow::status::OK)
+    {
+        return; // Si falla, sal de la función
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(400));
-    command_post("EnablePayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
-    command_post("EnableAcceptor", "", true);
+
+    // Ejecuta "EnableAcceptor" con reintentos
+    if (reintenta_comando_post("EnableAcceptor", "", intentos_enable_acceptor) != crow::status::OK)
+    {
+        return; // Si falla, sal de la función
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
+    // }
+
+    // command_post("StartDevice", "", true);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    // command_post("EnablePayout", "", true);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    // command_post("EnableAcceptor", "", true);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(900));
 }
 
 void Validator::deten_cobro_v6()
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
-    
+
     command_post("HaltPayout", "", true);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -264,7 +313,7 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() cons
             i["value"].i(),  // denomonacion
             0,               // cassete
             i["stored"].i(), // i["value"].i(), // recyclado
-            0,                // i["value"].i() // tope dinero
+            0,               // i["value"].i() // tope dinero
             0));
     }
     return m_list;

@@ -55,8 +55,6 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
         crow::json::wvalue json_bill_copy(json_bill);
         crow::json::wvalue json_coin_copy(json_coin);
 
-        Global::ApiConsume::token.clear();
-
         std::string device_bill = json_bill["deviceModel"].s();
         std::string device_coin = json_coin["deviceModel"].s();
 
@@ -70,10 +68,15 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
             is_retry_connected.store(false);
 
+            Global::Device::dv_bill.command_post("ResetDevice");
+            Global::Device::dv_coin.command_post("ResetDevice");
+            Global::ApiConsume::token.clear();
+
             async_gui.dispatch_to_gui([this, json_bill_copy, json_coin_copy]()
-                                      {
+            {
                     v_box_coin->set_data_lbl(json_coin_copy.dump());
-                    v_box_bill->set_data_lbl(json_bill_copy.dump()); });
+                    v_box_bill->set_data_lbl(json_bill_copy.dump()); 
+            });
         }
         else
         {
