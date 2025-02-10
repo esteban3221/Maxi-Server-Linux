@@ -19,20 +19,17 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::deten));
 
     // ejemplo de como obtener los datos del modelo usado
-    // v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
+    // Global::Widget::Refill::v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
     //                                                      {
     //     std::cout << "Se clicko id: " << num << '\n';
-    //     auto selection_model = v_tree_reciclador_monedas->get_model();
+    //     auto selection_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
     //     auto single_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_model);
-    //
-    //     //obtener la lista para añadir o eliminar varios items
+    //     obtener la lista para añadir o eliminar varios items
     //     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_selection->get_model());
     //     list_store->append(MLevelCash::create(900,20,12,23));
-    //
-    //     //obtener item de la lista seleccionado para leer(const) o modificar dato
+    //     obtener item de la lista seleccionado para leer(const) o modificar dato
     //     auto m_list = single_selection->get_typed_object<MLevelCash>(num);
     //     m_list->m_nivel_inmo = num+1;
-    //
     //     std::cout << "Denom " << m_list->m_denominacion <<'\n'; });
 }
 
@@ -40,22 +37,16 @@ Refill::~Refill()
 {
 }
 
-void Refill::calcula_total()
+void Refill::calcula_total(const std::shared_ptr<Gtk::SingleSelection> &select_bill, const std::shared_ptr<Gtk::SingleSelection> &select_coin)
 {
-    auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
-    single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
-
-    auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
-    single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
-
     total_bill = 0;
     total_coin = 0;
     parcial_bill = 0;
     parcial_coin = 0;
 
-    for (size_t i = 0; i < single_bill_selection->get_n_items(); i++)
+    for (size_t i = 0; i < select_bill->get_n_items(); i++)
     {
-        auto m_list = single_bill_selection->get_typed_object<const MLevelCash>(i);
+        auto m_list = select_bill->get_typed_object<const MLevelCash>(i);
         total_bill += m_list->m_cant_alm * m_list->m_denominacion;
         total_bill += m_list->m_cant_recy * m_list->m_denominacion;
 
@@ -64,10 +55,10 @@ void Refill::calcula_total()
 
     v_lbl_total_billetes->set_text(std::to_string(total_bill));
     v_lbl_total_parcial_billetes->set_text(std::to_string(parcial_bill));
-    
-    for (size_t i = 0; i < single_coin_selection->get_n_items(); i++)
+
+    for (size_t i = 0; i < select_coin->get_n_items(); i++)
     {
-        auto m_list = single_coin_selection->get_typed_object<const MLevelCash>(i);
+        auto m_list = select_coin->get_typed_object<const MLevelCash>(i);
         total_coin += m_list->m_cant_alm * m_list->m_denominacion;
         total_coin += m_list->m_cant_recy * m_list->m_denominacion;
 
@@ -78,7 +69,6 @@ void Refill::calcula_total()
     v_lbl_total_monedas->set_text(std::to_string(total_coin));
 
     v_lbl_total->set_text(std::to_string(total_bill + total_coin));
-    
 }
 
 void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
@@ -98,7 +88,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         vcolumn->append_column(column);
     }
 
-    if(tabla == "Level_Bill")
+    if (tabla == "Level_Bill")
     {
         auto factory = Gtk::SignalListItemFactory::create();
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
@@ -140,28 +130,29 @@ void Refill::on_show()
         auto level_bill = Global::Device::dv_bill.get_level_cash_actual();
 
         auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
-        auto single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
+        single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
 
         auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
-        auto single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
+        single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
 
-        for (size_t i = 0; i < level_bill->get_n_items(); i++)
-        {
-            auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
-            single_bill_selection->set_selected(i);
-            m_list->m_cant_recy = level_bill->get_item(i)->m_cant_recy;
-            Global::Widget::Refill::v_tree_reciclador_billetes->queue_draw();
-        }
+            for (size_t i = 0; i < level_bill->get_n_items(); i++)
+            {
+                auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
+                m_list->m_cant_recy = level_bill->get_item(i)->m_cant_recy;
+                single_bill_selection->set_selected(i);
+            }
 
-        for (size_t i = 0; i < level_coin->get_n_items(); i++)
-        {
-            auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
-            single_coin_selection->set_selected(i);
-            m_list->m_cant_recy = level_coin->get_item(i)->m_cant_recy;
-            Global::Widget::Refill::v_tree_reciclador_monedas->queue_draw();
-        }
+            for (size_t i = 0; i < level_coin->get_n_items(); i++)
+            {
+                auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
+                m_list->m_cant_recy = level_coin->get_item(i)->m_cant_recy;
+                single_coin_selection->set_selected(i);
+            }
 
-        calcula_total();
+        single_coin_selection->unselect_all();
+        single_bill_selection->unselect_all();
+        
+        calcula_total(single_bill_selection,single_coin_selection);
     }
     catch (const std::exception &e)
     {
@@ -172,26 +163,37 @@ void Refill::on_show()
 void Refill::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
-    
+
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
         balance.ingreso_parcial.store(data["value"].i());
-        auto ingreso (data["value"].i() / 100);
-        calcula_total();
+        auto ingreso = (data["value"].i() / 100);
         auto select = (ingreso > 10 ? single_bill_selection : single_coin_selection);
-        
-        auto indice = Global::Utility::find_position((ingreso > 10 ? map_bill : map_coin), ingreso);
-        auto m_list = select->get_typed_object<MLevelCash>(indice);
 
-        bool recibe = m_list->m_cant_recy < m_list->m_ingreso;
-        if(recibe)
+        auto indice = Global::Utility::find_position((ingreso > 10 ? map_bill : map_coin), ingreso);
+
+        try
         {
-            m_list->m_ingreso++;
-            select->select_item(indice,true);
+            if (indice != -1)
+            {
+                auto m_list = select->get_typed_object<MLevelCash>(indice);
+                calcula_total(single_bill_selection,single_coin_selection);
+                        
+                m_list->m_ingreso++;
+                select->select_item(indice,true);
+                Global::Device::dv_bill.acepta_dinero(status, true); 
+            }
+            else
+                Global::System::showNotify("Refill", "Deteccion de dinero no valida, Se omite registro", "dialog-information");
+            
         }
-        Global::Device::dv_bill.acepta_dinero(status, recibe);
+        catch (const std::exception &e)
+        {
+            std::cerr << RED << "No se pudo obtener el indice del valor indicado: " << ingreso << '\n'
+                      << RESET << "Indice: " << indice << '\n';
+        }
     }
 }
 
@@ -202,9 +204,7 @@ crow::response Refill::inicia(const crow::request &req)
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-    async_gui.dispatch_to_gui([this](){
-        Global::Widget::v_main_stack->set_visible_child(*this); 
-    });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(*this); });
 
     is_busy.store(true);
     is_running.store(true);
@@ -218,8 +218,8 @@ crow::response Refill::inicia(const crow::request &req)
     future1.wait();
     future2.wait();
 
-    return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() + 
-                        " Billetes: " + v_lbl_total_parcial_billetes->get_text());
+    return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() +
+                          "\nBilletes: " + v_lbl_total_parcial_billetes->get_text());
 }
 
 crow::response Refill::deten(const crow::request &req)

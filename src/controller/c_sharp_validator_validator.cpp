@@ -297,6 +297,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
         json["Route"] = (int)recy;
 
         command_post("SetDenominationRoute", json.dump(), true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         command_post("AcceptFromEscrow");
     }
 }

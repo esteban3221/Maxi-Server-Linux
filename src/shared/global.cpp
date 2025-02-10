@@ -58,14 +58,18 @@ namespace Global
 
             return response; // Retornamos el JSON con el array
         }
+        
         int find_position(const std::unordered_map<int, int>& index_map, int value) 
         {
-            auto it = index_map.find(value);
-            if (it != index_map.end()) {
-                return it->second; // Retorna la posición
+            for (auto &&i : index_map)
+            {
+                if (i.second == value)
+                    return i.first;
             }
-            return -1; // Valor no encontrado
+
+            return -1;
         }
+        
         void verifica_cambio(sigc::connection* conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func)
         {
             while (not conn->empty())
@@ -112,7 +116,7 @@ namespace Global
                 token = rcb["token"].s();
             }
             else
-                throw std::runtime_error("Controlador API REST no iniciado o error en el Servidor");
+                throw std::runtime_error("Controlador API REST no iniciado o error en el Servidor : " + r.reason );
         }
 
     } // namespace ApiConsume
