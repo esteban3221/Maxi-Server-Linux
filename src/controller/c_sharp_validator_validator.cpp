@@ -1,12 +1,26 @@
 #include "c_sharp_validator.hpp"
 
-namespace Global
-{
+
     namespace Device
     {
         Validator dv_coin("HOPPER"), dv_bill("SPECTRAL");
+
+        std::map<int, int> map_cantidad_recyclador(const Validator &val)
+        {
+            auto level = val.get_level_cash_actual();
+
+            std::map<int, int> actual_level;
+
+            for (size_t i = 0; i < level->get_n_items(); i++)
+            {
+                auto m_list = level->get_item(i);
+                actual_level[(m_list->m_denominacion / 100)] = m_list->m_cant_recy;
+            }
+
+            return actual_level;
+        }
     } // namespace Device
-}
+
 
 Validator::Validator(const std::string &validator, const std::source_location location)
     : validator(validator)

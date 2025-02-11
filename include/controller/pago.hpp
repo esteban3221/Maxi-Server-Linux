@@ -16,13 +16,9 @@ private:
     std::atomic_int32_t faltante;
     std::chrono::steady_clock::time_point start_time;
 
-    void verifica_pago();
-
     std::map<int, int> s_level_mon, s_level_bill;
 
-    std::map<int, int> cantidad_recyclador(const Validator &val);
-    void calcula_cambios(std::atomic_int32_t &salida_coin, std::atomic_int32_t &salida_bill, std::atomic_bool &terminado_coin, std::atomic_bool &terminado_bill);
-    bool pago_poll();
+    bool pago_poll(int ant_coin,int ant_bill);
 
     crow::response inicia(const crow::request &req);
 public:

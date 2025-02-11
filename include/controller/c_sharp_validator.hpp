@@ -55,10 +55,9 @@ public:
 };
 
 
-namespace Global
-{
+
     namespace Device
     {
         extern Validator dv_coin ,dv_bill;
+        extern std::map<int, int> map_cantidad_recyclador(const Validator &val);
     } // namespace Device
-}

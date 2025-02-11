@@ -34,6 +34,16 @@ namespace Global
 
     namespace Utility
     {
+
+        int total_anterior(const std::map<int, int> &map)
+        {
+            int total = 0;
+            for (auto &&i : map)
+                total += i.first * i.second;
+
+            return total;
+        }
+        
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
@@ -41,7 +51,7 @@ namespace Global
             int index = reciclador.size() - 1; // Índice para insertar en el vector
             for (auto it = reciclador.rbegin(); it != reciclador.rend(); ++it, --index)
             {
-                int denominacion = it->first / 100;         // Denominación del billete
+                int denominacion = it->first;         // Denominación del billete
                 int &cantidadDisponible = it->second; // Cantidad disponible en el reciclador
 
                 while (cambio >= denominacion && cantidadDisponible > 0)

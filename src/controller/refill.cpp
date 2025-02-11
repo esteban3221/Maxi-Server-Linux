@@ -126,8 +126,8 @@ void Refill::on_show()
 {
     try
     {
-        auto level_coin = Global::Device::dv_coin.get_level_cash_actual();
-        auto level_bill = Global::Device::dv_bill.get_level_cash_actual();
+        auto level_coin = Device::dv_coin.get_level_cash_actual();
+        auto level_bill = Device::dv_bill.get_level_cash_actual();
 
         auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
         single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
@@ -171,6 +171,7 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
         balance.ingreso_parcial.store(data["value"].i());
         auto ingreso = (data["value"].i() / 100);
         auto select = (ingreso > 10 ? single_bill_selection : single_coin_selection);
+        select->unselect_all();
 
         auto indice = Global::Utility::find_position((ingreso > 10 ? map_bill : map_coin), ingreso);
 
@@ -183,10 +184,12 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
                         
                 m_list->m_ingreso++;
                 select->select_item(indice,true);
-                Global::Device::dv_bill.acepta_dinero(status, true); 
+                Device::dv_bill.acepta_dinero(status, true); 
             }
             else
-                Global::System::showNotify("Refill", "Deteccion de dinero no valida, Se omite registro", "dialog-information");
+                Global::System::showNotify("Refill", 
+                                           ("Deteccion de dinero no valida: " + std::to_string(ingreso) + ", Se omite registro").c_str(), 
+                                           "dialog-information");
             
         }
         catch (const std::exception &e)
@@ -209,11 +212,11 @@ crow::response Refill::inicia(const crow::request &req)
     is_busy.store(true);
     is_running.store(true);
 
-    Global::Device::dv_coin.inicia_dispositivo_v6();
-    Global::Device::dv_bill.inicia_dispositivo_v6();
+    Device::dv_coin.inicia_dispositivo_v6();
+    Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]() { Global::Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]() { Global::Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]() { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -225,7 +228,7 @@ crow::response Refill::inicia(const crow::request &req)
 crow::response Refill::deten(const crow::request &req)
 {
     Global::EValidador::is_running.store(false);
-    Global::Device::dv_coin.deten_cobro_v6();
-    Global::Device::dv_bill.deten_cobro_v6();
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
     return crow::response();
 }
