@@ -38,6 +38,13 @@ set(SOURCES
 
     src/view/config/base.validador.cpp
     src/view/config/validador.cpp
+
+    src/view/config/empresa.cpp
+    src/view/config/general.cpp
+    src/view/config/impresora.cpp
+    src/view/config/info.cpp
+    src/view/config/roles.cpp
+    src/view/config/wifi.cpp
     #================CONTROLLER=================
     src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
@@ -49,6 +56,13 @@ set(SOURCES
     src/controller/config.cpp
 
     src/controller/config/validador.cpp
+
+    src/controller/config/empresa.cpp
+    src/controller/config/general.cpp
+    src/controller/config/impresora.cpp
+    src/controller/config/info.cpp
+    src/controller/config/roles.cpp
+    src/controller/config/wifi.cpp
     #================GLOBAL=================
     src/shared/global.cpp
 )

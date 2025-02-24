@@ -22,7 +22,7 @@ private:
 
     void llena_puertos();
 public:
-    VValidador(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
+    VValidador(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> & refBuilder);
     virtual ~VValidador();
 
     void set_id_conf(uint16_t id);

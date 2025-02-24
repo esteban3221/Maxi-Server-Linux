@@ -1,14 +1,14 @@
-#include "roles.hpp"
+#include "model/roles.hpp"
 
-Roles::Roles(/* args */)
+Rol::Rol(/* args */)
 {
 }
 
-Roles::~Roles()
+Rol::~Rol()
 {
 }
 
-Glib::RefPtr<Gio::ListStore<MRoles>> Roles::get_roles()
+Glib::RefPtr<Gio::ListStore<MRoles>> Rol::get_roles()
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("select * from roles");

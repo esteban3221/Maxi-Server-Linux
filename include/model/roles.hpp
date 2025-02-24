@@ -25,12 +25,12 @@ protected:
     }
 };
 
-class Roles
+class Rol
 {
 private:
     /* data */
 public:
-    Roles(/* args */);
-    ~Roles();
+    Rol(/* args */);
+    ~Rol();
     Glib::RefPtr<Gio::ListStore<MRoles>> get_roles();
 };

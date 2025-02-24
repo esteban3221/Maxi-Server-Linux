@@ -2,6 +2,12 @@
 #include <gtkmm.h>
 
 #include "controller/config/validador.hpp"
+#include "controller/config/general.hpp"
+#include "controller/config/impresora.hpp"
+#include "controller/config/empresa.hpp"
+#include "controller/config/info.hpp"
+#include "controller/config/roles.hpp"
+#include "controller/config/wifi.hpp"
 
 class VConfig : public Gtk::Box
 {
