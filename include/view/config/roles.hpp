@@ -7,8 +7,8 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
 
 protected:
-    Gtk::CheckButton *rol[19]{nullptr};
-    Gtk::ColumnView *tree_usuarios;
+    Gtk::CheckButton *v_rol[19]{nullptr};
+    Gtk::ColumnView *v_tree_usuarios;
 
 public:
     VRoles(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);

@@ -7,10 +7,10 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
 
 protected:
-    Gtk::TextView *text_ticket = nullptr;
-    Gtk::ListBox *list_config = nullptr;
-    Gtk::ListBox *list_config_visualizacion = nullptr;
-    Gtk::ListBox *list_config_test = nullptr;
+    Gtk::TextView *v_text_ticket = nullptr;
+    Gtk::ListBox *v_list_config = nullptr;
+    Gtk::ListBox *v_list_config_visualizacion = nullptr;
+    Gtk::ListBox *v_list_config_test = nullptr;
     
 public:
     VImpresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);

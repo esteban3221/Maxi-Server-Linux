@@ -282,10 +282,32 @@ private:
                                    "descripcion TEXT NOT NULL,\n"
                                    "valor TEXT NOT NULL\n"
                                    ")");
-            this->sqlite3->command("INSERT into configuracion values(null,'Puerto bill','/dev/ttyUSB0'),"
+            this->sqlite3->command("INSERT into configuracion values"
+                                    //1 - 4
+                                   "(null,'Puerto bill','/dev/ttyUSB0'),"
                                    "(null,'SSP bill','0'),"
                                    "(null,'Puerto coin','/dev/ttyUSB1'),"
-                                   "(null,'SSP coin','16')");
+                                   "(null,'SSP coin','16'),"
+                                   // 5 - 9
+                                   "(null,'Mostrar Notificacion','1'),"
+                                   "(null,'Ruta logo incio','$HOME/Documentos/img/8121259.gif'),"
+                                   "(null,'Mensaje Inicio','Bienvenido'),"
+                                   "(null,'Ruta Carrusel','$HOME/Documentos/img_carrusel'),"
+                                   "(null,'Temp. Carrusel','0'),"
+                                   // 10 - 14
+                                   "(null,'Razon Social',''),"
+                                   "(null,'Direccion',''),"
+                                   "(null,'RFC',''),"
+                                   "(null,'Contacto',''),"
+                                   "(null,'Agradecimiento',''),"
+                                   // 15 -21
+                                   "(null,'Activa Impresion','1'),"
+                                   "(null,'Visualiza Agradecimineto','1'),"
+                                   "(null,'Visualiza Fecha','1'),"
+                                   "(null,'Visualiza Direccion','1'),"
+                                   "(null,'Visualiza RFC','1'),"
+                                   "(null,'Visualiza Vendedor','1'),"
+                                   "(null,'Visualiza Contacto','1')");
         }
     }
 

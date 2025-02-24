@@ -5,10 +5,10 @@ VRoles::VRoles(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
 {
     for (int i = 1 ; i < 20; i++)
     {
-        this->rol[i] = this->m_builder->get_widget<Gtk::CheckButton>("check_rol_" + std::to_string(i));
-        this->rol[i]->set_sensitive(false);
+        this->v_rol[i] = this->m_builder->get_widget<Gtk::CheckButton>("check_rol_" + std::to_string(i));
+        this->v_rol[i]->set_sensitive(false);
     }
-    this->tree_usuarios = this->m_builder->get_widget<Gtk::ColumnView>("tree_usuarios");
+    this->v_tree_usuarios = this->m_builder->get_widget<Gtk::ColumnView>("tree_usuarios");
 }
 
 VRoles::~VRoles()
