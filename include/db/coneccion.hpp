@@ -307,7 +307,9 @@ private:
                                    "(null,'Visualiza Direccion','1'),"
                                    "(null,'Visualiza RFC','1'),"
                                    "(null,'Visualiza Vendedor','1'),"
-                                   "(null,'Visualiza Contacto','1')");
+                                   "(null,'Visualiza Contacto','1'),"
+                                   // nip 100
+                                    "(100,'Nip','123456')");
         }
     }
 

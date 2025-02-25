@@ -39,6 +39,7 @@ namespace Global
     {
         // manejador global de vistas
         extern Gtk::Stack *v_main_stack;
+        extern Gtk::Window *v_main_window;
         namespace Refill
         {
             extern Gtk::ColumnView *v_tree_reciclador_monedas, *v_tree_reciclador_billetes;

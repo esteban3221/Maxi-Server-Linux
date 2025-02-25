@@ -32,6 +32,7 @@ set(SOURCES
     src/model/configuracion.cpp
     #===================VIEW====================
     src/view/base.venta_pago.cpp
+    src/view/base.nip.cpp
     src/view/main_window.cpp
     src/view/refill.cpp
     src/view/config.cpp
@@ -54,6 +55,8 @@ set(SOURCES
     src/controller/pago_manual.cpp
     src/controller/refill.cpp
     src/controller/config.cpp
+    src/controller/nip.cpp
+    src/controller/nuevo_nip.cpp
 
     src/controller/config/validador.cpp
 

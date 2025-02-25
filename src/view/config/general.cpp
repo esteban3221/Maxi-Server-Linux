@@ -11,6 +11,7 @@ VGeneral::VGeneral(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &re
     this->v_lbl_path_carrousel = m_builder->get_widget<Gtk::Label>("lbl_path_carrousel");
     this->v_lbl_path_icon = m_builder->get_widget<Gtk::Label>("lbl_path_icon");
     this->v_list_config_general = m_builder->get_widget<Gtk::ListBox>("list_config_general");
+    this->v_list_configurable = m_builder->get_widget<Gtk::ListBox>("list_configurable");
 
     auto list_dropdown = Gtk::StringList::create({"Ninguno",
                                                   "5 Seg.",
