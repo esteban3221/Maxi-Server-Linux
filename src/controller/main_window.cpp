@@ -71,6 +71,7 @@ void MainWindow::on_map_view()
 
     v_img_main_logo->property_file() = data->get_item(0)->m_valor;
     v_lbl_main->set_text(data->get_item(1)->m_valor);
+    
 }
 
 MainWindow::~MainWindow()

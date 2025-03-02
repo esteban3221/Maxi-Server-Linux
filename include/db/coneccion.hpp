@@ -300,7 +300,7 @@ private:
                                    "(null,'RFC',''),"
                                    "(null,'Contacto',''),"
                                    "(null,'Agradecimiento',''),"
-                                   // 15 -21
+                                   // 15 - 21
                                    "(null,'Activa Impresion','1'),"
                                    "(null,'Visualiza Agradecimineto','1'),"
                                    "(null,'Visualiza Fecha','1'),"

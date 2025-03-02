@@ -134,6 +134,11 @@ namespace Global
 
     namespace System
     {
+        bool stob(const std::string &data)
+        {
+            return data == "1";
+        }
+
         std::string exec(const char *cmd)
         {
             std::array<char, 128> buffer;

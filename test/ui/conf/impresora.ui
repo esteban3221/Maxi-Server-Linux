@@ -44,8 +44,7 @@
                                                             </object>
                                                         </child>
                                                         <child>
-                                                            <object class="GtkSwitch"
-                                                                id="switch_impresion">
+                                                            <object class="GtkSwitch" id="switch_impresion">
                                                                 <property name="halign">2</property>
                                                                 <property name="valign">3</property>
                                                             </object>
@@ -106,8 +105,7 @@
                                                 <child>
                                                     <object class="GtkBox">
                                                         <child>
-                                                            <object class="GtkLabel"
-                                                                id="check_label">
+                                                            <object class="GtkLabel" id="check_label">
                                                                 <property name="halign">1</property>
                                                                 <property name="hexpand">true</property>
                                                                 <property name="label">Fecha</property>

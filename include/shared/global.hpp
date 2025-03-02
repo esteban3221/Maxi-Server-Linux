@@ -98,6 +98,8 @@ namespace Global
         extern std::string exec(const char *cmd);
         extern std::string formatTime(int seconds);
         extern void showNotify(const char *title, const char *subtitle, const char *type);
+
+        extern bool stob(const std::string &data);
     } // namespace System
 
     class Async
