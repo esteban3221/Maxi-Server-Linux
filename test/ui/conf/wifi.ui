@@ -181,7 +181,7 @@
                     </object>
                 </child>
                 <child>
-                    <object class="GtkButton" id="btnRed">
+                    <object class="GtkButton" id="btn_red">
                         <property name="label">Configuración</property>
                         <property name="margin-top">40</property>
                         <property name="halign">3</property>

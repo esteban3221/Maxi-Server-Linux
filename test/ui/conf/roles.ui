@@ -4,13 +4,12 @@
         <property name="spacing">10</property>
         <child>
             <object class="GtkScrolledWindow">
-                <property name="hexpand">true</property>
-                <property name="vexpand">true</property>
-                <property name="vexpand-set">true</property>
                 <child>
                     <object class="GtkColumnView" id="tree_usuarios">
                         <!-- <property name="enable-grid-lines">2</property>
                         <property name="enable-search">false</property> -->
+                        <property name="hexpand">true</property>
+                        <property name="vexpand">true</property>
                     </object>
                 </child>
             </object>

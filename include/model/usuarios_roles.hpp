@@ -1,8 +1,8 @@
 #pragma once
 #include <iostream>
-#include <functional>
 #include <glibmm.h>
 #include <giomm.h>
+#include <memory>
 
 #include "coneccion.hpp"
 #include "roles.hpp"
@@ -33,7 +33,7 @@ private:
 public:
     UsuariosRoles(/* args */);
     ~UsuariosRoles();
-
-    Glib::RefPtr<MUsuariosRoles> get_usuario_roles_by_id(size_t);
+    
+    Glib::RefPtr<Gio::ListStore<MUsuariosRoles>> get_usuario_roles_by_id(size_t id);
     void update_usuario_roles(size_t, const Glib::RefPtr<Gio::ListStore<MRoles>> &);
 };

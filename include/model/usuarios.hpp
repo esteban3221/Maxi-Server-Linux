@@ -1,6 +1,5 @@
 #pragma once
 #include <iostream>
-#include <functional>
 #include <glibmm.h>
 #include <giomm.h>
 #include <memory>

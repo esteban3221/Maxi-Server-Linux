@@ -12,6 +12,8 @@ protected:
     Gtk::Label *v_lbl_titulo = nullptr;
     Gtk::DropDown *v_drop_puerto = nullptr;
 
+    Gtk::Image *v_img_validador = nullptr;
+
     void on_show();    
 private:
     Glib::RefPtr<Gtk::Builder> m_builder;
@@ -28,5 +30,6 @@ public:
     void set_id_conf(uint16_t id);
     void set_data_lbl(const crow::json::rvalue &json);
     void set_data_lbl(const std::string &json);
+    void set_img(const std::string &path);
     Glib::ustring get_puerto_seleccionado();
 };

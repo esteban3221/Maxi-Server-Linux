@@ -46,8 +46,7 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
         Global::ApiConsume::autentica();
         is_retry_connected.store(true);
 
-        async_gui.dispatch_to_gui([this]()
-                                  { Global::Widget::v_main_stack->set_visible_child("0"); });
+        async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
 
         auto json_bill = Device::dv_bill.inicia_dispositivo_v8(bill);
         auto json_coin = Device::dv_coin.inicia_dispositivo_v8(coin);

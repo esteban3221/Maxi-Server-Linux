@@ -17,20 +17,6 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
     CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::deten));
-
-    // ejemplo de como obtener los datos del modelo usado
-    // Global::Widget::Refill::v_tree_reciclador_monedas->signal_activate().connect([this](guint num)
-    //                                                      {
-    //     std::cout << "Se clicko id: " << num << '\n';
-    //     auto selection_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
-    //     auto single_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_model);
-    //     obtener la lista para añadir o eliminar varios items
-    //     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_selection->get_model());
-    //     list_store->append(MLevelCash::create(900,20,12,23));
-    //     obtener item de la lista seleccionado para leer(const) o modificar dato
-    //     auto m_list = single_selection->get_typed_object<MLevelCash>(num);
-    //     m_list->m_nivel_inmo = num+1;
-    //     std::cout << "Denom " << m_list->m_denominacion <<'\n'; });
 }
 
 Refill::~Refill()

@@ -30,12 +30,17 @@ VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientati
     this->append(v_box_header);
     this->append(v_lbl_subtitulo);
 
+    auto path = Glib::get_user_special_dir(Glib::UserDirectory::DOCUMENTS);
+
     v_box_bill = Gtk::Builder::get_widget_derived<VValidador>(builder, "box_detalles_validador");
     v_box_bill->set_id_conf(1);
+    v_box_bill->set_img(path + "/img/validadores/SPECTRAL_PAYOUT.png");
+
 
     builder = Gtk::Builder::create_from_file("../test/ui/conf/validadores.ui");
     v_box_coin = Gtk::Builder::get_widget_derived<VValidador>(builder, "box_detalles_validador");
     v_box_coin->set_id_conf(3);
+    v_box_coin->set_img(path + "/img/validadores/scs.png");
 
     v_box_contenedor.append(*v_box_bill);
     v_box_contenedor.append(*v_box_coin);

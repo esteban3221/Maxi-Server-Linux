@@ -82,6 +82,7 @@ void General::on_click_reboot()
     v_dialog.reset(new Gtk::MessageDialog(*Global::Widget::v_main_window, "Reinicio", false, Gtk::MessageType::QUESTION, Gtk::ButtonsType::CANCEL, true));
     v_dialog->add_button("Reiniciar", Gtk::ResponseType::OK)->add_css_class({"warning"});
     v_dialog->set_secondary_text("¿Desea reinicia el dispositivo?");
+
     v_dialog->signal_response().connect([this](int response)
                                         {
         if(Gtk::ResponseType::OK == response)
@@ -163,28 +164,28 @@ void General::on_file_dialog_response(int response_id, Gtk::FileChooserDialog *d
 {
     switch (response_id)
     {
-    case Gtk::ResponseType::OK:
-    {
-        std::cout << "Open clicked." << std::endl;
-        auto filename = dialog->get_file()->get_path();
-        v_lbl_path_icon->set_text(filename);
+        case Gtk::ResponseType::OK:
+        {
+            std::cout << "Open clicked." << std::endl;
+            auto filename = dialog->get_file()->get_path();
+            v_lbl_path_icon->set_text(filename);
 
-        auto db = std::make_unique<Configuracion>();
-        auto data = MConfiguracion::create(6, "Ruta logo incio", filename);
-        db->update_conf(data);
+            auto db = std::make_unique<Configuracion>();
+            auto data = MConfiguracion::create(6, "Ruta logo incio", filename);
+            db->update_conf(data);
 
-        break;
-    }
-    case Gtk::ResponseType::CANCEL:
-    {
-        std::cout << "Cancel clicked." << std::endl;
-        break;
-    }
-    default:
-    {
-        std::cout << "Unexpected button clicked." << std::endl;
-        break;
-    }
+            break;
+        }
+        case Gtk::ResponseType::CANCEL:
+        {
+            std::cout << "Cancel clicked." << std::endl;
+            break;
+        }
+        default:
+        {
+            std::cout << "Unexpected button clicked." << std::endl;
+            break;
+        }
     }
     delete dialog;
 }

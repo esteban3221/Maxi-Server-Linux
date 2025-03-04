@@ -10,6 +10,7 @@ VValidador::VValidador(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
 
     v_lbl_titulo = m_builder->get_widget<Gtk::Label>("lbl_titulo");
     v_drop_puerto = m_builder->get_widget<Gtk::DropDown>("drop_puerto");
+    v_img_validador = m_builder->get_widget<Gtk::Image>("img_validador");
 
     // señales
     this->signal_map().connect(sigc::mem_fun(*this, &VValidador::on_show));
@@ -44,6 +45,11 @@ void VValidador::set_data_lbl(const std::string &json)
 {
     auto j = crow::json::load(json);
     set_data_lbl(j);
+}
+
+void VValidador::set_img(const std::string &path)
+{
+    v_img_validador->property_file() = path;
 }
 
 void VValidador::set_data_lbl(const crow::json::rvalue &json)
