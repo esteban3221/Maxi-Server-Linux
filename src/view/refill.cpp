@@ -12,8 +12,8 @@ VRefill::VRefill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refB
     v_lbl_total = refBuilder->get_widget<Gtk::Label>("lblTotalMXN3");
 
     v_btn_deten = refBuilder->get_widget<Gtk::Button>("btn_detener");
+    v_btn_deten->set_sensitive(false);
 }
-
 
 void VRefill::on_setup_label(const Glib::RefPtr<Gtk::ListItem> &list_item)
 {

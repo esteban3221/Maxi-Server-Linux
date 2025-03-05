@@ -101,20 +101,21 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-    { 
+                              { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]() { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]() { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]()
+                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]()
+                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -129,6 +130,11 @@ crow::response Venta::inicia(const crow::request &req)
 
         const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
         Pago::da_pago(balance.cambio.load(), slot, "Venta");
+    }
+    else
+    {
+        Device::dv_coin.deten_cobro_v6();
+        Device::dv_bill.deten_cobro_v6();
     }
     is_busy.store(false);
 

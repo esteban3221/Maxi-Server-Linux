@@ -17,9 +17,6 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     v_btn_deten->signal_clicked().connect(sigc::mem_fun(*this, &Refill::deten));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
-
-    v_btn_deten->set_sensitive(false);
-
 }
 
 Refill::~Refill()
@@ -124,24 +121,26 @@ void Refill::on_show()
         auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
         single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
 
-            for (size_t i = 0; i < level_bill->get_n_items(); i++)
-            {
-                auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
-                m_list->m_cant_recy = level_bill->get_item(i)->m_cant_recy;
-                single_bill_selection->set_selected(i);
-            }
+        for (size_t i = 0; i < level_bill->get_n_items(); i++)
+        {
+            auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
+            m_list->m_cant_recy = level_bill->get_item(i)->m_cant_recy;
+            single_bill_selection->set_selected(i);
+            m_list->m_ingreso = 0;
+        }
 
-            for (size_t i = 0; i < level_coin->get_n_items(); i++)
-            {
-                auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
-                m_list->m_cant_recy = level_coin->get_item(i)->m_cant_recy;
-                single_coin_selection->set_selected(i);
-            }
+        for (size_t i = 0; i < level_coin->get_n_items(); i++)
+        {
+            auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
+            m_list->m_cant_recy = level_coin->get_item(i)->m_cant_recy;
+            single_coin_selection->set_selected(i);
+            m_list->m_ingreso = 0;
+        }
 
         single_coin_selection->unselect_all();
         single_bill_selection->unselect_all();
-        
-        calcula_total(single_bill_selection,single_coin_selection);
+
+        calcula_total(single_bill_selection, single_coin_selection);
     }
     catch (const std::exception &e)
     {
@@ -169,17 +168,19 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
             if (indice != -1)
             {
                 auto m_list = select->get_typed_object<MLevelCash>(indice);
-                calcula_total(single_bill_selection,single_coin_selection);
-                        
+
                 m_list->m_ingreso++;
-                select->select_item(indice,true);
-                Device::dv_bill.acepta_dinero(status, true); 
+                select->select_item(indice, true);
+                if (status == "ESCROW")
+                    Device::dv_bill.acepta_dinero(status, true);
+
+                // Hace la cuenta
+                calcula_total(single_bill_selection, single_coin_selection);
             }
             else
-                Global::System::showNotify("Refill", 
-                                           ("Deteccion de dinero no valida: " + std::to_string(ingreso) + ", Se omite registro").c_str(), 
+                Global::System::showNotify("Refill",
+                                           ("Deteccion de dinero no valida: " + std::to_string(ingreso) + ", Se omite registro").c_str(),
                                            "dialog-information");
-            
         }
         catch (const std::exception &e)
         {
@@ -196,12 +197,10 @@ crow::response Refill::inicia(const crow::request &req)
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-
     async_gui.dispatch_to_gui([this]()
-    { 
+                              { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_btn_deten->set_sensitive();
-    });
+        v_btn_deten->set_sensitive(); });
 
     is_busy.store(true);
     is_running.store(true);
@@ -209,13 +208,16 @@ crow::response Refill::inicia(const crow::request &req)
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]() { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]() { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]()
+                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]()
+                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
 
     future1.wait();
     future2.wait();
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child("0"); });
     is_busy.store(false);
     is_running.store(false);
 
@@ -226,9 +228,7 @@ crow::response Refill::inicia(const crow::request &req)
 void Refill::deten()
 {
     async_gui.dispatch_to_gui([this]()
-    { 
-        v_btn_deten->set_sensitive(false);
-    });
+                              { v_btn_deten->set_sensitive(false); });
     Global::EValidador::is_running.store(false);
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();

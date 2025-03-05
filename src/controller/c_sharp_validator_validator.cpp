@@ -1,26 +1,24 @@
 #include "c_sharp_validator.hpp"
 
+namespace Device
+{
+    Validator dv_coin("HOPPER"), dv_bill("SPECTRAL");
 
-    namespace Device
+    std::map<int, int> map_cantidad_recyclador(const Validator &val)
     {
-        Validator dv_coin("HOPPER"), dv_bill("SPECTRAL");
+        auto level = val.get_level_cash_actual();
 
-        std::map<int, int> map_cantidad_recyclador(const Validator &val)
+        std::map<int, int> actual_level;
+
+        for (size_t i = 0; i < level->get_n_items(); i++)
         {
-            auto level = val.get_level_cash_actual();
-
-            std::map<int, int> actual_level;
-
-            for (size_t i = 0; i < level->get_n_items(); i++)
-            {
-                auto m_list = level->get_item(i);
-                actual_level[(m_list->m_denominacion / 100)] = m_list->m_cant_recy;
-            }
-
-            return actual_level;
+            auto m_list = level->get_item(i);
+            actual_level[(m_list->m_denominacion / 100)] = m_list->m_cant_recy;
         }
-    } // namespace Device
 
+        return actual_level;
+    }
+} // namespace Device
 
 Validator::Validator(const std::string &validator, const std::source_location location)
     : validator(validator)
@@ -106,7 +104,7 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
     {
         std::lock_guard<std::mutex> lock(poll_mutedx);
         /*Se queda con una cola de eventos y de vez en cuando retiene dinero logicamente hasta que se vuelve a consultar*/
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         auto status = command_get("GetDeviceStatus");
 
         if (status.first == crow::status::OK)
@@ -230,7 +228,8 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
             {"LogFilePath", conf.log_ruta},
             {"EnableAcceptor", conf.habilita_recolector},
             {"EnablePayout", conf.habilita_recolector},
-            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}};
+            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
+        };
     this->conf = conf;
     auto data_out = command_post("OpenConnection", data_in.dump());
 
@@ -276,14 +275,6 @@ void Validator::inicia_dispositivo_v6()
         return; // Si falla, sal de la función
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
-    // }
-
-    // command_post("StartDevice", "", true);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    // command_post("EnablePayout", "", true);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(400));
-    // command_post("EnableAcceptor", "", true);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(900));
 }
 
 void Validator::deten_cobro_v6()
@@ -302,18 +293,15 @@ void Validator::deten_cobro_v6()
 
 void Validator::acepta_dinero(const std::string &state, bool recy)
 {
-    if (state == "ESCROW")
-    {
-        crow::json::wvalue json;
+    crow::json::wvalue json;
 
-        json["Value"] = Global::EValidador::balance.ingreso_parcial;
-        json["CountryCode"] = "MXN";
-        json["Route"] = (int)recy;
+    json["Value"] = Global::EValidador::balance.ingreso_parcial;
+    json["CountryCode"] = "MXN";
+    json["Route"] = (int)recy;
 
-        command_post("SetDenominationRoute", json.dump(), true);
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        command_post("AcceptFromEscrow");
-    }
+    command_post("SetDenominationRoute", json.dump(), true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    command_post("AcceptFromEscrow");
 }
 
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const

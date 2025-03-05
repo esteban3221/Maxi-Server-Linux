@@ -173,6 +173,9 @@ crow::response Pago::inicia(const crow::request &req)
     const sigc::slot<bool ()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill);
     Pago::da_pago(balance.cambio.load(), slot, "Pago");
 
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
+    
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
     
     balance.ingreso.store(0);
