@@ -3,6 +3,7 @@
 
 #include "view/base.venta_pago.hpp"
 #include "c_sharp_validator.hpp"
+#include "controller/pago.hpp"
 #include "global.hpp"
 
 namespace RestApp = Global::Rest;
@@ -14,14 +15,9 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
-    bool pago_poll(int ant_coin,int ant_bill);
-    void da_cambio();
-    sigc::connection conn;
-    std::atomic_int32_t faltante;
-    std::chrono::steady_clock::time_point start_time;
+    bool pago_poll(int ant_coin, int ant_bill);
 
-    std::map<int, int> s_level_mon, s_level_bill;
-
+    int faltante;
     void func_poll(const std::string &status, const crow::json::rvalue &data);
 
     crow::response inicia(const crow::request &req);

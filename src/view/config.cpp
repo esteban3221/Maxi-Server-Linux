@@ -4,12 +4,12 @@ VConfig::VConfig(/* args */)
 {
     auto builder = Gtk::Builder::create_from_file("../test/ui/conf/home.ui");
 
-    this->set_orientation(Gtk::Orientation::HORIZONTAL);
-    this->v_btn_back_config = builder->get_widget<Gtk::Button>("btn_back_config");
-    this->v_left_box = builder->get_widget<Gtk::Box>("left_box");
-    this->v_stack_side = builder->get_widget<Gtk::StackSidebar>("stackside");
+    set_orientation(Gtk::Orientation::HORIZONTAL);
+    v_btn_back_config = builder->get_widget<Gtk::Button>("btn_back_config");
+    v_left_box = builder->get_widget<Gtk::Box>("left_box");
+    v_stack_side = builder->get_widget<Gtk::StackSidebar>("stackside");
 
-    this->append(*v_left_box);
+    append(*v_left_box);
 
     v_stack_side->set_stack(v_stack);
     v_stack.set_margin(10);
@@ -45,10 +45,7 @@ VConfig::VConfig(/* args */)
     v_stack.add(*detalles_validadores,"6","Detalle Validadores");
     v_stack.set_interpolate_size(true);
 
-    v_scroll.set_child(v_stack);
-    v_scroll.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::AUTOMATIC);
-
-    this->append(v_scroll);
+    append(v_stack);
 }
 
 VConfig::~VConfig()

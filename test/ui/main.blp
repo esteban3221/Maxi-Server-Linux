@@ -1,0 +1,214 @@
+using Gtk 4.0;
+
+Box boxVistaEfectivo {
+  halign: fill;
+  margin-bottom: 15;
+  margin-end: 15;
+  margin-start: 15;
+  margin-top: 15;
+  spacing: 20;
+
+  Box {
+    homogeneous: true;
+    orientation: vertical;
+    spacing: 20;
+    vexpand: true;
+
+    Frame frmRecicladorMonedas {
+      Box {
+        margin-end: 12;
+        margin-start: 12;
+        orientation: vertical;
+
+        Label {
+          label: "Monedas";
+
+          styles [
+            "title-1",
+          ]
+        }
+
+        Box {
+          margin-bottom: 12;
+          margin-top: 12;
+          spacing: 10;
+          vexpand: true;
+
+          ColumnView treeRecicladorMonedas {
+            enable-rubberband: true;
+            hexpand: true;
+            hexpand-set: true;
+            show-column-separators: true;
+            vexpand: true;
+            vexpand-set: true;
+          }
+
+          Box {
+            halign: end;
+            hexpand-set: true;
+            orientation: vertical;
+
+            Label {
+              label: "Total";
+
+              styles [
+                "title-2",
+              ]
+            }
+
+            Label lblTotalMXN1 {
+              label: "0.00 MXN";
+
+              styles [
+                "title-4",
+              ]
+            }
+          }
+        }
+      }
+    }
+
+    Frame frmRecicladorBilletes {
+      Box {
+        margin-end: 12;
+        margin-start: 12;
+        orientation: vertical;
+
+        Label {
+          label: "Billetes";
+
+          styles [
+            "title-1",
+          ]
+        }
+
+        Box {
+          margin-bottom: 12;
+          margin-top: 12;
+          spacing: 10;
+
+          ColumnView treeRecicladorBilletes {
+            enable-rubberband: true;
+            hexpand: true;
+            hexpand-set: true;
+            show-column-separators: true;
+            vexpand: true;
+            vexpand-set: true;
+          }
+
+          Box {
+            halign: end;
+            orientation: vertical;
+
+            Label {
+              label: "Total";
+
+              styles [
+                "title-2",
+              ]
+            }
+
+            Label lblTotalMXN2 {
+              label: "0.00 MXN";
+
+              styles [
+                "title-4",
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Box {
+    orientation: vertical;
+    spacing: 20;
+
+    Frame frmTotal {
+      Box {
+        margin-bottom: 12;
+        margin-end: 12;
+        margin-start: 12;
+        margin-top: 12;
+        orientation: vertical;
+
+        Label {
+          label: "Total";
+
+          styles [
+            "title-1",
+          ]
+        }
+
+        Label lblTotalMXN3 {
+          label: "0.00 MXN";
+
+          styles [
+            "title-2",
+          ]
+        }
+      }
+    }
+
+    Frame frmTotal2 {
+      Box {
+        margin-bottom: 12;
+        margin-end: 12;
+        margin-start: 12;
+        margin-top: 12;
+        orientation: vertical;
+
+        Label {
+          label: "Total Monedas";
+
+          styles [
+            "title-1",
+          ]
+        }
+
+        Label lblTotalMXN4 {
+          label: "0.00 MXN";
+
+          styles [
+            "title-2",
+          ]
+        }
+      }
+    }
+
+    Frame frmTotal3 {
+      Box {
+        margin-bottom: 12;
+        margin-end: 12;
+        margin-start: 12;
+        margin-top: 12;
+        orientation: vertical;
+
+        Label {
+          label: "Total Billetes";
+
+          styles [
+            "title-1",
+          ]
+        }
+
+        Label lblTotalMXN5 {
+          label: "0.00 MXN";
+
+          styles [
+            "title-2",
+          ]
+        }
+      }
+    }
+
+    Button btn_detener {
+      label: _("Detener");
+
+      css-classes: [
+        "destructive-action",
+      ];
+    }
+  }
+}

@@ -15,7 +15,7 @@ private:
     Global::Async async_gui;
 
     crow::response inicia(const crow::request &req);
-    crow::response deten(const crow::request &req);
+    void deten();
 
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);
     void calcula_total(const std::shared_ptr<Gtk::SingleSelection> &select_bill, const std::shared_ptr<Gtk::SingleSelection> &select_coin);

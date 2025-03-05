@@ -63,36 +63,11 @@ bool Pago::pago_poll(int ant_coin, int ant_bill)
 
     return is_activo;
 }
-crow::response Pago::inicia(const crow::request &req)
+
+void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo)
 {
-    using namespace Global::EValidador;
-    auto bodyParams = crow::json::load(req.body);
-
-    int cambio = bodyParams["value"].i();
-    if (cambio <= 0)
-        return crow::response("Nada que devolver");
-
-    balance.total.store(bodyParams["value"].i());
-    is_running.store(true);
-    balance.ingreso.store(0);
-    is_busy.store(true);
-
-    if (conn.empty())
-        conn.disconnect();
-
-    std::cout << "\n ===== Obteniendo copia de estados de validadores ===== \n\n";
-
-    s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-    async_gui.dispatch_to_gui([this, cambio]()
-    { 
-        auto s_total = std::to_string(cambio);
-        Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_lbl_monto_total->set_text(s_total);
-        v_lbl_faltante->set_text(s_total);
-        v_lbl_recibido->set_text("0"); 
-    });
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
 
     const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
     const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
@@ -149,23 +124,59 @@ crow::response Pago::inicia(const crow::request &req)
         } while (status_coin != crow::status::OK);
     }
 
-    start_time = std::chrono::steady_clock::now();
-    conn = Glib::signal_timeout().connect(sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill), 200);
-    std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
-                { Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); })
-        .detach();
+    auto start_time = std::chrono::steady_clock::now();
+    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
+    // std::thread(&Global::Utility::verifica_cambio, conn, start_time, [tipo](){ Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); })
+    //     .detach();
+    
+    Global::Utility::verifica_cambio(
+        conn, 
+        start_time, 
+        [tipo]()
+        { Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); });
 
     if (cambio > 0)
-        Global::System::showNotify("Pago", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
+        Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
+}
 
-    crow::json::wvalue data_in =
-        {
-            {"Billetes", r_bill},
-            {"Monedas", r_coin}
-        };
+crow::response Pago::inicia(const crow::request &req)
+{
+    using namespace Global::EValidador;
+    auto bodyParams = crow::json::load(req.body);
+
+    int cambio = balance.cambio = bodyParams["value"].i();
+    if (cambio <= 0)
+        return crow::response("Nada que devolver");
+
+    balance.total.store(bodyParams["value"].i());
+    is_running.store(true);
+    balance.ingreso.store(0);
+    is_busy.store(true);
+
+    async_gui.dispatch_to_gui([this, cambio]()
+    { 
+        auto s_total = std::to_string(cambio);
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+        v_lbl_monto_total->set_text(s_total);
+        v_lbl_faltante->set_text(s_total);
+        v_lbl_recibido->set_text("0"); 
+    });
+
+    std::cout << "\n ===== Obteniendo copia de estados de validadores ===== \n\n";
+    
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
+
+    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
+    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
+
+    const sigc::slot<bool ()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill);
+    Pago::da_pago(balance.cambio.load(), slot, "Pago");
+
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
     
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-    return crow::response(data_in);
+    return crow::response("Proceso Terminado");
 }

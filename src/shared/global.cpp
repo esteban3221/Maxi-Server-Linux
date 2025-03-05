@@ -81,7 +81,7 @@ namespace Global
             return -1;
         }
         
-        void verifica_cambio(sigc::connection* conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func)
+        void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func)
         {
             while (not conn->empty())
             {

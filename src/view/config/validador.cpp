@@ -3,7 +3,7 @@
 VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientation::HORIZONTAL),
                                                      v_box_contenedor(Gtk::Orientation::HORIZONTAL)
 {
-    this->set_spacing(5);
+    v_box.set_spacing(5);
 
     auto builder = Gtk::Builder::create_from_file("../test/ui/conf/validadores.ui");
 
@@ -27,8 +27,8 @@ VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientati
     v_lbl_subtitulo.set_margin_top(10);
     v_lbl_subtitulo.set_margin_bottom(10);
 
-    this->append(v_box_header);
-    this->append(v_lbl_subtitulo);
+    v_box.append(v_box_header);
+    v_box.append(v_lbl_subtitulo);
 
     auto path = Glib::get_user_special_dir(Glib::UserDirectory::DOCUMENTS);
 
@@ -46,8 +46,10 @@ VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientati
     v_box_contenedor.append(*v_box_coin);
     v_box_contenedor.set_homogeneous();
 
-    this->append(v_box_contenedor);
-    this->set_orientation(Gtk::Orientation::VERTICAL);
+    v_box.append(v_box_contenedor);
+    v_box.set_orientation(Gtk::Orientation::VERTICAL);
+
+    this->set_child(v_box);
 }
 
 VDetallesValidador::~VDetallesValidador()

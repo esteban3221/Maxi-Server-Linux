@@ -14,9 +14,12 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     init_data(Global::Widget::Refill::v_tree_reciclador_billetes, "Level_Bill");
 
     this->signal_map().connect(sigc::mem_fun(*this, &Refill::on_show));
+    v_btn_deten->signal_clicked().connect(sigc::mem_fun(*this, &Refill::deten));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
-    CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::deten));
+
+    v_btn_deten->set_sensitive(false);
+
 }
 
 Refill::~Refill()
@@ -193,7 +196,12 @@ crow::response Refill::inicia(const crow::request &req)
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(*this); });
+
+    async_gui.dispatch_to_gui([this]()
+    { 
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+        v_btn_deten->set_sensitive();
+    });
 
     is_busy.store(true);
     is_running.store(true);
@@ -207,14 +215,21 @@ crow::response Refill::inicia(const crow::request &req)
     future1.wait();
     future2.wait();
 
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    is_busy.store(false);
+    is_running.store(false);
+
     return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() +
                           "\nBilletes: " + v_lbl_total_parcial_billetes->get_text());
 }
 
-crow::response Refill::deten(const crow::request &req)
+void Refill::deten()
 {
+    async_gui.dispatch_to_gui([this]()
+    { 
+        v_btn_deten->set_sensitive(false);
+    });
     Global::EValidador::is_running.store(false);
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
-    return crow::response();
 }

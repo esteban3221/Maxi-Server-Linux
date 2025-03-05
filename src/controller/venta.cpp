@@ -1,7 +1,8 @@
 #include "controller/venta.hpp"
 #include "venta.hpp"
 
-Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
+Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder),
+                                                                                      faltante(0)
 {
     v_lbl_titulo->set_text("Venta");
     v_btn_timeout_retry->set_visible(false);
@@ -43,16 +44,10 @@ bool Venta::pago_poll(int ant_coin, int ant_bill)
         total_bill += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
     }
 
-    int32_t recibido =  (ant_coin + ant_bill) - (total_bill + total_coin);
-    faltante = Global::EValidador::balance.cambio.load() - recibido;
+    int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);
+    Pago::faltante = Global::EValidador::balance.cambio.load() - recibido;
 
-    // async_gui.dispatch_to_gui([this, recibido]()
-    // {
-    //     v_lbl_faltante->set_text(std::to_string(faltante));
-    //     v_lbl_recibido->set_text(std::to_string(recibido)); 
-    // });
-
-    bool is_activo{faltante != 0};
+    bool is_activo{Pago::faltante != 0};
 
     if (not is_activo)
     {
@@ -60,90 +55,7 @@ bool Venta::pago_poll(int ant_coin, int ant_bill)
         Device::dv_bill.deten_cobro_v6();
     }
 
-    std::cout << "Total posterior: " << (total_bill + total_coin) << '\n';
-
     return is_activo;
-}
-
-void Venta::da_cambio()
-{
-    s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-    int cambio = Global::EValidador::balance.cambio.load();
-
-    if (not conn.empty())
-        conn.disconnect();
-
-    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
-    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
-
-    auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
-    auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
-
-    int status_bill, status_coin;
-    const int max_intentos = 10; // Límite de reintentos
-
-    // Procesamiento para dv_bill
-    if (r_bill.dump() != "[0,0,0,0,0,0]") {
-        Device::dv_bill.inicia_dispositivo_v6();
-        int intentos_bill = 0;
-
-        do {
-            status_bill = Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
-
-            if (status_bill != crow::status::OK) {
-                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_bill++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_bill >= max_intentos) {
-                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_bill != crow::status::OK);
-    }
-
-    // Procesamiento para dv_coin
-    if (r_coin.dump() != "[0,0,0,0]") {
-        Device::dv_coin.inicia_dispositivo_v6();
-        int intentos_coin = 0;
-
-        do {
-            status_coin = Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
-
-            if (status_coin != crow::status::OK) {
-                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_coin++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_coin >= max_intentos) {
-                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_coin != crow::status::OK);
-    }
-
-    // Verificación final
-    if (status_bill == crow::status::OK && status_coin == crow::status::OK)
-        std::cout << "Ambos dispositivos completaron la operación con éxito." << std::endl;
-    else
-        std::cerr << "Hubo un error en uno o ambos dispositivos." << std::endl;
-
-    start_time = std::chrono::steady_clock::now();
-
-    conn = Glib::signal_timeout().connect(sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll),total_ant_coin, total_ant_bill), 200);
-    std::thread(&Global::Utility::verifica_cambio, &conn, start_time, [this]()
-    {
-        Global::System::showNotify("Venta", ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information");
-    }).detach();
-
-    if (cambio > 0)
-        Global::System::showNotify("Venta", ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
 }
 
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
@@ -154,7 +66,6 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
-        std::cout << "Se recibio: " << data["value"].i() << '\n';
         balance.ingreso_parcial.store(data["value"].i());
         Device::dv_bill.acepta_dinero(status, true);
 
@@ -163,7 +74,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
                                   {
             v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
 
-            auto faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
+            faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
             balance.cambio.store(balance.ingreso.load() > balance.total.load() ? balance.ingreso.load() - balance.total.load() : 0);
 
             v_lbl_cambio->set_text(std::to_string(balance.cambio.load()));
@@ -181,7 +92,8 @@ crow::response Venta::inicia(const crow::request &req)
 {
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
-    balance.total.store(bodyParams["value"].i());
+    faltante = bodyParams["value"].i();
+    balance.total.store(faltante);
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
@@ -189,30 +101,48 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-                              { 
+    { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); });
+        v_lbl_recibido->set_text("0"); 
+    });
 
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]() { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
 
     if (balance.cambio.load() > 0)
-        da_cambio();
+    {
+        auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+        auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
 
+        const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
+        const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
+
+        const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
+        Pago::da_pago(balance.cambio.load(), slot, "Venta");
+    }
     is_busy.store(false);
-    balance.ingreso.store(0);
-    balance.cambio.store(0);
-    return crow::response();
+
+    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
+
+    crow::json::wvalue data;
+
+    data["total"] = balance.total.load();
+    data["ingreso"] = balance.ingreso.load();
+    data["faltante"] = faltante;
+    data["cambio"] = balance.cambio.load();
+    data["Cambio_faltante"] = Pago::faltante;
+
+    return crow::response(data);
 }
 
 crow::response Venta::deten(const crow::request &req)

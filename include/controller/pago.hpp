@@ -12,17 +12,14 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
-    sigc::connection conn;
-    std::atomic_int32_t faltante;
-    std::chrono::steady_clock::time_point start_time;
-
-    std::map<int, int> s_level_mon, s_level_bill;
-
     bool pago_poll(int ant_coin,int ant_bill);
 
     crow::response inicia(const crow::request &req);
 public:
     Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Pago();
+
+    static void da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo);
+    static inline std::atomic_int32_t faltante;
 };
 

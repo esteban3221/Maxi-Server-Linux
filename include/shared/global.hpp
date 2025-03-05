@@ -51,7 +51,7 @@ namespace Global
         extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
-        extern void verifica_cambio(sigc::connection *conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func);
+        extern void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func);
     } // namespace Utility
     
 
