@@ -33,10 +33,10 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log()
     return m_list;
 }
 
-void Log::insert_log(const Glib::RefPtr<MLog> &list)
+size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("INSERT INTO from log VALUES(null,?,?,?,?,?,?,?,?)",
+    database.sqlite3->command("INSERT INTO log VALUES(null,?,?,?,?,?,?,?)",
                               list->m_id_user,
                               list->m_tipo.c_str(),
                               list->m_ingreso,
@@ -45,6 +45,9 @@ void Log::insert_log(const Glib::RefPtr<MLog> &list)
                               list->m_estatus.c_str(),
                               list->m_fecha.format_iso8601().c_str()
                               );
+    
+    database.sqlite3->command("SELECT Id FROM log ORDER BY Id DESC LIMIT 1");
+    return std::stoull(database.sqlite3->get_result()["Id"][0]);
 }
 
 void Log::update_log(const Glib::RefPtr<MLog> &list)

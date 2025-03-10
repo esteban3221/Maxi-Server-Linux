@@ -27,13 +27,14 @@ crow::response Sesion::login(const crow::request &req)
     auto usuarios = std::make_unique<Usuarios>();
 
     if (auto username = usuarios->existe_usuario(password);
-        not username.empty())
+        not username.second.empty())
     {
         Global::ApiConsume::autentica();
 
         crow::json::wvalue json;
+        Global::User::id = username.first;
 
-        json["usuario"] = username;
+        json["usuario"] = Global::User::Current = username.second;
         json["token"] = Global::ApiConsume::token;
 
         return crow::response(json);

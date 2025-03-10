@@ -64,7 +64,7 @@ bool Pago::pago_poll(int ant_coin, int ant_bill)
     return is_activo;
 }
 
-void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo)
+void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo, std::string &estatus)
 {
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
@@ -132,11 +132,18 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
     Global::Utility::verifica_cambio(
         conn, 
         start_time, 
-        [tipo]()
-        { Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); });
+        [tipo, &estatus]()
+        { 
+            estatus = ("Falto dar cambio: " + std::to_string(faltante));
+            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information"); 
+        });
 
     if (cambio > 0)
-        Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(cambio)).c_str(), "dialog-information");
+    {
+        estatus = ("Falto dar cambio: " + std::to_string(faltante));
+        Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+    }
+        
 }
 
 crow::response Pago::inicia(const crow::request &req)
@@ -171,7 +178,7 @@ crow::response Pago::inicia(const crow::request &req)
     const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
     const sigc::slot<bool ()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill);
-    Pago::da_pago(balance.cambio.load(), slot, "Pago");
+    Pago::da_pago(balance.cambio.load(), slot, "Pago", estatus);
 
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();

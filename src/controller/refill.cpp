@@ -227,8 +227,7 @@ crow::response Refill::inicia(const crow::request &req)
 
 void Refill::deten()
 {
-    async_gui.dispatch_to_gui([this]()
-                              { v_btn_deten->set_sensitive(false); });
+    async_gui.dispatch_to_gui([this]() { v_btn_deten->set_sensitive(false); });
     Global::EValidador::is_running.store(false);
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();

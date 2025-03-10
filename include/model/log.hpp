@@ -61,7 +61,7 @@ public:
     ~Log();
     Glib::RefPtr<Gio::ListStore<MLog>> get_log();
 
-    void insert_log(const Glib::RefPtr<MLog> &list);
+    size_t insert_log(const Glib::RefPtr<MLog> &list);
     void update_log(const Glib::RefPtr<MLog> &list);
 
     // void imprime_log();

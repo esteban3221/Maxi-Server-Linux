@@ -92,6 +92,7 @@ crow::response Venta::inicia(const crow::request &req)
 {
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
+    estatus.clear();
     faltante = bodyParams["value"].i();
     balance.total.store(faltante);
     balance.ingreso.store(0);
@@ -101,21 +102,20 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-                              { 
+    { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); });
+        v_lbl_recibido->set_text("0"); 
+    });
 
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]()
-                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]()
-                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -129,18 +129,31 @@ crow::response Venta::inicia(const crow::request &req)
         const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
         const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
-        Pago::da_pago(balance.cambio.load(), slot, "Venta");
+        Pago::da_pago(balance.cambio.load(), slot, "Venta", estatus);
     }
-    else
-    {
-        Device::dv_coin.deten_cobro_v6();
-        Device::dv_bill.deten_cobro_v6();
-    }
-    is_busy.store(false);
-
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
 
     crow::json::wvalue data;
+    Log log;
+    auto t_log = MLog::create
+    (
+        0,
+        Global::User::id,
+        "Venta",
+        balance.ingreso.load(),
+        balance.cambio.load(),
+        balance.total.load(),
+        Pago::faltante > 0 ? estatus : "Venta Realizada con Exito.",
+        Glib::DateTime::create_now_local()
+    );
+
+    auto folio = log.insert_log(t_log);
+    t_log->m_id = folio;
+
+    if (Global::Widget::Impresora::is_activo)
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
+        std::system(command.c_str());
+    }
 
     data["total"] = balance.total.load();
     data["ingreso"] = balance.ingreso.load();
@@ -148,12 +161,20 @@ crow::response Venta::inicia(const crow::request &req)
     data["cambio"] = balance.cambio.load();
     data["Cambio_faltante"] = Pago::faltante;
 
+    is_busy.store(false);
+
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
+
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+
     return crow::response(data);
 }
 
 crow::response Venta::deten(const crow::request &req)
 {
     Global::EValidador::is_running.store(false);
+    estatus = "Venta cancelada";
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
     return crow::response();

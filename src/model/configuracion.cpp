@@ -16,7 +16,7 @@ Glib::RefPtr<Gio::ListStore<MConfiguracion>> Configuracion::get_conf_data(int in
 
     auto contenedor_data = database.sqlite3->get_result();
 
-    for (size_t i = 0; i < contenedor_data["id"].size(); i++)
+    for (size_t i = 0; i < contenedor_data["valor"].size(); i++)
     {
         m_list->append(MConfiguracion::create(
             std::stoi(contenedor_data["id"][i]),

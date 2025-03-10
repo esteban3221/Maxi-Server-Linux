@@ -31,6 +31,11 @@ namespace Global
             Gtk::ColumnView *v_tree_reciclador_monedas = nullptr, *v_tree_reciclador_billetes = nullptr;
         } // namespace Refill
 
+        namespace Impresora
+        {
+            bool state_vizualizacion[6]{false} ,is_activo{false};
+        } // namespace Impresora
+
     } // namespace Widget
 
     namespace Utility
@@ -44,7 +49,7 @@ namespace Global
 
             return total;
         }
-        
+
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
@@ -69,8 +74,8 @@ namespace Global
 
             return response; // Retornamos el JSON con el array
         }
-        
-        int find_position(const std::unordered_map<int, int>& index_map, int value) 
+
+        int find_position(const std::unordered_map<int, int> &index_map, int value)
         {
             for (auto &&i : index_map)
             {
@@ -80,7 +85,7 @@ namespace Global
 
             return -1;
         }
-        
+
         void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func)
         {
             while (not conn->empty())
@@ -127,7 +132,7 @@ namespace Global
                 token = rcb["token"].s();
             }
             else
-                throw std::runtime_error("Controlador API REST no iniciado o error en el Servidor : " + r.reason );
+                throw std::runtime_error("Controlador API REST no iniciado o error en el Servidor : " + r.reason);
         }
 
     } // namespace ApiConsume
@@ -189,7 +194,8 @@ namespace Global
 
     namespace User
     {
-
+        std::string Current = "";
+        int id = -1;
     } // namespace User
 
 } // namespace Helper

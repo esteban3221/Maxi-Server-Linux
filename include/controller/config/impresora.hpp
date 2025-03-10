@@ -1,6 +1,8 @@
 #pragma once
 #include "view/config/impresora.hpp"
 #include "configuracion.hpp"
+#include "model/log.hpp"
+#include "controller/pago.hpp"
 #include "global.hpp"
 
 class Impresora : public VImpresora
@@ -23,3 +25,11 @@ public:
     Impresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Impresora();
 };
+
+namespace Global
+{
+    namespace System
+    {
+        extern std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante);
+    } // namespace System
+}

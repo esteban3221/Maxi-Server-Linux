@@ -27,20 +27,26 @@ void Impresora::init_data()
     auto db_impresora = db->get_conf_data(15, 21);
 
     auto activa_impresion = db_impresora->get_item(0)->m_valor;
-    v_switch_impresion->set_active(Global::System::stob(activa_impresion));
+    Global::Widget::Impresora::is_activo = Global::System::stob(activa_impresion);
+    v_switch_impresion->set_active(Global::Widget::Impresora::is_activo);
 
     for (size_t i = 1; i < db_impresora->get_n_items(); i++)
-        v_check_config[i - 1]->set_active(Global::System::stob(db_impresora->get_item(i)->m_valor));
+    {
+        Global::Widget::Impresora::state_vizualizacion[i] = Global::System::stob(db_impresora->get_item(i)->m_valor);
+        v_check_config[i - 1]->set_active(Global::Widget::Impresora::state_vizualizacion[i]);
+    }
 }
 
 void Impresora::activa_impresion(Gtk::ListBoxRow *row)
 {
+    Global::Widget::Impresora::is_activo = v_switch_impresion->get_active();
     v_switch_impresion->get_active() ? v_switch_impresion->set_active(false) : v_switch_impresion->set_active();
 }
 
 void Impresora::activa_visualizacion(Gtk::ListBoxRow *row)
 {
-    v_check_config[row->get_index()]->get_active() ? v_check_config[row->get_index()]->set_active(false) : v_check_config[row->get_index()]->set_active();
+    Global::Widget::Impresora::state_vizualizacion[row->get_index()] ? v_check_config[row->get_index()]->set_active(false) : v_check_config[row->get_index()]->set_active();
+    v_check_config[row->get_index()]->set_active(Global::Widget::Impresora::state_vizualizacion[row->get_index()]);
 }
 
 void Impresora::activa_test(Gtk::ListBoxRow *row)
@@ -128,4 +134,59 @@ std::string Impresora::test_text_impresion()
 void Impresora::actualiza_buffer()
 {
     text_buffer->set_text(test_text_impresion());
+}
+
+namespace Global
+{
+    namespace System
+    {
+        std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante = 0)
+        {
+            std::stringstream ticket_config;
+            auto db = std::make_unique<Configuracion>();
+            auto db_empresa = db->get_conf_data(10, 14);
+
+            ticket_config << "****** "<< log->m_tipo <<"******\n"
+                        << "--------------------------------\n\n"
+                        << std::left << std::setw(20) << db_empresa->get_item(0)->m_valor << "\n\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[0])
+                ticket_config << "Direccion: " << db_empresa->get_item(1)->m_valor << "\n"
+                            << "--------------------------------\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[1])
+                ticket_config << "RFC: " << db_empresa->get_item(2)->m_valor << "\n"
+                            << "--------------------------------\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[2])
+                ticket_config << "Fecha: " << Glib::DateTime::create_now_local().format("%Y-%m-%d %H:%M:%S") << "\n";
+
+            ticket_config << "No. Ticket: " << log->m_id << "\n\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[3])
+                ticket_config << std::left << std::setw(10) << "Le atendio: " << Global::User::Current << "\n\n"
+                            << "--------------------------------\n";
+
+            ticket_config << std::left << std::setw(20) << "Total:" << log->m_total <<"\n";
+            ticket_config << std::left << std::setw(20) << "Tipo de Pago:" << "Efectivo\n"
+                        << "--------------------------------\n";
+            ticket_config << std::left << std::setw(20) << "Ingreso:" << log->m_ingreso <<"\n";
+            ticket_config << std::left << std::setw(20) << "Cambio:" << log->m_cambio <<"\n";
+            ticket_config << std::left << std::setw(20) << "Faltante:" << faltante <<"\n";
+            ticket_config << std::left << std::setw(20) << "Faltante Cambio:"<< Pago::faltante << "\n"
+                        << "-------------STATUS------------\n"
+                        << log->m_estatus <<"\n"
+                        << "--------------------------------\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[4])
+                ticket_config << "**" << db_empresa->get_item(3)->m_valor << "**\n"
+                            << "--------------------------------\n";
+
+            if (Global::Widget::Impresora::state_vizualizacion[5])
+                ticket_config << "**" << db_empresa->get_item(4)->m_valor << "**\n"
+                            << "--------------------------------\n";
+
+            return ticket_config.str();
+        }
+    }
 }

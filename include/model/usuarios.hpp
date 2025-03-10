@@ -38,7 +38,7 @@ public:
     /// @brief Verifica si existe un usuario a travez de su contraseña
     /// @param passw
     /// @return Nombre de usuario si es que existe, Si no vacio ""
-    const std::string &existe_usuario(const std::string &) const;
+    const std::pair<int, std::string> existe_usuario(const std::string &) const;
 
     size_t insert_usuario(const Glib::RefPtr<MUsuarios> &usuario);
     void update_usuario(const Glib::RefPtr<MUsuarios> &usuario);

@@ -22,7 +22,8 @@
 #define BOLDMAGENTA "\033[1m\033[35m" /* Bold Magenta */
 #define BOLDCYAN "\033[1m\033[36m"    /* Bold Cyan */
 #define BOLDWHITE "\033[1m\033[37m"   /* Bold White */
-
+    
+// por conveniencia algunas cosas estan en ingles
 namespace Global
 {
 
@@ -44,6 +45,11 @@ namespace Global
         {
             extern Gtk::ColumnView *v_tree_reciclador_monedas, *v_tree_reciclador_billetes;
         } // namespace Refill
+        namespace Impresora
+        {
+            extern bool state_vizualizacion[6] ,is_activo;
+        } // namespace Impresora
+        
     } // namespace Widget
 
     namespace Utility
@@ -53,9 +59,7 @@ namespace Global
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
         extern void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func);
     } // namespace Utility
-    
 
-    // por conveniencia algunas cosas estan en ingles
     namespace EValidador
     {
         extern std::atomic<bool> is_running;
@@ -145,7 +149,8 @@ namespace Global
 
     namespace User
     {
-
+        extern std::string Current;
+        extern int id;
     } // namespace User
 
 } // namespace Helper

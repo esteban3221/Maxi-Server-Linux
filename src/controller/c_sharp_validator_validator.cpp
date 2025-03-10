@@ -38,8 +38,8 @@ Validator::~Validator()
 void Validator::imprime_debug(int status, const std::string &comando, const std::string &body) const
 {
     std::cout << BOLDBLACK << "======== DEBUG ========\n"
-              << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
               << BOLDBLACK << "Validador: " << WHITE << validator << '\n'
+              << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
               << BOLDBLACK << "Responde Code: " << (status != crow::status::OK ? RED : GREEN) << status << '\n'
               << BOLDBLACK << "Body: " << WHITE << body << '\n'
               << RESET;
@@ -176,9 +176,6 @@ http://localhost:5000/api/CashDevice/OpenConnection
   "EnableAcceptor": true,
   "EnableAutoAcceptEscrow": true,
   "EnablePayout": true
-}*/
-
-/*
 {
     "deviceID": "SMART_COIN_SYSTEM-/dev/ttyUSB0",
     "isOpen": true,

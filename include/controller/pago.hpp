@@ -13,13 +13,14 @@ private:
     void on_btn_cancel_click() override;
 
     bool pago_poll(int ant_coin,int ant_bill);
+    std::string estatus;
 
     crow::response inicia(const crow::request &req);
 public:
     Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Pago();
 
-    static void da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo);
+    static void da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo, std::string &estatus);
     static inline std::atomic_int32_t faltante;
 };
 

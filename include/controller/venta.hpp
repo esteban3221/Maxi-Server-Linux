@@ -2,8 +2,10 @@
 #include <iostream>
 
 #include "view/base.venta_pago.hpp"
+#include "model/log.hpp"
 #include "c_sharp_validator.hpp"
 #include "controller/pago.hpp"
+#include "controller/config/impresora.hpp"
 #include "global.hpp"
 
 namespace RestApp = Global::Rest;
@@ -18,6 +20,7 @@ private:
     bool pago_poll(int ant_coin, int ant_bill);
 
     int faltante;
+    std::string estatus;
     void func_poll(const std::string &status, const crow::json::rvalue &data);
 
     crow::response inicia(const crow::request &req);
