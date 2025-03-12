@@ -216,8 +216,29 @@ crow::response Refill::inicia(const crow::request &req)
     future1.wait();
     future2.wait();
 
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child("0"); });
+    Log log;
+    auto t_log = MLog::create
+    (
+        0,
+        Global::User::id,
+        "Refill",
+        balance.ingreso.load(),
+        0,
+        balance.ingreso.load(),
+        "Refill Terminado",
+        Glib::DateTime::create_now_local()
+    );
+
+    auto folio = log.insert_log(t_log);
+    t_log->m_id = folio;
+
+    if (Global::Widget::Impresora::is_activo)
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log) + "\" | lp";
+        std::system(command.c_str());
+    }
+
+    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
     is_busy.store(false);
     is_running.store(false);
 

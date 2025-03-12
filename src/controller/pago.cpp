@@ -180,6 +180,28 @@ crow::response Pago::inicia(const crow::request &req)
     const sigc::slot<bool ()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill);
     Pago::da_pago(balance.cambio.load(), slot, "Pago", estatus);
 
+    Log log;
+    auto t_log = MLog::create
+    (
+        0,
+        Global::User::id,
+        "Pago",
+        0,
+        balance.cambio.load(),
+        0,
+        Pago::faltante > 0 ? estatus : "Pago Realizada con Exito.",
+        Glib::DateTime::create_now_local()
+    );
+
+    auto folio = log.insert_log(t_log);
+    t_log->m_id = folio;
+
+    if (Global::Widget::Impresora::is_activo)
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
+        std::system(command.c_str());
+    }
+
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
     

@@ -2,6 +2,8 @@
 #include "view/base.venta_pago.hpp"
 #include <iostream>
 #include "global.hpp"
+#include "log.hpp"
+#include "controller/config/impresora.hpp"
 #include "c_sharp_validator.hpp"
 
 namespace RestApp = Global::Rest;

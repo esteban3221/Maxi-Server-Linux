@@ -2,6 +2,8 @@
 #include "view/refill.hpp"
 #include "level_cash.hpp"
 #include "c_sharp_validator.hpp"
+#include "log.hpp"
+#include "controller/config/impresora.hpp"
 #include <map>
 
 namespace RestApp = Global::Rest;

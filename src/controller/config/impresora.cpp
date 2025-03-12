@@ -140,7 +140,7 @@ namespace Global
 {
     namespace System
     {
-        std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante = 0)
+        std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante)
         {
             std::stringstream ticket_config;
             auto db = std::make_unique<Configuracion>();

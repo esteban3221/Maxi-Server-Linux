@@ -10,6 +10,7 @@ Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuild
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
+    CROW_ROUTE(RestApp::app, "/accion/deten_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::deten));
 }
 
 Venta::~Venta()
