@@ -75,8 +75,6 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
     int status_bill, status_coin;
     const int max_intentos = 10; // Límite de reintentos
 
@@ -126,8 +124,6 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
 
     auto start_time = std::chrono::steady_clock::now();
     auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
-    // std::thread(&Global::Utility::verifica_cambio, conn, start_time, [tipo](){ Global::System::showNotify(tipo.c_str(), ("Falto dar cambio: " + std::to_string(faltante)).c_str(), "dialog-information"); })
-    //     .detach();
     
     Global::Utility::verifica_cambio(
         conn, 

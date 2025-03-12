@@ -38,7 +38,7 @@ void General::on_list_activate(Gtk::ListBoxRow *row)
     case 0:
     {
         // llamar vista para establecer un nuevo nip
-        // main_stack.set_visible_child(*nip_set_view);
+        Global::Widget::v_main_stack->set_visible_child("7");
         break;
     }
     case 1:
