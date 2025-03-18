@@ -17,6 +17,8 @@ private:
     crow::response modifica_usuario(const crow::request &req);
     crow::response logout(const crow::request &req);
 
+    crow::response poll_status(const crow::request &req);
+
 public:
     Sesion(/* args */);
     ~Sesion();

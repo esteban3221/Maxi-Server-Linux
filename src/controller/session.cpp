@@ -9,6 +9,7 @@ Sesion::Sesion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/sesion/login").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::login));
     CROW_ROUTE(RestApp::app, "/sesion/alta_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::alta_usuario));
+    CROW_ROUTE(RestApp::app, "/test_coneccion").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::poll_status));
 }
 
 Sesion::~Sesion()
@@ -47,6 +48,11 @@ crow::response Sesion::logout(const crow::request &req)
 {
     Global::ApiConsume::token.clear();
     return crow::response();
+}
+
+crow::response Sesion::poll_status(const crow::request &req)
+{
+    return crow::response(crow::status::OK);
 }
 
 crow::response Sesion::alta_usuario(const crow::request &req)
