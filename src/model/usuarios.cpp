@@ -31,6 +31,9 @@ const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pa
     auto &database = Database::getInstance();
     database.sqlite3->command("select * from usuarios where password = ?", pass.c_str());
 
+    if (database.sqlite3->get_result()["id"].size() == 0)
+        return {0, ""};
+
     return {std::stoi(database.sqlite3->get_result()["id"][0]) ,database.sqlite3->get_result()["username"][0]};
 }
 

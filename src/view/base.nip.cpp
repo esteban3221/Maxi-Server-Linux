@@ -3,7 +3,6 @@
 VBaseNip::VBaseNip(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : m_builder{refBuilder},
                                                                                             Gtk::Box(cobject)
 {
-    this->v_box_nip = m_builder->get_widget<Gtk::Box>("box_nip");
     this->v_btn_nip_back = m_builder->get_widget<Gtk::Button>("btn_nip_back");
     this->v_ety_pin = m_builder->get_widget<Gtk::PasswordEntry>("ety_pin");
     this->v_btn_nip_del = m_builder->get_widget<Gtk::Button>("btn_nip_del");
