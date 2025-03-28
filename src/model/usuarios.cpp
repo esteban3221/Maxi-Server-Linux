@@ -26,6 +26,17 @@ Glib::RefPtr<Gio::ListStore<MUsuarios>> Usuarios::get_usuarios()
     return m_list;
 }
 
+const Glib::RefPtr<MUsuarios> Usuarios::get_usuarios(int id)
+{
+    auto &database = Database::getInstance();
+    database.sqlite3->command("select * from usuarios where id = ?", id);
+    auto contenedor_data = database.sqlite3->get_result();
+    return MUsuarios::create(
+        std::stoull(contenedor_data["id"][0]),
+        contenedor_data["username"][0],
+        contenedor_data["password"][0]);
+}
+
 const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pass) const
 {
     auto &database = Database::getInstance();

@@ -34,6 +34,7 @@ public:
     ~Usuarios();
 
     Glib::RefPtr<Gio::ListStore<MUsuarios>> get_usuarios();
+    const Glib::RefPtr<MUsuarios> get_usuarios(int id);
 
     /// @brief Verifica si existe un usuario a travez de su contraseña
     /// @param passw

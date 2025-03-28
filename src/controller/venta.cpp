@@ -150,7 +150,7 @@ crow::response Venta::inicia(const crow::request &req)
     auto folio = log.insert_log(t_log);
     t_log->m_id = folio;
 
-    if (Global::Widget::Impresora::is_activo)
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());

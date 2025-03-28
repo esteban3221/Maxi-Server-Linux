@@ -17,6 +17,7 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     v_btn_deten->signal_clicked().connect(sigc::mem_fun(*this, &Refill::deten));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
+    CROW_ROUTE(RestApp::app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
 }
 
 Refill::~Refill()
@@ -80,6 +81,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_alm));
         auto column = Gtk::ColumnViewColumn::create("Casette", factory);
+        column->set_expand(true);
         vcolumn->append_column(column);
     }
 
@@ -88,6 +90,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_recy));
         auto column = Gtk::ColumnViewColumn::create("Recylador", factory);
+        column->set_expand(true);
         vcolumn->append_column(column);
     }
 
@@ -96,6 +99,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_inmo));
         auto column = Gtk::ColumnViewColumn::create("Inmovilidad", factory);
+        column->set_expand(true);
         vcolumn->append_column(column);
     }
 
@@ -106,6 +110,8 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         auto column = Gtk::ColumnViewColumn::create("Ingreso", factory);
         vcolumn->append_column(column);
     }
+    
+    
 }
 
 void Refill::on_show()
@@ -208,10 +214,8 @@ crow::response Refill::inicia(const crow::request &req)
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]()
-                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]()
-                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]() { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]() { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -232,7 +236,7 @@ crow::response Refill::inicia(const crow::request &req)
     auto folio = log.insert_log(t_log);
     t_log->m_id = folio;
 
-    if (Global::Widget::Impresora::is_activo)
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log) + "\" | lp";
         std::system(command.c_str());
@@ -244,6 +248,43 @@ crow::response Refill::inicia(const crow::request &req)
 
     return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() +
                           "\nBilletes: " + v_lbl_total_parcial_billetes->get_text());
+}
+
+crow::response Refill::get_dashboard(const crow::request &req)
+{
+    on_show();
+    crow::json::wvalue json;
+
+    json["bill"] = crow::json::wvalue::list();
+    json["coin"] = crow::json::wvalue::list();
+    auto selection_bill = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
+    auto single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill);
+
+    for (size_t i = 0; i < single_bill_selection->get_n_items(); i++)
+    {
+        auto m_list =  single_bill_selection->get_typed_object<MLevelCash>(i);
+        json["bill"][i]["Denominacion"] = m_list->m_denominacion;
+        json["bill"][i]["Almamcenado"] = m_list->m_cant_alm;
+        json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+    }
+
+    auto selection_coin = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
+    auto single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin);
+    for (size_t i = 0; i < single_coin_selection->get_n_items(); i++)
+    {
+        auto m_list =  single_coin_selection->get_typed_object<MLevelCash>(i);
+        json["coin"][i]["Denominacion"] = m_list->m_denominacion;
+        json["coin"][i]["Almamcenado"] = m_list->m_cant_alm;
+        json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+    }
+    
+    json["total"] = v_lbl_total->get_text();
+    json["total_monedas"] = v_lbl_total_monedas->get_text();
+    json["total_billetes"] = v_lbl_total_billetes->get_text();
+
+    return crow::response(json);
 }
 
 void Refill::deten()

@@ -1,11 +1,14 @@
 #pragma once
-#include "session.hpp"
+
 #include "global.hpp"
 #include "c_sharp_validator.hpp"
 
 #include "view/main_window.hpp"
 
 #include "model/configuracion.hpp"
+
+#include "controller/session.hpp"
+#include "controller/log.hpp"
 
 #include "controller/venta.hpp"
 #include "controller/pago.hpp"
@@ -19,6 +22,8 @@ class MainWindow : public VMainWindow
 {
 private:
     Sesion sesion;
+    LogData log_data;
+
     sigc::connection conn;
 
     uint16_t contador_click;

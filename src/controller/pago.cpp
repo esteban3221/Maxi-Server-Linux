@@ -10,6 +10,7 @@ Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_pago").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia));
+    CROW_ROUTE(RestApp::app, "/accion/inicia_pago_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_manual));
 }
 
 Pago::~Pago()
@@ -44,14 +45,13 @@ bool Pago::pago_poll(int ant_coin, int ant_bill)
         total_bill += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
     }
 
-    int32_t recibido =  (ant_coin + ant_bill) - (total_bill + total_coin);
+    int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);
     faltante = Global::EValidador::balance.total.load() - recibido;
 
     async_gui.dispatch_to_gui([this, recibido]()
-    {
+                              {
         v_lbl_faltante->set_text(std::to_string(faltante));
-        v_lbl_recibido->set_text(std::to_string(recibido)); 
-    });
+        v_lbl_recibido->set_text(std::to_string(recibido)); });
 
     bool is_activo{faltante != 0};
 
@@ -64,35 +64,36 @@ bool Pago::pago_poll(int ant_coin, int ant_bill)
     return is_activo;
 }
 
-void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::string &tipo, std::string &estatus)
+void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string &tipo, std::string &estatus)
 {
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
-    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
     int status_bill, status_coin;
-    const int max_intentos = 10; // Límite de reintentos
+    const int max_intentos = 10;
 
     // Procesamiento para dv_bill
-    if (r_bill.dump() != "[0,0,0,0,0,0]") {
+    if (r_bill.dump() != "[0,0,0,0,0,0]")
+    {
         Device::dv_bill.inicia_dispositivo_v6();
         int intentos_bill = 0;
 
-        do {
+        do
+        {
             status_bill = Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
 
-            if (status_bill != crow::status::OK) {
+            if (status_bill != crow::status::OK)
+            {
                 std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
                 intentos_bill++;
                 std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
             }
 
-            if (intentos_bill >= max_intentos) {
+            if (intentos_bill >= max_intentos)
+            {
                 std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
                 break;
             }
@@ -101,20 +102,24 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
     }
 
     // Procesamiento para dv_coin
-    if (r_coin.dump() != "[0,0,0,0]") {
+    if (r_coin.dump() != "[0,0,0,0]")
+    {
         Device::dv_coin.inicia_dispositivo_v6();
         int intentos_coin = 0;
 
-        do {
+        do
+        {
             status_coin = Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
 
-            if (status_coin != crow::status::OK) {
+            if (status_coin != crow::status::OK)
+            {
                 std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
                 intentos_coin++;
                 std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
             }
 
-            if (intentos_coin >= max_intentos) {
+            if (intentos_coin >= max_intentos)
+            {
                 std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
                 break;
             }
@@ -124,14 +129,14 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
 
     auto start_time = std::chrono::steady_clock::now();
     auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
-    
+
     Global::Utility::verifica_cambio(
-        conn, 
-        start_time, 
+        conn,
+        start_time,
         [tipo, &estatus]()
-        { 
+        {
             estatus = ("Falto dar cambio: " + std::to_string(faltante));
-            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information"); 
+            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
         });
 
     if (cambio > 0)
@@ -139,7 +144,82 @@ void Pago::da_pago(int cambio, const sigc::slot<bool ()> &slot, const std::strin
         estatus = ("Falto dar cambio: " + std::to_string(faltante));
         Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
     }
-        
+}
+
+void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc::slot<bool()> &slot, const std::string &tipo, std::string &estatus)
+{
+    int status_bill, status_coin;
+    const int max_intentos = 10;
+
+    // Procesamiento para dv_bill
+    if (bill != "[0,0,0,0,0,0]")
+    {
+        Device::dv_bill.inicia_dispositivo_v6();
+        int intentos_bill = 0;
+
+        do
+        {
+            status_bill = Device::dv_bill.command_post("PayoutMultipleDenominations", bill, true).first;
+
+            if (status_bill != crow::status::OK)
+            {
+                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_bill++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_bill >= max_intentos)
+            {
+                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_bill != crow::status::OK);
+    }
+
+    // Procesamiento para dv_coin
+    if (coin != "[0,0,0,0]")
+    {
+        Device::dv_coin.inicia_dispositivo_v6();
+        int intentos_coin = 0;
+
+        do
+        {
+            status_coin = Device::dv_coin.command_post("PayoutMultipleDenominations", coin , true).first;
+
+            if (status_coin != crow::status::OK)
+            {
+                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
+                intentos_coin++;
+                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
+            }
+
+            if (intentos_coin >= max_intentos)
+            {
+                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
+                break;
+            }
+
+        } while (status_coin != crow::status::OK);
+    }
+
+    auto start_time = std::chrono::steady_clock::now();
+    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
+
+    Global::Utility::verifica_cambio(
+        conn,
+        start_time,
+        [tipo, &estatus]()
+        {
+            estatus = ("Falto dar cambio: " + std::to_string(faltante));
+            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+        });
+
+    // if (cambio > 0)
+    // {
+    //     estatus = ("Falto dar cambio: " + std::to_string(faltante));
+    //     Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+    // }
 }
 
 crow::response Pago::inicia(const crow::request &req)
@@ -157,28 +237,26 @@ crow::response Pago::inicia(const crow::request &req)
     is_busy.store(true);
 
     async_gui.dispatch_to_gui([this, cambio]()
-    { 
+                              { 
         auto s_total = std::to_string(cambio);
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     std::cout << "\n ===== Obteniendo copia de estados de validadores ===== \n\n";
-    
+
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
 
     const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
     const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
-    const sigc::slot<bool ()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll),total_ant_coin, total_ant_bill);
+    const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll), total_ant_coin, total_ant_bill);
     Pago::da_pago(balance.cambio.load(), slot, "Pago", estatus);
 
     Log log;
-    auto t_log = MLog::create
-    (
+    auto t_log = MLog::create(
         0,
         Global::User::id,
         "Pago",
@@ -186,13 +264,12 @@ crow::response Pago::inicia(const crow::request &req)
         balance.cambio.load(),
         0,
         Pago::faltante > 0 ? estatus : "Pago Realizada con Exito.",
-        Glib::DateTime::create_now_local()
-    );
+        Glib::DateTime::create_now_local());
 
     auto folio = log.insert_log(t_log);
     t_log->m_id = folio;
 
-    if (Global::Widget::Impresora::is_activo)
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());
@@ -200,11 +277,98 @@ crow::response Pago::inicia(const crow::request &req)
 
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
-    
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
-    
+
+    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
+
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-    return crow::response("Proceso Terminado");
+    return crow::response(crow::status::OK);
+}
+
+crow::response Pago::inicia_manual(const crow::request &req)
+{
+    using namespace Global::EValidador;
+    auto bodyParams = crow::json::load(req.body);
+
+    std::vector<int> bill_values;
+    for (auto &&i : bodyParams["bill"])
+        bill_values.push_back(i.i());
+
+    std::vector<int> coin_values;
+    for (auto &&i : bodyParams["coin"])
+        coin_values.push_back(i.i());
+
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
+
+    int total = 0;
+
+    for (size_t i = 0; i < s_level_mon.size(); i++)
+    {
+        if (coin_values[i] > s_level_mon.at(map_coin.at(i)))
+            return crow::response(crow::status::CONFLICT, "No hay suficiente cambio en la denominacion: " + std::to_string(map_coin.at(i)) + " de monedas");
+        total += coin_values[i] * map_coin.at(i);
+    }
+
+    for (size_t i = 0; i < s_level_bill.size(); i++)
+    {
+        if (bill_values[i] > s_level_bill.at(map_coin.at(i)))
+            return crow::response(crow::status::CONFLICT, "No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
+        total += bill_values[i] * map_bill.at(i);
+    }
+
+    is_running.store(true);
+    balance.ingreso.store(0);
+    is_busy.store(true);
+
+    async_gui.dispatch_to_gui([this, total]()
+    { 
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+        v_lbl_monto_total->set_text("Monto Manual: " + std::to_string(total));
+        v_lbl_faltante->set_text("0");
+        v_lbl_recibido->set_text("0"); 
+    });
+
+    std::string bill = "[";
+    for (size_t i = 0; i < bill_values.size(); i++)
+        bill += std::to_string(bill_values[i]) + ",";
+    bill.pop_back();
+    bill += "]";
+    std::string coin = "[";
+    for (size_t i = 0; i < coin_values.size(); i++)
+        coin += std::to_string(coin_values[i]) + ",";
+    coin.pop_back();
+    coin += "]";
+
+    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
+    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
+
+    const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Pago::pago_poll), total_ant_coin, total_ant_bill);
+    Pago::da_pago(bill, coin, slot, "Pago Manual", estatus);
+
+    Log log;
+    auto t_log = MLog::create
+    (
+        0,
+        Global::User::id,
+        "Pago Manual",
+        0,
+        total,
+        0,
+        Pago::faltante > 0 ? estatus : "Pago Realizada con Exito.",
+        Glib::DateTime::create_now_local());
+        
+    auto folio = log.insert_log(t_log);
+    t_log->m_id = folio;
+
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
+        std::system(command.c_str());
+    }
+
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+
+    return crow::response(crow::status::OK);
 }

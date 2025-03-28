@@ -33,7 +33,8 @@ namespace Global
 
         namespace Impresora
         {
-            bool state_vizualizacion[6]{false} ,is_activo{false};
+            bool state_vizualizacion[6]{false};
+            Gtk::Switch *v_switch_impresion = nullptr;
         } // namespace Impresora
 
     } // namespace Widget

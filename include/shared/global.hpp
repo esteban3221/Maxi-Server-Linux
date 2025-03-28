@@ -47,7 +47,8 @@ namespace Global
         } // namespace Refill
         namespace Impresora
         {
-            extern bool state_vizualizacion[6] ,is_activo;
+            extern bool state_vizualizacion[6];
+            extern Gtk::Switch *v_switch_impresion;
         } // namespace Impresora
         
     } // namespace Widget

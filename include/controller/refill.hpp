@@ -17,6 +17,7 @@ private:
     Global::Async async_gui;
 
     crow::response inicia(const crow::request &req);
+    crow::response get_dashboard(const crow::request &req);
     void deten();
 
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);

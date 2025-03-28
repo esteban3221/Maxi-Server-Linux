@@ -57,6 +57,7 @@ set(SOURCES
     src/controller/config.cpp
     src/controller/nip.cpp
     src/controller/nuevo_nip.cpp
+    src/controller/log.cpp
 
     src/controller/config/validador.cpp
 

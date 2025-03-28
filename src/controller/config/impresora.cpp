@@ -12,7 +12,7 @@ Impresora::Impresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &
     v_text_ticket->set_buffer(text_buffer);
     v_text_ticket->signal_map().connect(sigc::mem_fun(*this, &Impresora::actualiza_buffer));
 
-    v_switch_impresion->property_active().signal_changed().connect(sigc::mem_fun(*this, &Impresora::estado_checkbutton));
+    Global::Widget::Impresora::v_switch_impresion->property_active().signal_changed().connect(sigc::mem_fun(*this, &Impresora::estado_checkbutton));
     for (auto &&i : v_check_config)
         i->property_active().signal_changed().connect(sigc::mem_fun(*this, &Impresora::estado_checkbutton));
 }
@@ -27,8 +27,7 @@ void Impresora::init_data()
     auto db_impresora = db->get_conf_data(15, 21);
 
     auto activa_impresion = db_impresora->get_item(0)->m_valor;
-    Global::Widget::Impresora::is_activo = Global::System::stob(activa_impresion);
-    v_switch_impresion->set_active(Global::Widget::Impresora::is_activo);
+    Global::Widget::Impresora::v_switch_impresion->set_active(Global::System::stob(activa_impresion));
 
     for (size_t i = 1; i < db_impresora->get_n_items(); i++)
     {
@@ -39,8 +38,7 @@ void Impresora::init_data()
 
 void Impresora::activa_impresion(Gtk::ListBoxRow *row)
 {
-    Global::Widget::Impresora::is_activo = v_switch_impresion->get_active();
-    v_switch_impresion->get_active() ? v_switch_impresion->set_active(false) : v_switch_impresion->set_active();
+    Global::Widget::Impresora::v_switch_impresion->get_active() ? Global::Widget::Impresora::v_switch_impresion->set_active(false) : Global::Widget::Impresora::v_switch_impresion->set_active();
 }
 
 void Impresora::activa_visualizacion(Gtk::ListBoxRow *row)
@@ -60,7 +58,7 @@ void Impresora::estado_checkbutton()
 {
     auto db = std::make_unique<Configuracion>();
 
-    auto activa_impresion = MConfiguracion::create(15, "Activa Impresion", std::to_string(v_switch_impresion->get_active()));
+    auto activa_impresion = MConfiguracion::create(15, "Activa Impresion", std::to_string(Global::Widget::Impresora::v_switch_impresion->get_active()));
     db->update_conf(activa_impresion);
 
     for (size_t i = 1; i < 7; i++)

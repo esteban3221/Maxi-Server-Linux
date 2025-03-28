@@ -7,7 +7,7 @@ Gtk::Box(cobject)
     v_list_config = m_builder->get_widget<Gtk::ListBox>("list_config");
     v_list_config_visualizacion = m_builder->get_widget<Gtk::ListBox>("list_config_visualizacion");
 
-    v_switch_impresion = m_builder->get_widget<Gtk::Switch>("switch_impresion");
+    Global::Widget::Impresora::v_switch_impresion = m_builder->get_widget<Gtk::Switch>("switch_impresion");
     v_text_ticket = m_builder->get_widget<Gtk::TextView>("text_ticket");
 
     for (size_t i = 1; i < 7; i++)
