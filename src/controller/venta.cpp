@@ -1,5 +1,4 @@
 #include "controller/venta.hpp"
-#include "venta.hpp"
 
 Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder),
                                                                                       faltante(0)
@@ -93,8 +92,11 @@ crow::response Venta::inicia(const crow::request &req)
 {
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
+    cancelado = false;
     estatus.clear();
     faltante = bodyParams["value"].i();
+    std::string concepto;
+    concepto = bodyParams.has("concepto") ? bodyParams["concepto"].operator std::string() : "*- Sin Concepto -*";
     balance.total.store(faltante);
     balance.ingreso.store(0);
     balance.cambio.store(0);
@@ -130,7 +132,12 @@ crow::response Venta::inicia(const crow::request &req)
         const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
         const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
+        
+        if (cancelado)
+            estatus = "Venta cancelada";
+
         Pago::da_pago(balance.cambio.load(), slot, "Venta", estatus);
+        auto extra = (concepto + "\n" + estatus);
     }
 
     crow::json::wvalue data;
@@ -143,7 +150,7 @@ crow::response Venta::inicia(const crow::request &req)
         balance.ingreso.load(),
         balance.cambio.load(),
         balance.total.load(),
-        Pago::faltante > 0 ? estatus : "Venta Realizada con Exito.",
+        "- " + concepto + " | " + (Pago::faltante > 0 ? estatus : "Venta Realizada con Exito."),
         Glib::DateTime::create_now_local()
     );
 
@@ -175,7 +182,7 @@ crow::response Venta::inicia(const crow::request &req)
 crow::response Venta::deten(const crow::request &req)
 {
     Global::EValidador::is_running.store(false);
-    estatus = "Venta cancelada";
+    cancelado = true;
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
     return crow::response();

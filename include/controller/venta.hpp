@@ -18,6 +18,7 @@ private:
     void on_btn_cancel_click() override;
 
     bool pago_poll(int ant_coin, int ant_bill);
+    bool cancelado;
 
     int faltante;
     std::string estatus;

@@ -144,7 +144,7 @@ namespace Global
             auto db = std::make_unique<Configuracion>();
             auto db_empresa = db->get_conf_data(10, 14);
 
-            ticket_config << "****** "<< log->m_tipo <<"******\n"
+            ticket_config << "****** "<< log->m_tipo <<" ******\n"
                         << "--------------------------------\n\n"
                         << std::left << std::setw(20) << db_empresa->get_item(0)->m_valor << "\n\n";
 

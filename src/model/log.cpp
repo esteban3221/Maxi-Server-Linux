@@ -1,6 +1,6 @@
 #include "model/log.hpp"
 
-Log::Log(/* args */): tam_row{0}
+Log::Log(/* args */) : tam_row{0}
 {
     Glib::init();
 }
@@ -13,14 +13,14 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const s
 {
     auto &database = Database::getInstance();
 
-    auto sql = "SELECT count(*) FROM log WHERE Tipo Like '%" + tipo + "'" + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'");
+    auto sql = "SELECT count(*) FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'");
     database.sqlite3->command(sql);
     auto contenedor_data = database.sqlite3->get_result();
     auto tam = contenedor_data["count(*)"][0];
     tam_row = std::stoi(tam);
 
-    auto query = "SELECT * FROM log WHERE Tipo Like '%" + tipo + "'" + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
-                              " LIMIT 100 OFFSET ?";
+    auto query = "SELECT * FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
+                 " LIMIT 100 OFFSET ?";
     database.sqlite3->command(query, paginacion);
     auto m_list = Gio::ListStore<MLog>::create();
 

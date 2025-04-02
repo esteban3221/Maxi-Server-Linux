@@ -291,13 +291,20 @@ crow::response Pago::inicia_manual(const crow::request &req)
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
 
+    int cambio = balance.cambio = bodyParams["total"].i();
+    balance.total = cambio;
+
     std::vector<int> bill_values;
     for (auto &&i : bodyParams["bill"])
+    {
         bill_values.push_back(i.i());
+    }
 
     std::vector<int> coin_values;
     for (auto &&i : bodyParams["coin"])
+    {
         coin_values.push_back(i.i());
+    }
 
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
@@ -313,7 +320,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
 
     for (size_t i = 0; i < s_level_bill.size(); i++)
     {
-        if (bill_values[i] > s_level_bill.at(map_coin.at(i)))
+        if (bill_values[i] > s_level_bill.at(map_bill.at(i)))
             return crow::response(crow::status::CONFLICT, "No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
         total += bill_values[i] * map_bill.at(i);
     }
