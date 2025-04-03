@@ -19,7 +19,7 @@ private:
     std::string test_text_impresion();
     void actualiza_buffer();
 
-    Glib::RefPtr<Gtk::TextBuffer> text_buffer = Gtk::TextBuffer::create();;
+    Glib::RefPtr<Gtk::TextBuffer> text_buffer = Gtk::TextBuffer::create();
 
 public:
     Impresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
