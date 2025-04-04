@@ -55,6 +55,7 @@ set(SOURCES
     src/controller/pago_manual.cpp
     src/controller/refill.cpp
     src/controller/config.cpp
+    src/controller/configuracion.cpp
     src/controller/nip.cpp
     src/controller/nuevo_nip.cpp
     src/controller/log.cpp

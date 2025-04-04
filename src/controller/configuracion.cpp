@@ -198,6 +198,12 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
         response_json["ram"] = Global::System::exec("grep MemTotal /proc/meminfo | awk '{print $2/1024/1024 \" GB\"}' ");
         response_json["memory"] = Global::System::exec("lsblk -o SIZE -b | head -2 | tail -1 | awk '{print $1/1024/1024/1024 \" GB\"}'");
 
+        auto json_bill = Device::dv_bill.get_status_coneccion();
+        auto json_coin = Device::dv_coin.get_status_coneccion();
+
+        response_json["bill"] = json_bill;
+        response_json["coin"] = json_coin;
+
         return crow::response(response_json);
     }
 }

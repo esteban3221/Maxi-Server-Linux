@@ -5,8 +5,6 @@
 
 #include "view/main_window.hpp"
 
-#include "model/configuracion.hpp"
-
 #include "controller/session.hpp"
 #include "controller/log.hpp"
 
@@ -15,6 +13,7 @@
 #include "controller/pago_manual.hpp"
 #include "controller/refill.hpp"
 #include "controller/config.hpp"
+#include "controller/configuracion.hpp"
 #include "controller/nip.hpp"
 #include "controller/nuevo_nip.hpp"
 
@@ -23,6 +22,7 @@ class MainWindow : public VMainWindow
 private:
     Sesion sesion;
     LogData log_data;
+    CConfiguracion configuracion;
 
     sigc::connection conn;
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "global.hpp"
 #include "controller/config/impresora.hpp"
+#include "controller/c_sharp_validator.hpp"
 #include "model/configuracion.hpp"
 
 namespace RestApp = Global::Rest;
