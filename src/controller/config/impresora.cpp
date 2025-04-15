@@ -3,7 +3,6 @@
 
 Impresora::Impresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VImpresora(cobject, refBuilder)
 {
-    init_data();
 
     v_list_config_visualizacion->signal_row_activated().connect(sigc::mem_fun(*this, &Impresora::activa_visualizacion));
     v_list_config->signal_row_activated().connect(sigc::mem_fun(*this, &Impresora::activa_impresion));
@@ -11,6 +10,7 @@ Impresora::Impresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &
 
     v_text_ticket->set_buffer(text_buffer);
     v_text_ticket->signal_map().connect(sigc::mem_fun(*this, &Impresora::actualiza_buffer));
+    v_text_ticket->signal_map().connect(sigc::mem_fun(*this, &Impresora::init_data));
 
     Global::Widget::Impresora::v_switch_impresion->property_active().signal_changed().connect(sigc::mem_fun(*this, &Impresora::estado_checkbutton));
     for (auto &&i : v_check_config)

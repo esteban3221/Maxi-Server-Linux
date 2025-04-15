@@ -4,6 +4,7 @@
 #include <glibmm.h>
 
 #include "usuarios.hpp"
+#include "usuarios_roles.hpp"
 #include "global.hpp"
 #include "c_sharp_validator.hpp"
 
@@ -18,6 +19,8 @@ private:
     crow::response logout(const crow::request &req);
 
     crow::response poll_status(const crow::request &req);
+    crow::response get_all_users(const crow::request &req);
+    crow::response get_all_roles_by_id(const crow::request &req);
 
 public:
     Sesion(/* args */);

@@ -221,6 +221,7 @@ crow::response Refill::inicia(const crow::request &req)
     future2.wait();
 
     Log log;
+    crow::json::wvalue data;
     auto t_log = MLog::create
     (
         0,
@@ -242,12 +243,29 @@ crow::response Refill::inicia(const crow::request &req)
         std::system(command.c_str());
     }
 
+    auto user = std::make_unique<Usuarios>();
+
+    data["monedas"] = v_lbl_total_parcial_monedas->get_text();
+    data["billetes"] = v_lbl_total_parcial_billetes->get_text();
+
+    data["ticket"] = crow::json::wvalue::list();
+
+        data["ticket"][0]["id"] = t_log->m_id;
+        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+        data["ticket"][0]["tipo"] = t_log->m_tipo;
+        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
+        data["ticket"][0]["cambio"] = t_log->m_cambio;
+        data["ticket"][0]["total"] = t_log->m_total;
+        data["ticket"][0]["estatus"] = t_log->m_estatus;
+        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    
+    data["Cambio_faltante"] = Pago::faltante;
+
     async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
     is_busy.store(false);
     is_running.store(false);
 
-    return crow::response("Monedas: " + v_lbl_total_parcial_monedas->get_text() +
-                          "\nBilletes: " + v_lbl_total_parcial_billetes->get_text());
+    return crow::response(data);
 }
 
 crow::response Refill::get_dashboard(const crow::request &req)
@@ -264,7 +282,7 @@ crow::response Refill::get_dashboard(const crow::request &req)
     {
         auto m_list =  single_bill_selection->get_typed_object<MLevelCash>(i);
         json["bill"][i]["Denominacion"] = m_list->m_denominacion;
-        json["bill"][i]["Almamcenado"] = m_list->m_cant_alm;
+        json["bill"][i]["Almacenado"] = m_list->m_cant_alm;
         json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
         json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
     }
@@ -275,7 +293,7 @@ crow::response Refill::get_dashboard(const crow::request &req)
     {
         auto m_list =  single_coin_selection->get_typed_object<MLevelCash>(i);
         json["coin"][i]["Denominacion"] = m_list->m_denominacion;
-        json["coin"][i]["Almamcenado"] = m_list->m_cant_alm;
+        json["coin"][i]["Almacenado"] = m_list->m_cant_alm;
         json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
         json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
     }

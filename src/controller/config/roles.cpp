@@ -24,7 +24,8 @@ void Roles::init_data()
     factory->signal_setup().connect(sigc::mem_fun(*this, &Roles::on_setup_label));
     factory->signal_bind().connect(sigc::mem_fun(*this, &Roles::on_bind_name));
 
-    auto column = Gtk::ColumnViewColumn::create("Usuarios                                 ", factory);
+    auto column = Gtk::ColumnViewColumn::create("Usuario", factory);
+    column->set_expand(true);
     v_tree_usuarios->append_column(column);
 }
 

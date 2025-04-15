@@ -20,7 +20,7 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const s
     tam_row = std::stoi(tam);
 
     auto query = "SELECT * FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
-                 " LIMIT 100 OFFSET ?";
+                 " ORDER BY id DESC LIMIT 100 OFFSET ?";
     database.sqlite3->command(query, paginacion);
     auto m_list = Gio::ListStore<MLog>::create();
 

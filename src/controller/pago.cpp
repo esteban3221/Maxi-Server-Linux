@@ -256,6 +256,7 @@ crow::response Pago::inicia(const crow::request &req)
     Pago::da_pago(balance.cambio.load(), slot, "Pago", estatus);
 
     Log log;
+    crow::json::wvalue data;
     auto t_log = MLog::create(
         0,
         Global::User::id,
@@ -275,6 +276,21 @@ crow::response Pago::inicia(const crow::request &req)
         std::system(command.c_str());
     }
 
+    auto user = std::make_unique<Usuarios>();
+
+    data["ticket"] = crow::json::wvalue::list();
+
+        data["ticket"][0]["id"] = t_log->m_id;
+        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+        data["ticket"][0]["tipo"] = t_log->m_tipo;
+        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
+        data["ticket"][0]["cambio"] = t_log->m_cambio;
+        data["ticket"][0]["total"] = t_log->m_total;
+        data["ticket"][0]["estatus"] = t_log->m_estatus;
+        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    
+    data["Cambio_faltante"] = Pago::faltante;
+
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
@@ -283,7 +299,7 @@ crow::response Pago::inicia(const crow::request &req)
     balance.ingreso.store(0);
     balance.cambio.store(0);
 
-    return crow::response(crow::status::OK);
+    return crow::response(data);
 }
 
 crow::response Pago::inicia_manual(const crow::request &req)
@@ -296,15 +312,13 @@ crow::response Pago::inicia_manual(const crow::request &req)
 
     std::vector<int> bill_values;
     for (auto &&i : bodyParams["bill"])
-    {
         bill_values.push_back(i.i());
-    }
+    
 
     std::vector<int> coin_values;
     for (auto &&i : bodyParams["coin"])
-    {
         coin_values.push_back(i.i());
-    }
+
 
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
@@ -355,6 +369,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
     Pago::da_pago(bill, coin, slot, "Pago Manual", estatus);
 
     Log log;
+    crow::json::wvalue data;
     auto t_log = MLog::create
     (
         0,
@@ -374,8 +389,23 @@ crow::response Pago::inicia_manual(const crow::request &req)
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());
     }
+    auto user = std::make_unique<Usuarios>();
+
+    data["ticket"] = crow::json::wvalue::list();
+
+        data["ticket"][0]["id"] = t_log->m_id;
+        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+        data["ticket"][0]["tipo"] = t_log->m_tipo;
+        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
+        data["ticket"][0]["cambio"] = t_log->m_cambio;
+        data["ticket"][0]["total"] = t_log->m_total;
+        data["ticket"][0]["estatus"] = t_log->m_estatus;
+        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    
+    data["Cambio_faltante"] = Pago::faltante;
+
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
 
-    return crow::response(crow::status::OK);
+    return crow::response(data);
 }

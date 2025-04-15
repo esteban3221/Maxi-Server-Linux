@@ -9,8 +9,9 @@ class CConfiguracion
 {
 private:
 crow::response actualiza_impresion(const crow::request &req);
-crow::response actualiza_informacion(const crow::request &req);
-crow::response get_informacion(const crow::request &req);
+crow::response actualiza_informacion_empresa(const crow::request &req);
+crow::response get_informacion_empresa(const crow::request &req);
+crow::response get_informacion_impresora(const crow::request &req);
 crow::response test_impresion(const crow::request &req);
 
 crow::response reiniciar(const crow::request &req);

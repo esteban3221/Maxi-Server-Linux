@@ -3,7 +3,7 @@
 
 Empresa::Empresa(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VEmpresa(cobject, refBuilder)
 {
-    init_data();
+    signal_map().connect(sigc::mem_fun(*this, &Empresa::init_data));
 
     for (size_t i = 0; i < 5; i++)
         v_list_ety_datos[i]->signal_changed().connect(sigc::mem_fun(*this, &Empresa::actualiza_datos));
