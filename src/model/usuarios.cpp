@@ -77,5 +77,5 @@ void Usuarios::delete_usuario(const Glib::RefPtr<MUsuarios> &usuario)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("DELETE FROM usuarios WHERE id = ?", usuario->m_id);
-    database.sqlite3->command("DELETE FROM usuarios_roles WHERE id = ?", usuario->m_id);
+    database.sqlite3->command("DELETE FROM usuario_roles WHERE id = ?", usuario->m_id);
 }

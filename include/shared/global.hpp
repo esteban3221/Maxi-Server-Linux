@@ -1,4 +1,6 @@
 #pragma once
+#include <usuarios_roles.hpp>
+
 #include <crow.h>
 #include <libnotify/notify.h>
 #include <cpr/cpr.h>
@@ -53,9 +55,39 @@ namespace Global
         
     } // namespace Widget
 
+    namespace User
+    {
+        extern std::string Current;
+        extern int id;
+
+        enum class Rol : u_int16_t
+        {
+            Venta = 1,
+            Pago,
+            Carga,
+            Retirada,
+            Cambio_M,
+            Cambio_A,
+            Ingresos,
+            Enviar_Casette,
+            Retirar_Casette,
+            Consulta_Efectivo,
+            Mov_Pendientes,
+            Consulta_Movimientos,
+            Cierre_Faltantes,
+            Estadisticas,
+            Fianza,
+            Mostrar_Reportes,
+            Configuracion,
+            Salir_Escritorio,
+            Apagar_Equipo
+        };
+    } // namespace User
+
     namespace Utility
     {
         extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
+        extern void valida_autorizacion(const crow::request &req, User::Rol rol);
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
         extern void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func);
@@ -147,11 +179,5 @@ namespace Global
         }
         dispatcher.emit();
     }
-
-    namespace User
-    {
-        extern std::string Current;
-        extern int id;
-    } // namespace User
 
 } // namespace Helper

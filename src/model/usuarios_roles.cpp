@@ -31,9 +31,14 @@ Glib::RefPtr<Gio::ListStore<MUsuariosRoles>> UsuariosRoles::get_usuario_roles_by
 void UsuariosRoles::update_usuario_roles(size_t id, const Glib::RefPtr<Gio::ListStore<MRoles>> & list_roles)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("DELETE FROM usuario_roles WHERE id = ?", id);
+    database.sqlite3->command("DELETE FROM usuario_roles WHERE id_usuario = ?", id);
 
-    for (size_t i = 0; i < 19; i++)
-            if(list_roles.get()->get_item(i))
-                database.sqlite3->command("INSERT INTO usuario_roles values (NULL, ? , ?)", id, i+1);
+    for (size_t i = 0; i < list_roles->get_n_items(); i++)
+    {
+        auto item = list_roles->get_item(i);
+        database.sqlite3->command("INSERT INTO usuario_roles VALUES(null,?,?)",
+                                  id,
+                                  item->m_id);
+    }
+                
 }

@@ -9,6 +9,9 @@ Sesion::Sesion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/sesion/login").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::login));
     CROW_ROUTE(RestApp::app, "/sesion/alta_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::alta_usuario));
+    CROW_ROUTE(RestApp::app, "/sesion/baja_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::baja_usuario));
+    CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario));
+    CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario_roles").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario_roles));
     CROW_ROUTE(RestApp::app, "/sesion/logout").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::logout));
     CROW_ROUTE(RestApp::app, "/test_coneccion").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::poll_status));
 
@@ -111,17 +114,71 @@ crow::response Sesion::alta_usuario(const crow::request &req)
     auto usuarios = std::make_unique<Usuarios>();
     nuevo_usuario->m_id = usuarios->insert_usuario(nuevo_usuario);
 
-    //@@@esteban3221 falta agregar cambios a la vista
 
     return crow::response();
 }
 
 crow::response Sesion::baja_usuario(const crow::request &req)
 {
+    if (req.body.empty())
+        return crow::response(crow::status::BAD_REQUEST);
+
+    
+    auto bodyParams = crow::json::load(req.body);
+    auto id_usuario = bodyParams["id"].i();
+    auto usuarios = std::make_unique<Usuarios>();
+    auto usuario = usuarios->get_usuarios(id_usuario);
+
+    if (usuario)
+    {
+        usuarios->delete_usuario(usuario);
+    }
+    else
+    {
+        return crow::response(crow::status::NOT_FOUND);
+    }
+
     return crow::response();
 }
 
 crow::response Sesion::modifica_usuario(const crow::request &req)
 {
+    if (req.body.empty())
+        return crow::response(crow::status::BAD_REQUEST);
+    
+    //@@@esteban3221 falta validar permisos
+    auto bodyParams = crow::json::load(req.body);
+
+    auto usuario = MUsuarios::create
+    (
+        bodyParams["id"].i(), 
+        Glib::ustring{bodyParams["username"].s()},
+        Glib::ustring{bodyParams["password"].s()}
+    );
+
+    auto usuarios = std::make_unique<Usuarios>();
+    usuarios->update_usuario(usuario);
+    return crow::response();
+}
+
+crow::response Sesion::modifica_usuario_roles(const crow::request &req)
+{
+    if (req.body.empty())
+        return crow::response(crow::status::BAD_REQUEST);
+
+    //@@@esteban3221 falta validar permisos
+    auto bodyParams = crow::json::load(req.body);
+    auto id_usuario = bodyParams["id_usuario"].i();
+
+    auto roles = std::make_unique<UsuariosRoles>();
+    auto list_roles = Gio::ListStore<MRoles>::create();
+    if (bodyParams["roles"].t() != crow::json::type::Null)
+        for (size_t i = 0; i < bodyParams["roles"].size(); i++)
+        {
+            list_roles->append(MRoles::create(bodyParams["roles"][i].i(), ""));
+        }
+    roles->update_usuario_roles(id_usuario, list_roles);
+
+
     return crow::response();
 }

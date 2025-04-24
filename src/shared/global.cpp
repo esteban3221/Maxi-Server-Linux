@@ -51,6 +51,27 @@ namespace Global
             return total;
         }
 
+        void valida_autorizacion(const crow::request &req, User::Rol rol)
+        {
+            auto auth_header = req.get_header_value("Authorization");
+            if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
+                throw std::runtime_error("Error en la peticion, no se recibieron datos / token");
+
+            std::string mycreds = auth_header.substr(6);
+            if (mycreds != ApiConsume::token)
+                throw std::runtime_error("token invalido");
+
+            UsuariosRoles u_roles;
+            auto roles = u_roles.get_usuario_roles_by_id(User::id);
+            for (size_t i = 0; i < roles->get_n_items(); i++)
+            {
+                auto list = roles->get_item(i);
+                if (list->m_id_rol == static_cast<u_int16_t>(rol))
+                    return;
+            }
+            throw std::runtime_error("No tiene permisos para esta operacion");
+        }
+
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
