@@ -12,6 +12,8 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/test_impresion").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::test_impresion));
     CROW_ROUTE(RestApp::app, "/configuracion/reiniciar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::reiniciar));
     CROW_ROUTE(RestApp::app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
+
+    CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -20,12 +22,13 @@ CConfiguracion::~CConfiguracion()
 
 crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     try
     {
         auto db = std::make_unique<Configuracion>();
 
         auto bodyParams = crow::json::load(req.body);
-        
+
         db->update_conf(MConfiguracion::create(15, "Activa", std::to_string(bodyParams["activa"].b())));
 
         db->update_conf(MConfiguracion::create(16, "agradecimiento", std::to_string(bodyParams["agradecimiento"].b())));
@@ -45,16 +48,9 @@ crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
 
 crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     try
     {
-        // auto &session = app.get_context<Session>(req);
-        // if (auto status = Global::User::validPermissions(req, session, Global::User::allRoles);
-        //     status.first != crow::status::OK)
-        // {
-        //     return crow::response(status.first);
-        // }
-        // else
-        // {
 
         auto bodyParams = crow::json::load(req.body);
 
@@ -86,14 +82,8 @@ crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request
 
 crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 {
-    // auto &session = app.get_context<Session>(req);
-    // if (auto status = Global::User::validPermissions(req, session,
-    //                                                  {Global::User::Rol::Configuracion});
-    //     status.first != crow::status::OK)
-    // {
-    //     return crow::response(status.first);
-    // }
-    // else
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(10, 14);
     {
@@ -109,6 +99,7 @@ crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_impresora(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(15, 21);
 
@@ -127,14 +118,7 @@ crow::response CConfiguracion::get_informacion_impresora(const crow::request &re
 
 crow::response CConfiguracion::test_impresion(const crow::request &req)
 {
-    // auto &session = app.get_context<Session>(req);
-
-    // if (auto status = Global::User::validPermissions(req, session, {Global::User::Rol::Configuracion});
-    //     status.first != crow::status::OK)
-    // {
-    //     return crow::response(status.first);
-    // }
-    // else
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
         std::string command = "echo \"" + Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()), 0) + "\" | lp";
         std::system(command.c_str());
@@ -147,13 +131,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 
 crow::response CConfiguracion::reiniciar(const crow::request &req)
 {
-    // auto &session = app.get_context<Session>(req);
-    // if (auto status = Global::User::validPermissions(req, session, {Global::User::Rol::Apagar_Equipo});
-    //     status.first != crow::status::OK)
-    // {
-    //     return crow::response(status.first);
-    // }
-    // else
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
         Global::System::exec("shutdown -r +1 &");
         Global::Rest::app.stop();
@@ -166,13 +144,7 @@ crow::response CConfiguracion::reiniciar(const crow::request &req)
 
 crow::response CConfiguracion::apagar(const crow::request &req)
 {
-    // auto &session = app.get_context<Session>(req);
-    // if (auto status = Global::User::validPermissions(req, session, {Global::User::Rol::Apagar_Equipo});
-    //     status.first != crow::status::OK)
-    // {
-    //     return crow::response(status.first);
-    // }
-    // else
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
         Global::System::exec("shutdown +1 &");
         Global::Rest::app.stop();
@@ -185,13 +157,7 @@ crow::response CConfiguracion::apagar(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 {
-    // auto &session = app.get_context<Session>(req);
-    // if (auto status = Global::User::validPermissions(req, session, {Global::User::Rol::Configuracion});
-    //     status.first != crow::status::OK)
-    // {
-    //     return crow::response(status.first);
-    // }
-    // else
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
         const std::string &parent{"cat /sys/devices/virtual/dmi/id/"};
         const std::string &a{parent + "board_vendor"};
@@ -213,4 +179,33 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 
         return crow::response(response_json);
     }
+}
+
+crow::response CConfiguracion::custom_command(const crow::request &req)
+{
+    auto bodyParams = crow::json::load(req.body);
+    auto rol = bodyParams["rol"].i();
+
+    Global::Utility::valida_autorizacion(req, (Global::User::Rol)rol);
+
+    crow::json::wvalue response_json;
+
+    crow::json::rvalue json_bill, json_coin;
+    if (bodyParams.has("bill"))
+    {
+        auto bill_command = bodyParams["bill"]["command"].s();
+        auto bill_args = bodyParams["bill"]["args"].s();
+        json_bill = crow::json::load(Device::dv_bill.command_post(bill_command, bill_args).second);
+    }
+
+    if (bodyParams.has("coin"))
+    {
+        auto coin_command = bodyParams["coin"]["command"].s();
+        auto coin_args = bodyParams["coin"]["args"].s();
+        json_coin = crow::json::load(Device::dv_coin.command_post(coin_command, coin_args).second);
+
+    response_json["bill"] = json_bill;
+    response_json["coin"] = json_coin;
+
+    return crow::response(response_json);
 }

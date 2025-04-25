@@ -64,6 +64,7 @@ crow::response Sesion::poll_status(const crow::request &req)
 
 crow::response Sesion::get_all_users(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto usuarios = std::make_unique<Usuarios>();
     auto m_list = usuarios->get_usuarios();
     crow::json::wvalue json;
@@ -81,6 +82,7 @@ crow::response Sesion::get_all_users(const crow::request &req)
 
 crow::response Sesion::get_all_roles_by_id(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id_usuario"].i();
 
@@ -101,10 +103,7 @@ crow::response Sesion::get_all_roles_by_id(const crow::request &req)
 
 crow::response Sesion::alta_usuario(const crow::request &req)
 {
-    if (req.body.empty())
-        return crow::response(crow::status::BAD_REQUEST);
-
-    //@@@esteban3221 falta validar permisos
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto bodyParams = crow::json::load(req.body);
 
     auto nuevo_usuario = MUsuarios::create((size_t)1, // de momento no se sabe que id tiene
@@ -120,10 +119,8 @@ crow::response Sesion::alta_usuario(const crow::request &req)
 
 crow::response Sesion::baja_usuario(const crow::request &req)
 {
-    if (req.body.empty())
-        return crow::response(crow::status::BAD_REQUEST);
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
-    
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id"].i();
     auto usuarios = std::make_unique<Usuarios>();
@@ -143,10 +140,8 @@ crow::response Sesion::baja_usuario(const crow::request &req)
 
 crow::response Sesion::modifica_usuario(const crow::request &req)
 {
-    if (req.body.empty())
-        return crow::response(crow::status::BAD_REQUEST);
-    
-    //@@@esteban3221 falta validar permisos
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+
     auto bodyParams = crow::json::load(req.body);
 
     auto usuario = MUsuarios::create
@@ -163,10 +158,8 @@ crow::response Sesion::modifica_usuario(const crow::request &req)
 
 crow::response Sesion::modifica_usuario_roles(const crow::request &req)
 {
-    if (req.body.empty())
-        return crow::response(crow::status::BAD_REQUEST);
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
-    //@@@esteban3221 falta validar permisos
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id_usuario"].i();
 

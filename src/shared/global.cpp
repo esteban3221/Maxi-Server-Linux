@@ -57,7 +57,7 @@ namespace Global
             if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
                 throw std::runtime_error("Error en la peticion, no se recibieron datos / token");
 
-            std::string mycreds = auth_header.substr(6);
+            std::string mycreds = auth_header.substr(7);
             if (mycreds != ApiConsume::token)
                 throw std::runtime_error("token invalido");
 

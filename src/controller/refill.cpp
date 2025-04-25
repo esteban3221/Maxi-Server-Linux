@@ -198,6 +198,7 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
 
 crow::response Refill::inicia(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Carga);
     using namespace Global::EValidador;
 
     balance.ingreso.store(0);
@@ -270,6 +271,7 @@ crow::response Refill::inicia(const crow::request &req)
 
 crow::response Refill::get_dashboard(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
     on_show();
     crow::json::wvalue json;
 

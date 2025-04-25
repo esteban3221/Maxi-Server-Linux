@@ -11,6 +11,7 @@ LogData::~LogData()
 
 crow::response LogData::get_log(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Movimientos);
     auto bodyParams = crow::json::load(req.body);
 
     auto tipo = bodyParams["tipo"].s();

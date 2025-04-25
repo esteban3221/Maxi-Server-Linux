@@ -90,6 +90,8 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 
 crow::response Venta::inicia(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Venta);
+
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
     cancelado = false;
@@ -190,6 +192,7 @@ crow::response Venta::inicia(const crow::request &req)
 
 crow::response Venta::deten(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Venta);
     Global::EValidador::is_running.store(false);
     cancelado = true;
     Device::dv_coin.deten_cobro_v6();

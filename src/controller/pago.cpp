@@ -224,6 +224,7 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
 
 crow::response Pago::inicia(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_A);
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
 
@@ -304,6 +305,7 @@ crow::response Pago::inicia(const crow::request &req)
 
 crow::response Pago::inicia_manual(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
 

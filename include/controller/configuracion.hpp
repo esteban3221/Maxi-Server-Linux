@@ -2,6 +2,7 @@
 #include "global.hpp"
 #include "controller/config/impresora.hpp"
 #include "controller/c_sharp_validator.hpp"
+#include "c_sharp_validator.hpp"
 #include "model/configuracion.hpp"
 
 namespace RestApp = Global::Rest;
@@ -18,6 +19,9 @@ crow::response reiniciar(const crow::request &req);
 crow::response apagar(const crow::request &req);
 
 crow::response get_informacion_sistema(const crow::request &req);
+crow::response get_informacion_wifi(const crow::request &req);
+
+crow::response custom_command(const crow::request &req);
 public:
     CConfiguracion(/* args */);
     ~CConfiguracion();
