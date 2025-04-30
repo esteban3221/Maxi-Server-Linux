@@ -203,9 +203,13 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
         auto coin_command = bodyParams["coin"]["command"].s();
         auto coin_args = bodyParams["coin"]["args"].s();
         json_coin = crow::json::load(Device::dv_coin.command_post(coin_command, coin_args).second);
+    }
 
-    response_json["bill"] = json_bill;
-    response_json["coin"] = json_coin;
+    if (not json_bill.error())
+        response_json["bill"] = json_bill;
+    
+    if (not json_coin.error())
+        response_json["coin"] = json_coin;
 
     return crow::response(response_json);
 }
