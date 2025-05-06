@@ -82,7 +82,7 @@ crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request
 
 crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
 
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(10, 14);
@@ -157,28 +157,27 @@ crow::response CConfiguracion::apagar(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
-    {
-        const std::string &parent{"cat /sys/devices/virtual/dmi/id/"};
-        const std::string &a{parent + "board_vendor"};
-        const std::string &b{parent + "product_name"};
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
-        crow::json::wvalue response_json;
+    const std::string &parent{"cat /sys/devices/virtual/dmi/id/"};
+    const std::string &a{parent + "board_vendor"};
+    const std::string &b{parent + "product_name"};
 
-        response_json["hostname"] = Global::System::exec("cat /etc/hostname");
-        response_json["model"] = Global::System::exec(a.c_str()).empty() ? Global::System::exec("cat /proc/device-tree/model") : Global::System::exec(a.c_str()) + " " + Global::System::exec(b.c_str());
-        response_json["processor"] = Global::System::exec("lscpu | grep -E 'Nombre del modelo|Model name' | awk -F': ' '{print $2}'");
-        response_json["ram"] = Global::System::exec("grep MemTotal /proc/meminfo | awk '{print $2/1024/1024 \" GB\"}' ");
-        response_json["memory"] = Global::System::exec("lsblk -o SIZE -b | head -2 | tail -1 | awk '{print $1/1024/1024/1024 \" GB\"}'");
+    crow::json::wvalue response_json;
 
-        auto json_bill = Device::dv_bill.get_status_coneccion();
-        auto json_coin = Device::dv_coin.get_status_coneccion();
+    response_json["hostname"] = Global::System::exec("cat /etc/hostname");
+    response_json["model"] = Global::System::exec(a.c_str()).empty() ? Global::System::exec("cat /proc/device-tree/model") : Global::System::exec(a.c_str()) + " " + Global::System::exec(b.c_str());
+    response_json["processor"] = Global::System::exec("lscpu | grep -E 'Nombre del modelo|Model name' | awk -F': ' '{print $2}'");
+    response_json["ram"] = Global::System::exec("grep MemTotal /proc/meminfo | awk '{print $2/1024/1024 \" GB\"}' ");
+    response_json["memory"] = Global::System::exec("lsblk -o SIZE -b | head -2 | tail -1 | awk '{print $1/1024/1024/1024 \" GB\"}'");
 
-        response_json["bill"] = json_bill;
-        response_json["coin"] = json_coin;
+    auto json_bill = Device::dv_bill.get_status_coneccion();
+    auto json_coin = Device::dv_coin.get_status_coneccion();
 
-        return crow::response(response_json);
-    }
+    response_json["bill"] = json_bill;
+    response_json["coin"] = json_coin;
+
+    return crow::response(response_json);
 }
 
 crow::response CConfiguracion::custom_command(const crow::request &req)
@@ -195,19 +194,22 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
     {
         auto bill_command = bodyParams["bill"]["command"].s();
         auto bill_args = bodyParams["bill"]["args"].s();
-        json_bill = crow::json::load(Device::dv_bill.command_post(bill_command, bill_args).second);
+        int intentos = 5;
+        Device::dv_bill.inicia_dispositivo_v6();
+        json_bill = crow::json::load(Device::dv_bill.command_post(bill_command, bill_args, true).second);
     }
 
     if (bodyParams.has("coin"))
     {
         auto coin_command = bodyParams["coin"]["command"].s();
         auto coin_args = bodyParams["coin"]["args"].s();
-        json_coin = crow::json::load(Device::dv_coin.command_post(coin_command, coin_args).second);
+        Device::dv_coin.inicia_dispositivo_v6();
+        json_coin = crow::json::load(Device::dv_coin.command_post(coin_command, coin_args, true).second);
     }
 
     if (not json_bill.error())
         response_json["bill"] = json_bill;
-    
+
     if (not json_coin.error())
         response_json["coin"] = json_coin;
 

@@ -10,7 +10,7 @@ namespace RestApp = Global::Rest;
 class Refill final : public VRefill
 {
 protected:
-    void on_show();
+    void on_show_map();
     void func_poll(const std::string &status, const crow::json::rvalue &data);
 
 private:
@@ -24,6 +24,7 @@ private:
     void calcula_total(const std::shared_ptr<Gtk::SingleSelection> &select_bill, const std::shared_ptr<Gtk::SingleSelection> &select_coin);
 
     int total, total_bill, total_coin, parcial_bill, parcial_coin;
+    uint64_t total_parcial_monedas[4]{0}, total_parcial_billetes[6]{0};
 
     const std::unordered_map<int, int> map_bill = {
         {0, 20},
