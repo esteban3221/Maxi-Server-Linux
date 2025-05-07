@@ -41,4 +41,5 @@ public:
     // std::vector<std::shared_ptr<Model::LevelCash_t>> get_log();
     Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash();
     void update_level_cash(const Glib::RefPtr<MLevelCash> &level);
+    void update_nivel_inmo(int denominacion, int nivel_inmo);
 };

@@ -20,8 +20,12 @@ crow::response apagar(const crow::request &req);
 
 crow::response get_informacion_sistema(const crow::request &req);
 crow::response get_informacion_wifi(const crow::request &req);
+crow::response actualiza_pos(const crow::request &req);
 
 crow::response custom_command(const crow::request &req);
+
+void descomprime_zip(const std::string &filename);
+void limpiar_archivos(const std::string &filename, const std::string &path = "");
 public:
     CConfiguracion(/* args */);
     ~CConfiguracion();

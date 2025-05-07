@@ -33,10 +33,19 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> LevelCash::get_level_cash()
 void LevelCash::update_level_cash(const Glib::RefPtr<MLevelCash> &level)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("update ? set Denominacion = ?, Cant_Alm = ? Cant_Recy = ? Nivel_inmo = ?",
+    database.sqlite3->command("update ? set Cant_Alm = ? Cant_Recy = ? Nivel_Inmo = ? where Denominacion = ?",
                               TIPO.c_str(),
-                              level->m_denominacion,
+                              
                               level->m_cant_alm,
                               level->m_cant_recy,
-                              level->m_nivel_inmo);
+                              level->m_nivel_inmo,
+                              level->m_denominacion);
+}
+
+void LevelCash::update_nivel_inmo(int denominacion, int nivel_inmo)
+{
+    auto &database = Database::getInstance();
+    database.sqlite3->command("update \"" + TIPO + "\" set Nivel_Inmo = ? where Denominacion = ?",
+                              nivel_inmo,
+                              denominacion);
 }

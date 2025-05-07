@@ -1,4 +1,5 @@
 #include "controller/refill.hpp"
+#include "refill.hpp"
 
 Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VRefill(cobject, refBuilder),
                                                                                         total(0),
@@ -17,6 +18,7 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
     CROW_ROUTE(RestApp::app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
+    CROW_ROUTE(RestApp::app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
 }
 
 Refill::~Refill()
@@ -326,19 +328,28 @@ crow::response Refill::get_dashboard(const crow::request &req)
     return crow::response(json);
 }
 
+crow::response Refill::update_imovilidad(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    auto data = crow::json::load(req.body);
+    auto denominacion = data["denominacion"].i();
+    auto nivel_inmo = data["nivel_inmo"].i();
+
+    auto bd = denominacion > 10 ? std::make_unique<LevelCash>("Level_Bill") : std::make_unique<LevelCash>("Level_Coin");
+    bd->update_nivel_inmo(denominacion, nivel_inmo);
+    return crow::response();
+}
+
 void Refill::deten()
 {
     async_gui.dispatch_to_gui([this](){ v_btn_deten->set_sensitive(false); });
 
     for (auto &&i : total_parcial_monedas)
-    {
         i = 0;
-    }
     
     for (auto &&i : total_parcial_billetes)
-    {
         i = 0;
-    }
+    
     Global::EValidador::is_running.store(false);
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();

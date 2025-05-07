@@ -14,6 +14,7 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
 
     CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
+    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -180,6 +181,41 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
     return crow::response(response_json);
 }
 
+crow::response CConfiguracion::actualiza_pos(const crow::request &req)
+{
+    crow::multipart::message msg(req);
+
+    auto file_part = msg.get_part_by_name("file");
+    std::string filename;
+
+    auto content_disp = file_part.get_header_object("Content-Disposition");
+    if (auto param = file_part.get_header_object("Content-Disposition").params; param.size() > 0)
+        filename = param.at("filename");
+    else
+        filename = "archivo_sin_nombre";
+    
+    // Guardar el archivo en disco
+    std::ofstream out(filename, std::ios::binary);
+    out.write(file_part.body.data(), file_part.body.size());
+    out.close();
+
+    // quitar .zip
+    std::string path = filename.substr(0, filename.find_last_of('.')).c_str();
+
+    descomprime_zip(filename);
+    int result = std::system(("sh ./" + path +"/update/install.sh").c_str());
+    if (result == -1)
+    {
+        Global::System::showNotify("Sistema", "Error al ejecutar el script de instalación.", "dialog-error");
+        throw std::runtime_error("Error al ejecutar el script de instalación.");
+    }
+    limpiar_archivos(filename, path);
+
+    Global::System::showNotify("Sistema", "Actualizando Sistema no apague el sistema.", "dialog-information");
+
+    return crow::response(200, "Archivo recibido: " + filename);
+}
+
 crow::response CConfiguracion::custom_command(const crow::request &req)
 {
     auto bodyParams = crow::json::load(req.body);
@@ -214,4 +250,31 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
         response_json["coin"] = json_coin;
 
     return crow::response(response_json);
+}
+
+void CConfiguracion::descomprime_zip(const std::string &filename)
+{
+    std::string command = "unzip -o " + filename + " -d .";
+    auto resultado = std::system(command.c_str());
+
+    if (resultado == -1)
+    {
+        Global::System::showNotify("Sistema", "Error al descomprimir el archivo.", "dialog-error");
+        throw std::runtime_error("Error al descomprimir el archivo.");
+    }
+
+    Global::System::showNotify("Sistema", "Se descomprimio el archivo.", "dialog-information");
+    
+}
+
+void CConfiguracion::limpiar_archivos(const std::string &filename, const std::string &path)
+{
+    std::string command2 = "rm -f " + filename + "; rm -r " + path;
+    int resultado = std::system(command2.c_str());
+    if (resultado == -1)
+    {
+        Global::System::showNotify("Sistema", "Error al eliminar el archivo comprimido.", "dialog-error");
+        throw std::runtime_error("Error al eliminar el archivo comprimido.");
+    }
+    Global::System::showNotify("Sistema", "Se elimino el archivo comprimido.", "dialog-information");
 }
