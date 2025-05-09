@@ -115,14 +115,10 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
 
 void Refill::on_show_map()
 {
-    Glib::signal_idle().connect_once([this](){
+    Glib::signal_idle().connect_once([this]()
+                                     {
     try
     {
-        auto level_cash_coin = std::make_unique<LevelCash>("Level_Coin");
-        auto m_list_coin = level_cash_coin->get_level_cash();
-
-        auto level_cash_bill = std::make_unique<LevelCash>("Level_Bill");
-        auto m_list_bill = level_cash_bill->get_level_cash();
 
         auto level_coin = Device::dv_coin.get_level_cash_actual();
         auto level_bill = Device::dv_bill.get_level_cash_actual();
@@ -140,19 +136,19 @@ void Refill::on_show_map()
         list_store_bill->remove_all();
         for (size_t i = 0; i < level_bill->get_n_items(); i++)
         {
-            list_store_bill->append(MLevelCash::create(level_bill->get_item(i)->m_denominacion / 100,
-                                                       m_list_bill->get_item(i)->m_cant_alm,
+            list_store_bill->append(MLevelCash::create(level_bill->get_item(i)->m_denominacion,
+                                                       level_bill->get_item(i)->m_cant_alm,
                                                        level_bill->get_item(i)->m_cant_recy,
-                                                       m_list_bill->get_item(i)->m_nivel_inmo,
+                                                       level_bill->get_item(i)->m_nivel_inmo,
                                                        total_parcial_billetes[i]));
         }
         list_store_coin->remove_all();
         for (size_t i = 0; i < level_coin->get_n_items(); i++)
         {
-            list_store_coin->append(MLevelCash::create(level_coin->get_item(i)->m_denominacion / 100,
-                                                       m_list_coin->get_item(i)->m_cant_alm,
+            list_store_coin->append(MLevelCash::create(level_coin->get_item(i)->m_denominacion,
+                                                       level_coin->get_item(i)->m_cant_alm,
                                                        level_coin->get_item(i)->m_cant_recy,
-                                                       m_list_coin->get_item(i)->m_nivel_inmo,
+                                                       level_coin->get_item(i)->m_nivel_inmo,
                                                        total_parcial_monedas[i]));
         }
 
@@ -164,8 +160,7 @@ void Refill::on_show_map()
     catch (const std::exception &e)
     {
         std::cerr << e.what() << '\n';
-    }
-    });
+    } });
 }
 
 void Refill::func_poll(const std::string &status, const crow::json::rvalue &data)
@@ -176,6 +171,12 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
+        auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
+        single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
+    
+        auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
+        single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
+
         balance.ingreso_parcial.store(data["value"].i());
         auto ingreso = (data["value"].i() / 100);
         balance.ingreso += ingreso;
@@ -194,7 +195,6 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
                     Device::dv_bill.acepta_dinero(status, true);
 
                 on_show_map();
-                calcula_total(single_bill_selection, single_coin_selection);
             }
             else
                 Global::System::showNotify("Refill",
@@ -286,8 +286,9 @@ crow::response Refill::inicia(const crow::request &req)
 crow::response Refill::get_dashboard(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
-
     crow::json::wvalue json;
+    
+    on_show_map();
 
     json["bill"] = crow::json::wvalue::list();
     json["coin"] = crow::json::wvalue::list();
@@ -298,24 +299,24 @@ crow::response Refill::get_dashboard(const crow::request &req)
     auto level_cash_bill = std::make_unique<LevelCash>("Level_Bill");
     auto m_list_bill = level_cash_bill->get_level_cash();
 
-    auto single_bill_selection = Device::dv_bill.get_level_cash_actual();
+    auto bill_selection = Device::dv_bill.get_level_cash_actual();
 
-    for (size_t i = 0; i < single_bill_selection->get_n_items(); i++)
+    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
     {
-        auto m_list = single_bill_selection->get_typed_object<MLevelCash>(i);
+        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
         auto m_list_ = m_list_bill->get_typed_object<MLevelCash>(i);
-        json["bill"][i]["Denominacion"] = m_list->m_denominacion / 100;
+        json["bill"][i]["Denominacion"] = m_list->m_denominacion;
         json["bill"][i]["Almacenado"] = m_list_->m_cant_alm;
         json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
         json["bill"][i]["Inmovilidad"] = m_list_->m_nivel_inmo;
     }
 
-    auto single_coin_selection = Device::dv_coin.get_level_cash_actual();
-    for (size_t i = 0; i < single_coin_selection->get_n_items(); i++)
+    auto coin_selection = Device::dv_coin.get_level_cash_actual();
+    for (size_t i = 0; i < coin_selection->get_n_items(); i++)
     {
-        auto m_list = single_coin_selection->get_typed_object<MLevelCash>(i);
+        auto m_list = coin_selection->get_typed_object<MLevelCash>(i);
         auto m_list_ = m_list_coin->get_typed_object<MLevelCash>(i);
-        json["coin"][i]["Denominacion"] = m_list->m_denominacion / 100;
+        json["coin"][i]["Denominacion"] = m_list->m_denominacion;
         json["coin"][i]["Almacenado"] = m_list_->m_cant_alm;
         json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
         json["coin"][i]["Inmovilidad"] = m_list_->m_nivel_inmo;
@@ -342,14 +343,15 @@ crow::response Refill::update_imovilidad(const crow::request &req)
 
 void Refill::deten()
 {
-    async_gui.dispatch_to_gui([this](){ v_btn_deten->set_sensitive(false); });
+    async_gui.dispatch_to_gui([this]()
+                              { v_btn_deten->set_sensitive(false); });
 
     for (auto &&i : total_parcial_monedas)
         i = 0;
-    
+
     for (auto &&i : total_parcial_billetes)
         i = 0;
-    
+
     Global::EValidador::is_running.store(false);
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();

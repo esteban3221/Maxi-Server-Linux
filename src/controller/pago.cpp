@@ -36,13 +36,13 @@ bool Pago::pago_poll(int ant_coin, int ant_bill)
     for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
     {
         auto m_list = actual_level_coin->get_item(i);
-        total_coin += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
+        total_coin += m_list->m_denominacion  * m_list->m_cant_recy;
     }
 
     for (size_t i = 0; i < actual_level_bill->get_n_items(); i++)
     {
         auto m_list = actual_level_bill->get_item(i);
-        total_bill += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
+        total_bill += m_list->m_denominacion * m_list->m_cant_recy;
     }
 
     int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);

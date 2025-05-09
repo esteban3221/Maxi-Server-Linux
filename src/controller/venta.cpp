@@ -35,13 +35,13 @@ bool Venta::pago_poll(int ant_coin, int ant_bill)
     for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
     {
         auto m_list = actual_level_coin->get_item(i);
-        total_coin += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
+        total_coin += m_list->m_denominacion * m_list->m_cant_recy;
     }
 
     for (size_t i = 0; i < actual_level_bill->get_n_items(); i++)
     {
         auto m_list = actual_level_bill->get_item(i);
-        total_bill += (m_list->m_denominacion / 100) * m_list->m_cant_recy;
+        total_bill += m_list->m_denominacion * m_list->m_cant_recy;
     }
 
     int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);
@@ -61,6 +61,28 @@ bool Venta::pago_poll(int ant_coin, int ant_bill)
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
+
+    if (status == "STACKED")
+    {
+        auto s_level = Device::dv_coin.get_level_cash_actual();
+
+        for (size_t i = 0; i < s_level->get_n_items(); i++)
+        {
+            auto m_list = s_level->get_item(i);
+            if (m_list->m_denominacion == balance.ingreso_parcial / 100)
+            {
+                auto m_list_ant = s_level_ant->get_item(i);
+
+                if (m_list_ant->m_cant_recy < m_list->m_cant_recy)
+                {
+                    auto db = std::make_unique<LevelCash>("Level_Bill");
+                    m_list_ant->m_cant_alm++;
+                    db->update_level_cash(m_list_ant);
+                }
+                break;
+            }
+        }
+    }
     // Monedero
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
@@ -68,6 +90,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
     {
         balance.ingreso_parcial.store(data["value"].i());
         Device::dv_bill.acepta_dinero(status, true);
+        s_level_ant = Device::dv_coin.get_level_cash_actual();
 
         balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
         async_gui.dispatch_to_gui([this]()
@@ -82,7 +105,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 
         if (balance.ingreso.load() >= balance.total.load())
         {
-            std::this_thread::sleep_for(std::chrono::seconds(2));
+            std::this_thread::sleep_for(std::chrono::seconds(1));
             on_btn_cancel_click();
         }
     }
@@ -107,20 +130,21 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-    { 
+                              { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this]()
+                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this]()
+                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
@@ -134,7 +158,7 @@ crow::response Venta::inicia(const crow::request &req)
         const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
         const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
-        
+
         if (cancelado)
             estatus = "Venta cancelada";
 
@@ -144,8 +168,7 @@ crow::response Venta::inicia(const crow::request &req)
 
     crow::json::wvalue data;
     Log log;
-    auto t_log = MLog::create
-    (
+    auto t_log = MLog::create(
         0,
         Global::User::id,
         "Venta",
@@ -153,8 +176,7 @@ crow::response Venta::inicia(const crow::request &req)
         balance.cambio.load(),
         balance.total.load(),
         "- " + concepto + " | " + (Pago::faltante > 0 ? estatus : "Venta Realizada con Exito."),
-        Glib::DateTime::create_now_local()
-    );
+        Glib::DateTime::create_now_local());
 
     auto folio = log.insert_log(t_log);
     t_log->m_id = folio;
@@ -169,15 +191,15 @@ crow::response Venta::inicia(const crow::request &req)
 
     data["ticket"] = crow::json::wvalue::list();
 
-        data["ticket"][0]["id"] = t_log->m_id;
-        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-        data["ticket"][0]["tipo"] = t_log->m_tipo;
-        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-        data["ticket"][0]["cambio"] = t_log->m_cambio;
-        data["ticket"][0]["total"] = t_log->m_total;
-        data["ticket"][0]["estatus"] = t_log->m_estatus;
-        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
-    
+    data["ticket"][0]["id"] = t_log->m_id;
+    data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+    data["ticket"][0]["tipo"] = t_log->m_tipo;
+    data["ticket"][0]["ingreso"] = t_log->m_ingreso;
+    data["ticket"][0]["cambio"] = t_log->m_cambio;
+    data["ticket"][0]["total"] = t_log->m_total;
+    data["ticket"][0]["estatus"] = t_log->m_estatus;
+    data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+
     data["Cambio_faltante"] = Pago::faltante;
 
     Global::EValidador::is_busy.store(false);
@@ -185,14 +207,14 @@ crow::response Venta::inicia(const crow::request &req)
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child("0"); });
 
     return crow::response(data);
 }
 
 crow::response Venta::deten(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Venta);
     Global::EValidador::is_running.store(false);
     cancelado = true;
     Device::dv_coin.deten_cobro_v6();

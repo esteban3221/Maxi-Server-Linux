@@ -23,6 +23,7 @@ private:
     int faltante;
     std::string estatus;
     void func_poll(const std::string &status, const crow::json::rvalue &data);
+    Glib::RefPtr<Gio::ListStore<MLevelCash>> s_level_ant;
 
     crow::response inicia(const crow::request &req);
     crow::response deten(const crow::request &req);

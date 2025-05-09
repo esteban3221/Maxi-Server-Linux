@@ -9,6 +9,7 @@
 
 #include "global.hpp"
 #include "level_cash.hpp"
+#include "model/level_cash.hpp"
 
 class Validator
 {

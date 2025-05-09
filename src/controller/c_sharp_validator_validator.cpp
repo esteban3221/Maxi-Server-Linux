@@ -13,7 +13,7 @@ namespace Device
         for (size_t i = 0; i < level->get_n_items(); i++)
         {
             auto m_list = level->get_item(i);
-            actual_level[(m_list->m_denominacion / 100)] = m_list->m_cant_recy;
+            actual_level[(m_list->m_denominacion)] = m_list->m_cant_recy;
         }
 
         return actual_level;
@@ -105,7 +105,7 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
         std::lock_guard<std::mutex> lock(poll_mutedx);
         /*Se queda con una cola de eventos y de vez en cuando retiene dinero logicamente hasta que se vuelve a consultar*/
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        auto status = command_get("GetDeviceStatus");
+        auto status = command_get("GetDeviceStatus", true);
 
         if (status.first == crow::status::OK)
         {
@@ -297,7 +297,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
     json["Route"] = (int)recy;
 
     command_post("SetDenominationRoute", json.dump(), true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     command_post("AcceptFromEscrow");
 }
 
@@ -307,13 +307,18 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() cons
     auto json_string = command_get("GetAllLevels").second;
     auto json = crow::json::load(json_string);
 
-    for (auto &&i : json["levels"])
+    auto db = std::make_unique<LevelCash>((validator.substr(0,15) == "SPECTRAL_PAYOUT" || validator.substr(0,8) ==  "SPECTRAL") ? "Level_Bill" : "Level_Coin");
+    auto db_data = db->get_level_cash();
+
+    for (size_t i = 0; i < db_data->get_n_items(); i++)
     {
+        auto m_list_db = db_data->get_item(i);
+
         m_list->append(MLevelCash::create(
-            i["value"].i(),  // denomonacion
-            0,               // cassete
-            i["stored"].i(), // i["value"].i(), // recyclado
-            0,               // i["value"].i() // tope dinero
+            m_list_db->m_denominacion,  // denomonacion
+            m_list_db->m_cant_alm,               // cassete
+            json["levels"][i]["stored"].i(), // i["value"].i(), // recyclado
+            m_list_db->m_nivel_inmo,               // i["value"].i() // tope dinero
             0));
     }
     return m_list;
