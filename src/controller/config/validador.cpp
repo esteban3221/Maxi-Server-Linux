@@ -4,7 +4,7 @@
 DetallesValidador::DetallesValidador(/* args */)
 {
     std::system("killall dotnet");
-    std::system("dotnet /opt/CashDevice_RestAPI_V1.3.1_.NET_8.0/CSharp_RestAPI.dll > /dev/null 2>&1 &");
+    std::system("dotnet /opt/CashDevice-REST-API-V1.4.4/CSharp_RestAPI.dll > /dev/null 2>&1 &");
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
     v_btn_test_coneccion.signal_clicked().connect(sigc::mem_fun(*this, &DetallesValidador::on_btn_reconnectd));
     init_detalles();
@@ -42,7 +42,7 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
     try
     {
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::this_thread::sleep_for(std::chrono::seconds(7));
         Global::ApiConsume::autentica();
         is_retry_connected.store(true);
 

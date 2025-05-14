@@ -11,35 +11,34 @@ LogHistorial::~LogHistorial()
 Glib::RefPtr<Gio::ListStore<MLogHistorial>> LogHistorial::get_log_historial()
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("select * from log_historial");
+    auto contenedor_data = database.sqlite3->command("select * from log_historial");
     auto m_list = Gio::ListStore<MLogHistorial>::create();
 
-    auto contenedor_data = database.sqlite3->get_result();
 
-    for (size_t i = 0; i < contenedor_data["id"].size(); i++)
+    for (size_t i = 0; i < contenedor_data->at("id").size(); i++)
     {
         m_list->append(MLogHistorial::create(
-            std::stoull(contenedor_data["id"][i]),
-            std::stoull(contenedor_data["original_id"][i]),
-            std::stoull(contenedor_data["old_id_user"][i]),
-            contenedor_data["old_tipo"][i],
-            std::stoi(contenedor_data["old_ingreso"][i]),
-            std::stoi(contenedor_data["old_cambio"][i]),
-            std::stoi(contenedor_data["old_total"][i]),
-            contenedor_data["old_status"][i],
-            Glib::DateTime::create_from_iso8601(contenedor_data["old_fecha"][i]),
+            std::stoull(contenedor_data->at("id")[i]),
+            std::stoull(contenedor_data->at("original_id")[i]),
+            std::stoull(contenedor_data->at("old_id_user")[i]),
+            contenedor_data->at("old_tipo")[i],
+            std::stoi(contenedor_data->at("old_ingreso")[i]),
+            std::stoi(contenedor_data->at("old_cambio")[i]),
+            std::stoi(contenedor_data->at("old_total")[i]),
+            contenedor_data->at("old_status")[i],
+            Glib::DateTime::create_from_iso8601(contenedor_data->at("old_fecha")[i]),
 
-            std::stoull(contenedor_data["new_id_user"][i]),
-            contenedor_data["new_tipo"][i],
-            std::stoi(contenedor_data["new_ingreso"][i]),
-            std::stoi(contenedor_data["new_cambio"][i]),
-            std::stoi(contenedor_data["new_total"][i]),
-            contenedor_data["new_status"][i],
-            Glib::DateTime::create_from_iso8601(contenedor_data["new_fecha"][i]),
+            std::stoull(contenedor_data->at("new_id_user")[i]),
+            contenedor_data->at("new_tipo")[i],
+            std::stoi(contenedor_data->at("new_ingreso")[i]),
+            std::stoi(contenedor_data->at("new_cambio")[i]),
+            std::stoi(contenedor_data->at("new_total")[i]),
+            contenedor_data->at("new_status")[i],
+            Glib::DateTime::create_from_iso8601(contenedor_data->at("new_fecha")[i]),
 
-            Glib::DateTime::create_from_iso8601(contenedor_data["fecha_modificacion"][i]),
-            contenedor_data["usuario_operacion"][i],
-            contenedor_data["tipo_cambio"][i]));
+            Glib::DateTime::create_from_iso8601(contenedor_data->at("fecha_modificacion")[i]),
+            contenedor_data->at("usuario_operacion")[i],
+            contenedor_data->at("tipo_cambio")[i]));
     }
 
     return m_list;
@@ -50,7 +49,7 @@ Glib::RefPtr<Gio::ListStore<MLogHistorial>> LogHistorial::get_log_historial()
 void LogHistorial::insert_log_historial(const Glib::RefPtr<MLogHistorial> &list)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("INSERT INTO log_historial VALUES(null, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? )",
+    auto contenedor_data = database.sqlite3->command("INSERT INTO log_historial VALUES(null, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? )",
                               list->m_original_id,
 
                               list->m_old_id_user,

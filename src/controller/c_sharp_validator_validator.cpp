@@ -35,13 +35,15 @@ Validator::~Validator()
     --instance_count;
 }
 
-void Validator::imprime_debug(int status, const std::string &comando, const std::string &body) const
+void Validator::imprime_debug(const cpr::Response &r, const std::string &comando) const
 {
     std::cout << BOLDBLACK << "======== DEBUG ========\n"
               << BOLDBLACK << "Validador: " << WHITE << validator << '\n'
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
-              << BOLDBLACK << "Responde Code: " << (status != crow::status::OK ? RED : GREEN) << status << '\n'
-              << BOLDBLACK << "Body: " << WHITE << body << '\n'
+              << BOLDBLACK << "Tiempo: " << WHITE << r.elapsed << '\n'
+              << BOLDBLACK << "Responde Code: " << (r.status_code != crow::status::OK ? RED : GREEN) << r.status_code << '\n'
+              << BOLDBLACK << "Body: " << WHITE << r.text << '\n'
+              
               << RESET;
 }
 
@@ -53,7 +55,7 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
                    cpr::Body{json});
 
     if (debug)
-        imprime_debug(r_.status_code, command, r_.text);
+        imprime_debug(r_, command);
 
     return {r_.status_code, r_.text};
 }
@@ -91,7 +93,7 @@ std::pair<int, std::string> Validator::command_get(const std::string &command, b
                                         {"Authorization", "Bearer " + Global::ApiConsume::token}});
 
     if (debug)
-        imprime_debug(r.status_code, command, r.text);
+        imprime_debug(r, command);
 
     return {r.status_code, r.text};
 }
@@ -304,7 +306,7 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const
 {
     auto m_list = Gio::ListStore<MLevelCash>::create();
-    auto json_string = command_get("GetAllLevels").second;
+    auto json_string = command_get("GetAllLevels", true).second;
     auto json = crow::json::load(json_string);
 
     auto db = std::make_unique<LevelCash>((validator.substr(0,15) == "SPECTRAL_PAYOUT" || validator.substr(0,8) ==  "SPECTRAL") ? "Level_Bill" : "Level_Coin");

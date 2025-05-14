@@ -90,5 +90,6 @@
             "name": "Maxi Viejo",
             "database": "/home/esteban/Documentos/backend_vue_c--/build/maxicajero.db"
         }
-    ]
+    ],
+    "C_Cpp.errorSquiggles": "enabled"
 }

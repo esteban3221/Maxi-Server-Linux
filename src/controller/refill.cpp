@@ -287,39 +287,28 @@ crow::response Refill::get_dashboard(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
     crow::json::wvalue json;
-    
-    on_show_map();
 
     json["bill"] = crow::json::wvalue::list();
     json["coin"] = crow::json::wvalue::list();
 
-    auto level_cash_coin = std::make_unique<LevelCash>("Level_Coin");
-    auto m_list_coin = level_cash_coin->get_level_cash();
-
-    auto level_cash_bill = std::make_unique<LevelCash>("Level_Bill");
-    auto m_list_bill = level_cash_bill->get_level_cash();
-
     auto bill_selection = Device::dv_bill.get_level_cash_actual();
-
     for (size_t i = 0; i < bill_selection->get_n_items(); i++)
     {
         auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
-        auto m_list_ = m_list_bill->get_typed_object<MLevelCash>(i);
         json["bill"][i]["Denominacion"] = m_list->m_denominacion;
-        json["bill"][i]["Almacenado"] = m_list_->m_cant_alm;
+        json["bill"][i]["Almacenado"] = m_list->m_cant_alm;
         json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
-        json["bill"][i]["Inmovilidad"] = m_list_->m_nivel_inmo;
+        json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
     }
 
     auto coin_selection = Device::dv_coin.get_level_cash_actual();
     for (size_t i = 0; i < coin_selection->get_n_items(); i++)
     {
         auto m_list = coin_selection->get_typed_object<MLevelCash>(i);
-        auto m_list_ = m_list_coin->get_typed_object<MLevelCash>(i);
         json["coin"][i]["Denominacion"] = m_list->m_denominacion;
-        json["coin"][i]["Almacenado"] = m_list_->m_cant_alm;
+        json["coin"][i]["Almacenado"] = m_list->m_cant_alm;
         json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
-        json["coin"][i]["Inmovilidad"] = m_list_->m_nivel_inmo;
+        json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
     }
 
     json["total"] = v_lbl_total->get_text();

@@ -23,7 +23,7 @@ private:
 
     Global::EValidador::Conf conf;
 
-    void imprime_debug(int status, const std::string &comando, const std::string &body) const;
+    void imprime_debug(const cpr::Response &r, const std::string &comando) const;
 
 public:
     Validator(const Validator &) = delete;
