@@ -49,7 +49,7 @@ public:
     void init(Global::EValidador::Conf conf);
     void acepta_dinero(const std::string &state, bool recy = false);
 
-    Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual() const;
+    Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual(bool extendido = false, bool debug = false) const;
 
     Validator(const std::string &validator, const std::source_location location = std::source_location::current());
     ~Validator();

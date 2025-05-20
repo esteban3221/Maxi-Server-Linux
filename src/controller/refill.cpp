@@ -120,8 +120,8 @@ void Refill::on_show_map()
     try
     {
 
-        auto level_coin = Device::dv_coin.get_level_cash_actual();
-        auto level_bill = Device::dv_bill.get_level_cash_actual();
+        auto level_coin = Device::dv_coin.get_level_cash_actual(true);
+        auto level_bill = Device::dv_bill.get_level_cash_actual(true);
 
         auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
         single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
@@ -218,9 +218,10 @@ crow::response Refill::inicia(const crow::request &req)
     balance.cambio.store(0);
 
     async_gui.dispatch_to_gui([this]()
-                              { 
+    { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_btn_deten->set_sensitive(); });
+        v_btn_deten->set_sensitive(); 
+    });
 
     is_busy.store(true);
     is_running.store(true);
@@ -228,17 +229,16 @@ crow::response Refill::inicia(const crow::request &req)
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]()
-                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]()
-                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
 
     future1.wait();
     future2.wait();
 
     Log log;
     crow::json::wvalue data;
-    auto t_log = MLog::create(
+    auto t_log = MLog::create
+    (
         0,
         Global::User::id,
         "Refill",
@@ -246,7 +246,8 @@ crow::response Refill::inicia(const crow::request &req)
         0,
         balance.ingreso.load(),
         "Refill Terminado",
-        Glib::DateTime::create_now_local());
+        Glib::DateTime::create_now_local()
+    );
 
     auto folio = log.insert_log(t_log);
     t_log->m_id = folio;
@@ -257,26 +258,14 @@ crow::response Refill::inicia(const crow::request &req)
         std::system(command.c_str());
     }
 
-    auto user = std::make_unique<Usuarios>();
+    data = Global::Utility::json_ticket(t_log);
 
     data["monedas"] = v_lbl_total_parcial_monedas->get_text();
     data["billetes"] = v_lbl_total_parcial_billetes->get_text();
 
-    data["ticket"] = crow::json::wvalue::list();
-
-    data["ticket"][0]["id"] = t_log->m_id;
-    data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-    data["ticket"][0]["tipo"] = t_log->m_tipo;
-    data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-    data["ticket"][0]["cambio"] = t_log->m_cambio;
-    data["ticket"][0]["total"] = t_log->m_total;
-    data["ticket"][0]["estatus"] = t_log->m_estatus;
-    data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
-
     data["Cambio_faltante"] = Pago::faltante;
 
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
     is_busy.store(false);
     is_running.store(false);
 
@@ -291,7 +280,7 @@ crow::response Refill::get_dashboard(const crow::request &req)
     json["bill"] = crow::json::wvalue::list();
     json["coin"] = crow::json::wvalue::list();
 
-    auto bill_selection = Device::dv_bill.get_level_cash_actual();
+    auto bill_selection = Device::dv_bill.get_level_cash_actual(true,true);
     for (size_t i = 0; i < bill_selection->get_n_items(); i++)
     {
         auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
@@ -301,7 +290,7 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
     }
 
-    auto coin_selection = Device::dv_coin.get_level_cash_actual();
+    auto coin_selection = Device::dv_coin.get_level_cash_actual(true,true);
     for (size_t i = 0; i < coin_selection->get_n_items(); i++)
     {
         auto m_list = coin_selection->get_typed_object<MLevelCash>(i);

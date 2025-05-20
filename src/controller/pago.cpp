@@ -30,8 +30,8 @@ void Pago::on_btn_cancel_click()
 bool Pago::pago_poll(int ant_coin, int ant_bill)
 {
     int total_coin = 0, total_bill = 0;
-    auto actual_level_coin = Device::dv_coin.get_level_cash_actual();
-    auto actual_level_bill = Device::dv_bill.get_level_cash_actual();
+    auto actual_level_coin = Device::dv_coin.get_level_cash_actual(true);
+    auto actual_level_bill = Device::dv_bill.get_level_cash_actual(true);
 
     for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
     {
@@ -72,72 +72,41 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
-    int status_bill, status_coin;
-    const int max_intentos = 10;
+    int status_bill = 200, status_coin = 200;
+    int max_intentos = 0;
 
     // Procesamiento para dv_bill
     if (r_bill.dump() != "[0,0,0,0,0,0]")
     {
         Device::dv_bill.inicia_dispositivo_v6();
-        int intentos_bill = 0;
-
-        do
-        {
-            status_bill = Device::dv_bill.command_post("PayoutMultipleDenominations", r_bill.dump(), true).first;
-
-            if (status_bill != crow::status::OK)
-            {
-                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_bill++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_bill >= max_intentos)
-            {
-                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_bill != crow::status::OK);
+        status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", r_bill.dump(), max_intentos);
     }
 
     // Procesamiento para dv_coin
     if (r_coin.dump() != "[0,0,0,0]")
     {
         Device::dv_coin.inicia_dispositivo_v6();
-        int intentos_coin = 0;
+        status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", r_coin.dump(), max_intentos);
+    }
 
-        do
-        {
-            status_coin = Device::dv_coin.command_post("PayoutMultipleDenominations", r_coin.dump(), true).first;
-
-            if (status_coin != crow::status::OK)
-            {
-                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_coin++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_coin >= max_intentos)
-            {
-                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_coin != crow::status::OK);
+    if (status_bill != crow::status::OK || status_coin != crow::status::OK)
+    {
+        throw std::runtime_error("Error al procesar el pago");
     }
 
     auto start_time = std::chrono::steady_clock::now();
     auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
 
-    Global::Utility::verifica_cambio(
+    Global::Utility::verifica_cambio
+    (
         conn,
         start_time,
         [tipo, &estatus]()
         {
             estatus = ("Falto dar cambio: " + std::to_string(faltante));
             Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
-        });
+        }
+    );
 
     if (cambio > 0)
     {
@@ -148,59 +117,28 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
 
 void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc::slot<bool()> &slot, const std::string &tipo, std::string &estatus)
 {
-    int status_bill, status_coin;
-    const int max_intentos = 10;
+    int status_bill = 200, status_coin = 200;
+    int max_intentos = 0;
 
     // Procesamiento para dv_bill
     if (bill != "[0,0,0,0,0,0]")
     {
         Device::dv_bill.inicia_dispositivo_v6();
-        int intentos_bill = 0;
 
-        do
-        {
-            status_bill = Device::dv_bill.command_post("PayoutMultipleDenominations", bill, true).first;
-
-            if (status_bill != crow::status::OK)
-            {
-                std::cout << "Estado de dv_bill no OK. Reintentando... (" << intentos_bill + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_bill++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_bill >= max_intentos)
-            {
-                std::cerr << "Número máximo de intentos alcanzado para dv_bill. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_bill != crow::status::OK);
+        status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", bill, max_intentos);
     }
 
     // Procesamiento para dv_coin
     if (coin != "[0,0,0,0]")
     {
         Device::dv_coin.inicia_dispositivo_v6();
-        int intentos_coin = 0;
 
-        do
-        {
-            status_coin = Device::dv_coin.command_post("PayoutMultipleDenominations", coin , true).first;
+        status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", coin , max_intentos);
+    }
 
-            if (status_coin != crow::status::OK)
-            {
-                std::cout << "Estado de dv_coin no OK. Reintentando... (" << intentos_coin + 1 << "/" << max_intentos << ")" << std::endl;
-                intentos_coin++;
-                std::this_thread::sleep_for(std::chrono::seconds(1)); // Espera 1 segundo antes de reintentar
-            }
-
-            if (intentos_coin >= max_intentos)
-            {
-                std::cerr << "Número máximo de intentos alcanzado para dv_coin. Abortando..." << std::endl;
-                break;
-            }
-
-        } while (status_coin != crow::status::OK);
+    if (status_bill != crow::status::OK || status_coin != crow::status::OK)
+    {
+        throw std::runtime_error("Error al procesar el pago");
     }
 
     auto start_time = std::chrono::steady_clock::now();
@@ -214,12 +152,6 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
             estatus = ("Falto dar cambio: " + std::to_string(faltante));
             Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
         });
-
-    // if (cambio > 0)
-    // {
-    //     estatus = ("Falto dar cambio: " + std::to_string(faltante));
-    //     Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
-    // }
 }
 
 crow::response Pago::inicia(const crow::request &req)
@@ -279,16 +211,7 @@ crow::response Pago::inicia(const crow::request &req)
 
     auto user = std::make_unique<Usuarios>();
 
-    data["ticket"] = crow::json::wvalue::list();
-
-        data["ticket"][0]["id"] = t_log->m_id;
-        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-        data["ticket"][0]["tipo"] = t_log->m_tipo;
-        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-        data["ticket"][0]["cambio"] = t_log->m_cambio;
-        data["ticket"][0]["total"] = t_log->m_total;
-        data["ticket"][0]["estatus"] = t_log->m_estatus;
-        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    data = Global::Utility::json_ticket(t_log);
     
     data["Cambio_faltante"] = Pago::faltante;
 
@@ -393,16 +316,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
     }
     auto user = std::make_unique<Usuarios>();
 
-    data["ticket"] = crow::json::wvalue::list();
-
-        data["ticket"][0]["id"] = t_log->m_id;
-        data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-        data["ticket"][0]["tipo"] = t_log->m_tipo;
-        data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-        data["ticket"][0]["cambio"] = t_log->m_cambio;
-        data["ticket"][0]["total"] = t_log->m_total;
-        data["ticket"][0]["estatus"] = t_log->m_estatus;
-        data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    data = Global::Utility::json_ticket(t_log);
     
     data["Cambio_faltante"] = Pago::faltante;
 

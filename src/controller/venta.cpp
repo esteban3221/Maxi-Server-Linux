@@ -29,8 +29,8 @@ void Venta::on_btn_cancel_click()
 bool Venta::pago_poll(int ant_coin, int ant_bill)
 {
     int total_coin = 0, total_bill = 0;
-    auto actual_level_coin = Device::dv_coin.get_level_cash_actual();
-    auto actual_level_bill = Device::dv_bill.get_level_cash_actual();
+    auto actual_level_coin = Device::dv_coin.get_level_cash_actual(true);
+    auto actual_level_bill = Device::dv_bill.get_level_cash_actual(true);
 
     for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
     {
@@ -64,7 +64,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 
     if (status == "STACKED")
     {
-        auto s_level = Device::dv_coin.get_level_cash_actual();
+        auto s_level = Device::dv_coin.get_level_cash_actual(true);
 
         for (size_t i = 0; i < s_level->get_n_items(); i++)
         {
@@ -90,7 +90,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
     {
         balance.ingreso_parcial.store(data["value"].i());
         Device::dv_bill.acepta_dinero(status, true);
-        s_level_ant = Device::dv_coin.get_level_cash_actual();
+        s_level_ant = Device::dv_coin.get_level_cash_actual(true);
 
         balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
         async_gui.dispatch_to_gui([this]()
@@ -189,16 +189,7 @@ crow::response Venta::inicia(const crow::request &req)
 
     auto user = std::make_unique<Usuarios>();
 
-    data["ticket"] = crow::json::wvalue::list();
-
-    data["ticket"][0]["id"] = t_log->m_id;
-    data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-    data["ticket"][0]["tipo"] = t_log->m_tipo;
-    data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-    data["ticket"][0]["cambio"] = t_log->m_cambio;
-    data["ticket"][0]["total"] = t_log->m_total;
-    data["ticket"][0]["estatus"] = t_log->m_estatus;
-    data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    data = Global::Utility::json_ticket(t_log);
 
     data["Cambio_faltante"] = Pago::faltante;
 

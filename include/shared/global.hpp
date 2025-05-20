@@ -1,5 +1,7 @@
 #pragma once
 #include <usuarios_roles.hpp>
+#include <model/log.hpp>
+#include <usuarios.hpp>
 
 #include <crow.h>
 #include <libnotify/notify.h>
@@ -87,6 +89,7 @@ namespace Global
     namespace Utility
     {
         extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
+        extern crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log);
         extern void valida_autorizacion(const crow::request &req, User::Rol rol);
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);

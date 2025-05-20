@@ -6,7 +6,7 @@ namespace Device
 
     std::map<int, int> map_cantidad_recyclador(const Validator &val)
     {
-        auto level = val.get_level_cash_actual();
+        auto level = val.get_level_cash_actual(true);
 
         std::map<int, int> actual_level;
 
@@ -43,13 +43,13 @@ void Validator::imprime_debug(const cpr::Response &r, const std::string &comando
               << BOLDBLACK << "Tiempo: " << WHITE << r.elapsed << '\n'
               << BOLDBLACK << "Responde Code: " << (r.status_code != crow::status::OK ? RED : GREEN) << r.status_code << '\n'
               << BOLDBLACK << "Body: " << WHITE << r.text << '\n'
-              
+
               << RESET;
 }
 
 std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug)
 {
-    r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL , "/" , command , "?deviceID=" , validator},
+    r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL, "/", command, "?deviceID=", validator},
                    cpr::Header{{"Content-Type", "application/json"},
                                {"Authorization", "Bearer " + Global::ApiConsume::token}},
                    cpr::Body{json});
@@ -227,13 +227,18 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
             {"LogFilePath", conf.log_ruta},
             {"EnableAcceptor", conf.habilita_recolector},
             {"EnablePayout", conf.habilita_recolector},
-            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
-        };
+            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}};
     this->conf = conf;
     auto data_out = command_post("OpenConnection", data_in.dump());
 
     json_data_status_coneccion = crow::json::load(data_out.second);
     this->validator = data_out.first == crow::status::OK ? std::string(json_data_status_coneccion["deviceID"].s()) : validator;
+
+    int intentos_start = 0, intentos_enable_payout = 0, intentos_enable_acceptor = 0;
+    if (reintenta_comando_post("StartDevice", "", intentos_start) != crow::status::OK)
+    {
+        return {}; // Si falla, sal de la función
+    }
 
     return json_data_status_coneccion;
 }
@@ -254,40 +259,15 @@ const crow::json::rvalue &Validator::get_status_coneccion()
 
 void Validator::inicia_dispositivo_v6()
 {
-    int intentos_start = 0, intentos_enable_payout = 0, intentos_enable_acceptor = 0;
-    if (reintenta_comando_post("StartDevice", "", intentos_start) != crow::status::OK)
-    {
-        return; // Si falla, sal de la función
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));
-
-    // Ejecuta "EnablePayout" con reintentos
-    if (reintenta_comando_post("EnablePayout", "", intentos_enable_payout) != crow::status::OK)
-    {
-        return; // Si falla, sal de la función
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
-
-    // Ejecuta "EnableAcceptor" con reintentos
-    if (reintenta_comando_post("EnableAcceptor", "", intentos_enable_acceptor) != crow::status::OK)
-    {
-        return; // Si falla, sal de la función
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(900));
+    conf.habilita_recolector = true;
+    inicia_dispositivo_v8(conf);
 }
 
 void Validator::deten_cobro_v6()
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
 
-    command_post("HaltPayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    command_post("DisableAcceptor", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    command_post("DisablePayout", "", true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    command_post("StopDevice", "", true);
 }
 
 void Validator::acepta_dinero(const std::string &state, bool recy)
@@ -303,25 +283,28 @@ void Validator::acepta_dinero(const std::string &state, bool recy)
     command_post("AcceptFromEscrow");
 }
 
-Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual() const
+Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual(bool extendido, bool debug) const
 {
     auto m_list = Gio::ListStore<MLevelCash>::create();
-    auto json_string = command_get("GetAllLevels", true).second;
-    auto json = crow::json::load(json_string);
 
-    auto db = std::make_unique<LevelCash>((validator.substr(0,15) == "SPECTRAL_PAYOUT" || validator.substr(0,8) ==  "SPECTRAL") ? "Level_Bill" : "Level_Coin");
+    auto db = std::make_unique<LevelCash>((validator.substr(0, 15) == "SPECTRAL_PAYOUT" || validator.substr(0, 8) == "SPECTRAL") ? "Level_Bill" : "Level_Coin");
     auto db_data = db->get_level_cash();
+
+    std::string json_string = not extendido ? command_get("GetAllLevels", debug).second : command_get("GetCurrencyAssignment", debug).second;
+
+    auto json = crow::json::load(json_string);
 
     for (size_t i = 0; i < db_data->get_n_items(); i++)
     {
         auto m_list_db = db_data->get_item(i);
 
         m_list->append(MLevelCash::create(
-            m_list_db->m_denominacion,  // denomonacion
-            m_list_db->m_cant_alm,               // cassete
-            json["levels"][i]["stored"].i(), // i["value"].i(), // recyclado
-            m_list_db->m_nivel_inmo,               // i["value"].i() // tope dinero
+            m_list_db->m_denominacion,       // denomonacion
+            not extendido ? m_list_db->m_cant_alm : json[i]["storedInCashbox"].i(),           // cassete
+            not extendido ? json["levels"][i]["stored"].i() : json[i]["stored"].i(), // i["value"].i(), // recyclado
+            m_list_db->m_nivel_inmo,         // i["value"].i() // tope dinero
             0));
     }
+
     return m_list;
 }

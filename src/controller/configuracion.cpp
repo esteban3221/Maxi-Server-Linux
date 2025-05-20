@@ -15,6 +15,9 @@ CConfiguracion::CConfiguracion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
+
+    CROW_ROUTE(RestApp::app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::transpaso));
+    CROW_ROUTE(RestApp::app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::retirada));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -156,6 +159,60 @@ crow::response CConfiguracion::apagar(const crow::request &req)
     }
 }
 
+crow::response CConfiguracion::transpaso(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Enviar_Casette);
+
+    auto status = Device::dv_bill.command_post("SmartEmpty", "{"
+                                                             "\"ModuleNumber\": 0,"
+                                                             "\"IsNV4000\": true"
+                                                             "}",
+                                               true);
+
+    if (status.first != 200)
+    {
+        auto datos = Device::dv_bill.get_level_cash_actual(true);
+        auto db = std::make_unique<LevelCash>("Level_Bill");
+
+        for (int i = 0; i < datos->get_n_items(); i++)
+        {
+            auto item = datos->get_item(i);
+            item->m_cant_alm += item->m_cant_recy;
+            db->update_level_cash(item);
+        }
+    }
+
+    return crow::response(status.first, status.second);
+}
+
+crow::response CConfiguracion::retirada(const crow::request &req)
+{
+    auto status_bill = Device::dv_bill.command_post("Purge");
+    auto status_coin = Device::dv_coin.command_post("SmartEmpty", "{"
+                                                                  "\"ModuleNumber\": 0,"
+                                                                  "\"IsNV4000\": false"
+                                                                  "}");
+
+    if (status_bill.first == 200 && status_coin.first == 200)
+    {
+        auto db_bill = std::make_unique<LevelCash>("Level_Bill");
+
+        auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
+        for (int i = 0; i < datos_bill->get_n_items(); i++)
+        {
+            auto item = datos_bill->get_item(i);
+            item->m_cant_alm = 0;
+            db_bill->update_level_cash(item);
+        }
+    }
+    else
+    {
+        return crow::response(status_bill.first, status_bill.second);
+    }
+
+    return crow::response();
+}
+
 crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
@@ -183,6 +240,7 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 
 crow::response CConfiguracion::actualiza_pos(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
     crow::multipart::message msg(req);
 
     auto file_part = msg.get_part_by_name("file");
@@ -193,7 +251,7 @@ crow::response CConfiguracion::actualiza_pos(const crow::request &req)
         filename = param.at("filename");
     else
         filename = "archivo_sin_nombre";
-    
+
     // Guardar el archivo en disco
     std::ofstream out(filename, std::ios::binary);
     out.write(file_part.body.data(), file_part.body.size());
@@ -203,7 +261,7 @@ crow::response CConfiguracion::actualiza_pos(const crow::request &req)
     std::string path = filename.substr(0, filename.find_last_of('.')).c_str();
 
     descomprime_zip(filename);
-    int result = std::system(("sh ./" + path +"/update/install.sh").c_str());
+    int result = std::system(("sh ./" + path + "/update/install.sh").c_str());
     if (result == -1)
     {
         Global::System::showNotify("Sistema", "Error al ejecutar el script de instalación.", "dialog-error");
@@ -230,7 +288,6 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
     {
         auto bill_command = bodyParams["bill"]["command"].s();
         auto bill_args = bodyParams["bill"]["args"].s();
-        int intentos = 5;
         Device::dv_bill.inicia_dispositivo_v6();
         json_bill = crow::json::load(Device::dv_bill.command_post(bill_command, bill_args, true).second);
     }
@@ -264,7 +321,6 @@ void CConfiguracion::descomprime_zip(const std::string &filename)
     }
 
     Global::System::showNotify("Sistema", "Se descomprimio el archivo.", "dialog-information");
-    
 }
 
 void CConfiguracion::limpiar_archivos(const std::string &filename, const std::string &path)

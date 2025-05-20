@@ -1,5 +1,6 @@
 #include "global.hpp"
 
+
 namespace Global
 {
     namespace Rest
@@ -49,6 +50,22 @@ namespace Global
                 total += i.first * i.second;
 
             return total;
+        }
+
+        crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log)
+        {
+            auto user = std::make_unique<Usuarios>();
+            crow::json::wvalue data;
+            data["ticket"] = crow::json::wvalue::list();
+
+            data["ticket"][0]["id"] = t_log->m_id;
+            data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+            data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+            data["ticket"][0]["tipo"] = t_log->m_tipo;
+            data["ticket"][0]["total"] = t_log->m_total;
+            data["ticket"][0]["cambio"] = t_log->m_cambio;
+
+            return data;
         }
 
         void valida_autorizacion(const crow::request &req, User::Rol rol)
