@@ -4,6 +4,7 @@
 #include "controller/c_sharp_validator.hpp"
 #include "c_sharp_validator.hpp"
 #include "model/configuracion.hpp"
+#include "model/log.hpp"
 
 namespace RestApp = Global::Rest;
 class CConfiguracion
