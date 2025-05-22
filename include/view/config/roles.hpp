@@ -14,3 +14,8 @@ public:
     VRoles(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VRoles();
 };
+
+namespace View
+{
+   extern const char *ui_roles;
+}

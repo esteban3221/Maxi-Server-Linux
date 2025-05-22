@@ -17,3 +17,8 @@ public:
     BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) ;
     virtual ~BVentaPago();
 };
+
+namespace View
+{
+   extern const char *ui_vp;
+}

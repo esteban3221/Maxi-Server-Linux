@@ -22,3 +22,8 @@ public:
     VBaseNip(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VBaseNip();
 };
+
+namespace View
+{
+   extern const char *ui_nip;
+}

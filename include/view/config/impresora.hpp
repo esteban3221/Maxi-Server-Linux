@@ -19,3 +19,8 @@ public:
     VImpresora(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VImpresora();
 };
+
+namespace View
+{
+   extern const char *ui_impresora;
+}

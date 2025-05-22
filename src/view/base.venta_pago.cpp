@@ -24,3 +24,179 @@ BVentaPago::BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
 BVentaPago::~BVentaPago()
 {
 }
+
+namespace View
+{
+    const char *ui_vp = R"(<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 0.95.0 -->
+<interface>
+  <!-- interface-name venta_pago.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkBox" id="box">
+    <property name="margin-bottom">15</property>
+    <property name="margin-end">15</property>
+    <property name="margin-start">15</property>
+    <property name="margin-top">15</property>
+    <property name="orientation">vertical</property>
+    <property name="spacing">20</property>
+    <property name="vexpand">true</property>
+    <child>
+      <object class="GtkLabel" id="lbl_titulo">
+        <property name="label">Venta / Cobro | Pago</property>
+        <style>
+          <class name="title-1"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkListBox" id="list_venta">
+        <child>
+          <object class="GtkListBoxRow" id="BXRW1">
+            <child>
+              <object class="GtkBox" id="r1">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Total</property>
+                    <style>
+                      <class name="title-3"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_monto_total">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <style>
+                      <class name="title-3"/>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkListBoxRow" id="BXRW2">
+            <child>
+              <object class="GtkBox" id="r2">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Recibido</property>
+                    <style>
+                      <class name="title-3"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_recibido">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <style>
+                      <class name="title-3"/>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkListBoxRow" id="BXRW3">
+            <child>
+              <object class="GtkBox" id="r3">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Falta</property>
+                    <style>
+                      <class name="title-3"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_faltante">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <style>
+                      <class name="title-3"/>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkListBoxRow" id="BXRW4">
+            <child>
+              <object class="GtkBox" id="r4">
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Cambio</property>
+                    <style>
+                      <class name="title-3"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="lbl_cambio">
+                    <property name="halign">end</property>
+                    <property name="hexpand">true</property>
+                    <style>
+                      <class name="title-3"/>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <style>
+          <class name="rich-list"/>
+          <class name="boxed-list"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="lbl_mensaje_fin">
+        <property name="visible">false</property>
+        <style>
+          <class name="title-2"/>
+          <class name="dim-label"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="lbl_timeout">
+        <property name="label">Restante: 00:00</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox" id="box_action_timeout">
+        <property name="homogeneous">true</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">10</property>
+        <child>
+          <object class="GtkButton" id="btn_timeout_cancel">
+            <property name="label">Cancelar</property>
+            <style>
+              <class name="destructive-action"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="btn_timeout_retry">
+            <property name="label">Necesito mas tiempo</property>
+            <style>
+              <class name="suggested-action"/>
+            </style>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>)";
+}

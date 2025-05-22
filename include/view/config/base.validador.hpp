@@ -33,3 +33,8 @@ public:
     void set_img(const std::string &path);
     Glib::ustring get_puerto_seleccionado();
 };
+
+namespace View
+{
+   extern const char *ui_val;
+}

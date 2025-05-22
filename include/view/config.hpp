@@ -11,6 +11,8 @@
 
 class VConfig : public Gtk::Box
 {
+private:
+    const char *ui;
 protected:
     Gtk::Button *v_btn_back_config = nullptr;
     Gtk::Box *v_left_box = nullptr;

@@ -12,6 +12,7 @@ protected:
     Gtk::Button *v_btn_logo_nip = nullptr, *v_btn_pill = nullptr;
     Gtk::Image *v_img_main_logo = nullptr;
 
+    const char *ui;
 public:
     VMainWindow(/* args */);
     ~VMainWindow();

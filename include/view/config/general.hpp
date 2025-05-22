@@ -23,3 +23,8 @@ public:
     VGeneral(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     virtual ~VGeneral();
 };
+
+namespace View
+{
+   extern const char *ui_general;
+}

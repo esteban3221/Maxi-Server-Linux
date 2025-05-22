@@ -13,3 +13,8 @@ public:
     VInfo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VInfo();
 };
+
+namespace View
+{
+   extern const char *ui_info;
+}

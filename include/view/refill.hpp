@@ -25,3 +25,8 @@ public:
     VRefill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VRefill();
 };
+
+namespace View
+{
+   extern const char *ui_refill;
+}

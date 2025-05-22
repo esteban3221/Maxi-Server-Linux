@@ -14,3 +14,8 @@ public:
     VWifi(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~VWifi();
 };
+
+namespace View
+{
+   extern const char *ui_wifi;
+}
