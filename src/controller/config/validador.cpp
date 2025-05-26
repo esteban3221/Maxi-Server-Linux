@@ -42,7 +42,7 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
     try
     {
-        std::this_thread::sleep_for(std::chrono::seconds(7));
+        std::this_thread::sleep_for(std::chrono::seconds(4));
         Global::ApiConsume::autentica();
         is_retry_connected.store(true);
 

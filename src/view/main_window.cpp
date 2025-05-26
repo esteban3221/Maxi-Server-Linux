@@ -117,6 +117,8 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(<interface>
     Global::Widget::v_main_stack->add(*nnip, "7", "Nuevo Nip");
 
     Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::ROTATE_LEFT_RIGHT);
+    this->set_decorated(false);
+    this->maximize();
 
     this->set_child(*Global::Widget::v_main_stack);
 }
