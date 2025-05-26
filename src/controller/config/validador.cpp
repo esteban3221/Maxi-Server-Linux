@@ -3,8 +3,6 @@
 
 DetallesValidador::DetallesValidador(/* args */)
 {
-    std::system("killall dotnet");
-    std::system("dotnet /opt/CashDevice-REST-API-V1.4.4/CSharp_RestAPI.dll > /dev/null 2>&1 &");
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
     v_btn_test_coneccion.signal_clicked().connect(sigc::mem_fun(*this, &DetallesValidador::on_btn_reconnectd));
     init_detalles();
@@ -42,7 +40,7 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
     try
     {
-        std::this_thread::sleep_for(std::chrono::seconds(4));
+        std::this_thread::sleep_for(std::chrono::seconds(8));
         Global::ApiConsume::autentica();
         is_retry_connected.store(true);
 
@@ -99,8 +97,8 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 void DetallesValidador::on_btn_reconnectd()
 {
     std::system("killall dotnet");
+    std::this_thread::sleep_for(std::chrono::seconds(8));
     using namespace Global::EValidador;
-    std::system("dotnet /opt/CashDevice_RestAPI_V1.3.1_.NET_8.0/CSharp_RestAPI.dll > /dev/null 2>&1 &");
     Global::EValidador::Conf conf_bill, conf_coin;
     conf_bill.puerto = v_box_bill->get_puerto_seleccionado();
     conf_bill.ssp = 0;
