@@ -64,6 +64,7 @@ namespace Global
             data["ticket"][0]["tipo"] = t_log->m_tipo;
             data["ticket"][0]["total"] = t_log->m_total;
             data["ticket"][0]["cambio"] = t_log->m_cambio;
+            data["ticket"][0]["ingreso"] = t_log->m_ingreso;
             data["ticket"][0]["estatus"] = t_log->m_estatus;
 
             return data;
