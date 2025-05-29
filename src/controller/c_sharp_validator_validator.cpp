@@ -72,7 +72,7 @@ int Validator::reintenta_comando_post(const std::string &comando, const std::str
         {
             std::cout << "Estado de " << comando << " no OK. Reintentando... (" << intentos + 1 << "/" << max_intentos << ")" << std::endl;
             intentos++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Espera 500 ms antes de reintentar
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         if (intentos >= max_intentos)

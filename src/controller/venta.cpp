@@ -175,11 +175,11 @@ crow::response Venta::inicia(const crow::request &req)
         balance.ingreso.load(),
         balance.cambio.load(),
         balance.total.load(),
-        "- " + concepto + " | " + (Pago::faltante > 0 ? estatus : "Venta Realizada con Exito."),
+        "- " + concepto + " | " + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito."),
         Glib::DateTime::create_now_local());
 
-    auto folio = log.insert_log(t_log);
-    t_log->m_id = folio;
+    t_log->m_id = log.insert_log(t_log);
+    Global::Utility::is_ok = true;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {

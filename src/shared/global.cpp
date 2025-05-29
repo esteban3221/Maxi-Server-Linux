@@ -135,7 +135,7 @@ namespace Global
                 auto now = std::chrono::steady_clock::now();
                 auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
 
-                if (elapsed_seconds > 45)
+                if (elapsed_seconds > 35)
                 {
                     func();
                     conn->disconnect();
@@ -144,6 +144,7 @@ namespace Global
                     std::cout << "Duracion de evento: " << elapsed_seconds << "\n";
             }
         }
+        bool is_ok = true;
     } // namespace Utility
 
     namespace ApiConsume

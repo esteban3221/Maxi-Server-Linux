@@ -249,8 +249,7 @@ crow::response Refill::inicia(const crow::request &req)
         Glib::DateTime::create_now_local()
     );
 
-    auto folio = log.insert_log(t_log);
-    t_log->m_id = folio;
+    t_log->m_id = log.insert_log(t_log);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {

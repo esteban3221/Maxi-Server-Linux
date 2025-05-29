@@ -1,5 +1,4 @@
 #include "controller/pago.hpp"
-#include "pago.hpp"
 
 Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
@@ -91,7 +90,8 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
 
     if (status_bill != crow::status::OK || status_coin != crow::status::OK)
     {
-        throw std::runtime_error("Error al procesar el pago");
+        estatus = "Error al procesar el pago";
+        Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-error");
     }
 
     auto start_time = std::chrono::steady_clock::now();
@@ -103,16 +103,16 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
         start_time,
         [tipo, &estatus]()
         {
-            estatus = ("Falto dar cambio: " + std::to_string(faltante));
-            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+            if (faltante > 0)
+            {
+                Global::Utility::is_ok = false;
+                estatus = ("Falto dar cambio: " + std::to_string(faltante));
+                Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+            }
         }
     );
 
-    if (cambio > 0)
-    {
-        estatus = ("Falto dar cambio: " + std::to_string(faltante));
-        Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
-    }
+    
 }
 
 void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc::slot<bool()> &slot, const std::string &tipo, std::string &estatus)
@@ -138,7 +138,8 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
 
     if (status_bill != crow::status::OK || status_coin != crow::status::OK)
     {
-        throw std::runtime_error("Error al procesar el pago");
+        estatus = "Error al procesar el pago";
+        Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-error");
     }
 
     auto start_time = std::chrono::steady_clock::now();
@@ -149,8 +150,12 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
         start_time,
         [tipo, &estatus]()
         {
-            estatus = ("Falto dar cambio: " + std::to_string(faltante));
-            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+            if (faltante > 0)
+            {
+                Global::Utility::is_ok = false;
+                estatus = ("Falto dar cambio: " + std::to_string(faltante));
+                Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-information");
+            }
         });
 }
 
@@ -170,12 +175,13 @@ crow::response Pago::inicia(const crow::request &req)
     is_busy.store(true);
 
     async_gui.dispatch_to_gui([this, cambio]()
-                              { 
+    { 
         auto s_total = std::to_string(cambio);
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
-        v_lbl_recibido->set_text("0"); });
+        v_lbl_recibido->set_text("0"); 
+    });
 
     std::cout << "\n ===== Obteniendo copia de estados de validadores ===== \n\n";
 
@@ -197,11 +203,11 @@ crow::response Pago::inicia(const crow::request &req)
         0,
         balance.cambio.load(),
         0,
-        Pago::faltante > 0 ? estatus : "Pago Realizada con Exito.",
+        not Global::Utility::is_ok ? estatus : "Pago Realizada con Exito.",
         Glib::DateTime::create_now_local());
 
-    auto folio = log.insert_log(t_log);
-    t_log->m_id = folio;
+    t_log->m_id = log.insert_log(t_log);
+    Global::Utility::is_ok = true;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
@@ -303,11 +309,10 @@ crow::response Pago::inicia_manual(const crow::request &req)
         0,
         total,
         0,
-        Pago::faltante > 0 ? estatus : "Pago Realizada con Exito.",
+        not Global::Utility::is_ok ? estatus : "Pago Realizada con Exito.",
         Glib::DateTime::create_now_local());
-        
-    auto folio = log.insert_log(t_log);
-    t_log->m_id = folio;
+    Global::Utility::is_ok = true;
+    t_log->m_id = log.insert_log(t_log);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
