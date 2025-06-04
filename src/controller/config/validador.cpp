@@ -95,7 +95,6 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
 void DetallesValidador::on_btn_reconnectd()
 {
-    std::system("killall dotnet");
     std::this_thread::sleep_for(std::chrono::seconds(8));
     using namespace Global::EValidador;
     Global::EValidador::Conf conf_bill, conf_coin;

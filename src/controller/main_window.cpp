@@ -76,7 +76,6 @@ void MainWindow::on_map_view()
 
 MainWindow::~MainWindow()
 {
-    std::system("killall dotnet");
     conn.disconnect();
     Global::Rest::app.stop();
     // Global::Rest::future.get();

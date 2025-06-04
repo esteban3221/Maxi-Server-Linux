@@ -74,6 +74,10 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
     int status_bill = 200, status_coin = 200;
     int max_intentos = 0;
 
+    auto start_time = std::chrono::steady_clock::now();
+    std::this_thread::sleep_for(std::chrono::seconds(3)); // Espera para asegurar que los dispositivos estén listos
+    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
+
     // Procesamiento para dv_bill
     if (r_bill.dump() != "[0,0,0,0,0,0]")
     {
@@ -93,9 +97,6 @@ void Pago::da_pago(int cambio, const sigc::slot<bool()> &slot, const std::string
         estatus = "Error al procesar el pago";
         Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-error");
     }
-
-    auto start_time = std::chrono::steady_clock::now();
-    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
 
     Global::Utility::verifica_cambio
     (
@@ -120,6 +121,9 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
     int status_bill = 200, status_coin = 200;
     int max_intentos = 0;
 
+    auto start_time = std::chrono::steady_clock::now();
+    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
+
     // Procesamiento para dv_bill
     if (bill != "[0,0,0,0,0,0]")
     {
@@ -141,9 +145,6 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const sigc:
         estatus = "Error al procesar el pago";
         Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-error");
     }
-
-    auto start_time = std::chrono::steady_clock::now();
-    auto conn = std::make_shared<sigc::connection>(Glib::signal_timeout().connect(slot, 200));
 
     Global::Utility::verifica_cambio(
         conn,
@@ -324,6 +325,8 @@ crow::response Pago::inicia_manual(const crow::request &req)
     data = Global::Utility::json_ticket(t_log);
     
     data["Cambio_faltante"] = Pago::faltante;
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
 
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });

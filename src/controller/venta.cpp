@@ -47,15 +47,7 @@ bool Venta::pago_poll(int ant_coin, int ant_bill)
     int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);
     Pago::faltante = Global::EValidador::balance.cambio.load() - recibido;
 
-    bool is_activo{Pago::faltante != 0};
-
-    if (not is_activo)
-    {
-        Device::dv_coin.deten_cobro_v6();
-        Device::dv_bill.deten_cobro_v6();
-    }
-
-    return is_activo;
+    return Pago::faltante != 0;
 }
 
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
@@ -106,7 +98,9 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         if (balance.ingreso.load() >= balance.total.load())
         {
             std::this_thread::sleep_for(std::chrono::seconds(1));
-            on_btn_cancel_click();
+            Global::EValidador::is_running.store(false);
+            Device::dv_coin.deten_cobro_v6();
+            Device::dv_bill.deten_cobro_v6();
         }
     }
 }
@@ -141,29 +135,28 @@ crow::response Venta::inicia(const crow::request &req)
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto future1 = std::async(std::launch::async, [this]()
-                              { Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this]()
-                              { Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
 
     future1.wait();
     future2.wait();
+    
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
 
-    if (balance.cambio.load() > 0)
+    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
+    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
+
+    const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
+
+    if (cancelado)
     {
-        auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-        auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-        const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
-        const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
-
-        const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
-
-        if (cancelado)
-            estatus = "Venta cancelada";
-
+        estatus = "Venta cancelada";
+        Pago::da_pago(balance.ingreso.load(), slot, "Venta", estatus);
+    }   
+    else if (balance.cambio.load() > 0)
+    {
         Pago::da_pago(balance.cambio.load(), slot, "Venta", estatus);
-        auto extra = (concepto + "\n" + estatus);
     }
 
     crow::json::wvalue data;
@@ -179,6 +172,7 @@ crow::response Venta::inicia(const crow::request &req)
         Glib::DateTime::create_now_local());
 
     t_log->m_id = log.insert_log(t_log);
+    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito.");
     Global::Utility::is_ok = true;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
@@ -187,19 +181,14 @@ crow::response Venta::inicia(const crow::request &req)
         std::system(command.c_str());
     }
 
-    auto user = std::make_unique<Usuarios>();
-
     data = Global::Utility::json_ticket(t_log);
-
     data["Cambio_faltante"] = Pago::faltante;
-
     Global::EValidador::is_busy.store(false);
 
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
 
     return crow::response(data);
 }

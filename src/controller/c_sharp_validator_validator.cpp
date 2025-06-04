@@ -62,17 +62,15 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
 
 int Validator::reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos)
 {
-    const int max_intentos = 5;
+    const int max_intentos = 10;
     int status;
     do
     {
         status = command_post(comando, datos, true).first;
-
         if (status != crow::status::OK)
         {
             std::cout << "Estado de " << comando << " no OK. Reintentando... (" << intentos + 1 << "/" << max_intentos << ")" << std::endl;
             intentos++;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
         if (intentos >= max_intentos)
@@ -80,6 +78,7 @@ int Validator::reintenta_comando_post(const std::string &comando, const std::str
             std::cerr << "Número máximo de intentos alcanzado para " << comando << ". Abortando..." << std::endl;
             break;
         }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
     } while (status != crow::status::OK);
 
