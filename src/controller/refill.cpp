@@ -1,5 +1,4 @@
 #include "controller/refill.hpp"
-#include "refill.hpp"
 
 Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VRefill(cobject, refBuilder),
                                                                                         total(0),
@@ -19,6 +18,9 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
     CROW_ROUTE(RestApp::app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
     CROW_ROUTE(RestApp::app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
+
+    CROW_ROUTE(RestApp::app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &Refill::transpaso));
+    CROW_ROUTE(RestApp::app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &Refill::retirada));
 }
 
 Refill::~Refill()
@@ -220,7 +222,6 @@ crow::response Refill::inicia(const crow::request &req)
     async_gui.dispatch_to_gui([this]()
     { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_btn_deten->set_sensitive(); 
     });
 
     is_busy.store(true);
@@ -318,11 +319,118 @@ crow::response Refill::update_imovilidad(const crow::request &req)
     return crow::response();
 }
 
-void Refill::deten()
+crow::response Refill::transpaso(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Enviar_Casette);
+
+    auto status = Device::dv_bill.command_post("SmartEmpty", "{"
+                                                             "\"ModuleNumber\": 0,"
+                                                             "\"IsNV4000\": true"
+                                                             "}",
+                                               true);
+    
+    auto t_log = MLog::create(0, Global::User::id, "Transpaso", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
+    Log log;
+
+    if (status.first == 200)
+    {
+        auto datos = Device::dv_bill.get_level_cash_actual(true);
+        auto db = std::make_unique<LevelCash>("Level_Bill");
+        size_t total = 0;
+
+        for (int i = 0; i < datos->get_n_items(); i++)
+        {
+            auto item = datos->get_item(i);
+            total += item->m_cant_recy;
+            item->m_cant_alm += total;
+            db->update_level_cash(item);
+        }
+
+        t_log->m_total = total;
+        t_log->m_id = log.insert_log(t_log);
+    }
+    else
+    {
+        t_log->m_total = 0;
+        t_log->m_estatus = "Error";
+        t_log->m_id = log.insert_log(t_log);
+    }
+    auto data = Global::Utility::json_ticket(t_log);
+
+    return crow::response(status.first, data);
+}
+
+size_t Refill::saca_cassette()
+{
+    auto db_bill = std::make_shared<LevelCash>("Level_Bill");
+    auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
+    size_t total_bill = 0;
+
+    Device::dv_bill.poll([this,datos_bill,db_bill,&total_bill](const std::string &status, const crow::json::rvalue &data)
+    {
+        if (status == "CASHBOX_REMOVED")
+        {
+            for (int i = 0; i < datos_bill->get_n_items(); i++)
+            {
+                auto item = datos_bill->get_item(i);
+                total_bill += item->m_cant_recy;
+                item->m_cant_alm = 0;
+                db_bill->update_level_cash(item);
+            }
+
+            Global::EValidador::is_running.store(false);
+        }
+            
+    });
+
+    return total_bill;
+}
+
+crow::response Refill::retirada(const crow::request &req)
 {
     async_gui.dispatch_to_gui([this]()
-                              { v_btn_deten->set_sensitive(false); });
+    { Global::Widget::v_main_stack->set_visible_child(*this); });
+    auto status_bill = Device::dv_bill.command_post("Purge");
+    auto status_coin = Device::dv_coin.command_post("SmartEmpty", "{"
+                                                                  "\"ModuleNumber\": 0,"
+                                                                  "\"IsNV4000\": false"
+                                                                  "}");
+    
+    auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
+    Log log;
 
+    if (status_bill.first == 200 && status_coin.first == 200)
+    {
+        
+        auto datos_coin = Device::dv_coin.get_level_cash_actual(true);
+        size_t total_coin = 0;
+        
+        for (size_t i = 0; i < datos_coin->get_n_items(); i++)
+        {
+            auto item = datos_coin->get_item(i);
+            total_coin += item->m_cant_recy;
+        }
+
+        size_t total_bill = saca_cassette();
+
+        t_log->m_total = total_bill + total_coin;
+    }
+    else
+    {
+        t_log->m_total = 0;
+        t_log->m_estatus = "Error";
+    }
+
+    t_log->m_id = log.insert_log(t_log);
+    auto data = Global::Utility::json_ticket(t_log);
+
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    
+    return crow::response(status_bill.first, data);
+}
+
+void Refill::deten()
+{
     for (auto &&i : total_parcial_monedas)
         i = 0;
 

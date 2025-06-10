@@ -14,9 +14,6 @@ CConfiguracion::CConfiguracion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
-
-    CROW_ROUTE(RestApp::app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::transpaso));
-    CROW_ROUTE(RestApp::app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::retirada));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -134,7 +131,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 
 crow::response CConfiguracion::reiniciar(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown -r +1 &");
         Global::Rest::app.stop();
@@ -147,7 +144,7 @@ crow::response CConfiguracion::reiniciar(const crow::request &req)
 
 crow::response CConfiguracion::apagar(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown +1 &");
         Global::Rest::app.stop();
@@ -156,94 +153,6 @@ crow::response CConfiguracion::apagar(const crow::request &req)
                                    "dialog-information");
         return crow::response(crow::status::OK);
     }
-}
-
-crow::response CConfiguracion::transpaso(const crow::request &req)
-{
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Enviar_Casette);
-
-    auto status = Device::dv_bill.command_post("SmartEmpty", "{"
-                                                             "\"ModuleNumber\": 0,"
-                                                             "\"IsNV4000\": true"
-                                                             "}",
-                                               true);
-    
-    auto t_log = MLog::create(0, Global::User::id, "Transpaso", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
-    Log log;
-
-    if (status.first == 200)
-    {
-        auto datos = Device::dv_bill.get_level_cash_actual(true);
-        auto db = std::make_unique<LevelCash>("Level_Bill");
-        size_t total = 0;
-
-        for (int i = 0; i < datos->get_n_items(); i++)
-        {
-            auto item = datos->get_item(i);
-            total += item->m_cant_recy;
-            item->m_cant_alm += total;
-            db->update_level_cash(item);
-        }
-
-        t_log->m_total = total;
-        t_log->m_id = log.insert_log(t_log);
-    }
-    else
-    {
-        t_log->m_total = 0;
-        t_log->m_estatus = "Error";
-        t_log->m_id = log.insert_log(t_log);
-    }
-    auto data = Global::Utility::json_ticket(t_log);
-
-    return crow::response(status.first, data);
-}
-
-crow::response CConfiguracion::retirada(const crow::request &req)
-{
-    auto status_bill = Device::dv_bill.command_post("Purge");
-    auto status_coin = Device::dv_coin.command_post("SmartEmpty", "{"
-                                                                  "\"ModuleNumber\": 0,"
-                                                                  "\"IsNV4000\": false"
-                                                                  "}");
-    
-    auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
-    Log log;
-
-    if (status_bill.first == 200 && status_coin.first == 200)
-    {
-        auto db_bill = std::make_unique<LevelCash>("Level_Bill");
-
-        auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
-        auto datos_coin = Device::dv_coin.get_level_cash_actual(true);
-        size_t total_bill = 0;
-        size_t total_coin = 0;
-        for (int i = 0; i < datos_bill->get_n_items(); i++)
-        {
-            auto item = datos_bill->get_item(i);
-            total_bill += item->m_cant_recy;
-            item->m_cant_alm = 0;
-            db_bill->update_level_cash(item);
-        }
-
-        for (size_t i = 0; i < datos_coin->get_n_items(); i++)
-        {
-            auto item = datos_coin->get_item(i);
-            total_coin += item->m_cant_recy;
-        }
-
-        t_log->m_total = total_bill + total_coin;
-    }
-    else
-    {
-        t_log->m_total = 0;
-        t_log->m_estatus = "Error";
-    }
-
-    t_log->m_id = log.insert_log(t_log);
-    auto data = Global::Utility::json_ticket(t_log);
-    
-    return crow::response(status_bill.first, data);
 }
 
 crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)

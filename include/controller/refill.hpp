@@ -19,6 +19,11 @@ private:
     crow::response inicia(const crow::request &req);
     crow::response get_dashboard(const crow::request &req);
     crow::response update_imovilidad(const crow::request &req);
+
+    crow::response transpaso(const crow::request &req);
+    crow::response retirada(const crow::request &req);
+
+    size_t saca_cassette();
     void deten();
 
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);
