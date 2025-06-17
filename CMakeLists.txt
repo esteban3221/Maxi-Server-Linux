@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC")
 
 find_package(Crow REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(cpr REQUIRED)
 pkg_check_modules(GTKMM gtkmm-4.0)
 pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
