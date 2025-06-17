@@ -127,23 +127,6 @@ namespace Global
             return -1;
         }
 
-        void verifica_cambio(std::shared_ptr<sigc::connection> conn, const std::chrono::steady_clock::time_point &start_time, const std::function<void()> &func)
-        {
-            while (not conn->empty())
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                auto now = std::chrono::steady_clock::now();
-                auto elapsed_seconds = std::chrono::duration_cast<std::chrono::seconds>(now - start_time).count();
-
-                if (elapsed_seconds > 35)
-                {
-                    func();
-                    conn->disconnect();
-                }
-                else
-                    std::cout << "Duracion de evento: " << elapsed_seconds << "\n";
-            }
-        }
         bool is_ok = true;
     } // namespace Utility
 

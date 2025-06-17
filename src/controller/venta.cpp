@@ -26,37 +26,13 @@ void Venta::on_btn_cancel_click()
     deten(crow::request());
 }
 
-bool Venta::pago_poll(int ant_coin, int ant_bill)
-{
-    int total_coin = 0, total_bill = 0;
-    auto actual_level_coin = Device::dv_coin.get_level_cash_actual(true);
-    auto actual_level_bill = Device::dv_bill.get_level_cash_actual(true);
-
-    for (size_t i = 0; i < actual_level_coin->get_n_items(); i++)
-    {
-        auto m_list = actual_level_coin->get_item(i);
-        total_coin += m_list->m_denominacion * m_list->m_cant_recy;
-    }
-
-    for (size_t i = 0; i < actual_level_bill->get_n_items(); i++)
-    {
-        auto m_list = actual_level_bill->get_item(i);
-        total_bill += m_list->m_denominacion * m_list->m_cant_recy;
-    }
-
-    int32_t recibido = (ant_coin + ant_bill) - (total_bill + total_coin);
-    Pago::faltante = Global::EValidador::balance.cambio.load() - recibido;
-
-    return Pago::faltante != 0;
-}
-
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
 
     if (status == "STACKED")
     {
-        auto s_level = Device::dv_coin.get_level_cash_actual(true);
+        auto s_level = Device::dv_bill.get_level_cash_actual(true);
 
         for (size_t i = 0; i < s_level->get_n_items(); i++)
         {
@@ -75,7 +51,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
             }
         }
     }
-    // Monedero
+
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
         status == "ESCROW")
@@ -124,13 +100,14 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-                              { 
+    { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); });
+        v_lbl_recibido->set_text("0"); 
+    });
 
     Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
@@ -140,28 +117,22 @@ crow::response Venta::inicia(const crow::request &req)
 
     future1.wait();
     future2.wait();
-    
-    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
-    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
-
-    const sigc::slot<bool()> slot = sigc::bind(sigc::mem_fun(*this, &Venta::pago_poll), total_ant_coin, total_ant_bill);
 
     if (cancelado)
     {
         estatus = "Venta cancelada";
-        Pago::da_pago(balance.ingreso.load(), slot, "Venta", estatus);
+        if (balance.ingreso.load() > 0)
+            Pago::da_pago(balance.ingreso.load(), "Venta", estatus);
     }   
     else if (balance.cambio.load() > 0)
-    {
-        Pago::da_pago(balance.cambio.load(), slot, "Venta", estatus);
-    }
-
+        Pago::da_pago(balance.cambio.load(), "Venta", estatus);
+    else if (Pago::faltante > 0)
+        estatus = "Venta incompleta, faltante: " + std::to_string(Pago::faltante);
+    
     crow::json::wvalue data;
     Log log;
-    auto t_log = MLog::create(
+    auto t_log = MLog::create
+    (
         0,
         Global::User::id,
         "Venta",
@@ -169,7 +140,8 @@ crow::response Venta::inicia(const crow::request &req)
         balance.cambio.load(),
         balance.total.load(),
         "- " + concepto + " | " + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito."),
-        Glib::DateTime::create_now_local());
+        Glib::DateTime::create_now_local()
+    );
 
     t_log->m_id = log.insert_log(t_log);
     t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito.");

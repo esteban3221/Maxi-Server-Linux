@@ -60,14 +60,14 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
     return {r_.status_code, r_.text};
 }
 
-int Validator::reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos)
+std::pair<int, std::string> Validator::reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos)
 {
     const int max_intentos = 10;
-    int status;
+    std::pair<int, std::string> status;
     do
     {
-        status = command_post(comando, datos, true).first;
-        if (status != crow::status::OK)
+        status = command_post(comando, datos, true);
+        if (status.first != crow::status::OK)
         {
             std::cout << "Estado de " << comando << " no OK. Reintentando... (" << intentos + 1 << "/" << max_intentos << ")" << std::endl;
             intentos++;
@@ -80,7 +80,7 @@ int Validator::reintenta_comando_post(const std::string &comando, const std::str
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
-    } while (status != crow::status::OK);
+    } while (status.first != crow::status::OK);
 
     return status;
 }
@@ -106,7 +106,7 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
         std::lock_guard<std::mutex> lock(poll_mutedx);
         /*Se queda con una cola de eventos y de vez en cuando retiene dinero logicamente hasta que se vuelve a consultar*/
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        auto status = command_get("GetDeviceStatus", true);
+        auto status = command_get("GetDeviceStatus");
 
         if (status.first == crow::status::OK)
         {
@@ -234,7 +234,7 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
     this->validator = data_out.first == crow::status::OK ? std::string(json_data_status_coneccion["deviceID"].s()) : validator;
 
     int intentos_start = 0, intentos_enable_payout = 0, intentos_enable_acceptor = 0;
-    if (reintenta_comando_post("StartDevice", "", intentos_start) != crow::status::OK)
+    if (reintenta_comando_post("StartDevice", "", intentos_start).first != crow::status::OK)
     {
         return {}; // Si falla, sal de la función
     }

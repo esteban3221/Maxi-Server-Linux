@@ -31,7 +31,7 @@ public:
 
     std::pair<int, std::string> command_get(const std::string &command, bool debug = false) const;
     std::pair<int, std::string> command_post(const std::string &command, const std::string &json = "", bool = false);
-    int reintenta_comando_post(const std::string& comando, const std::string& datos, int& intentos);
+    std::pair<int, std::string> reintenta_comando_post(const std::string& comando, const std::string& datos, int& intentos);
 
     void poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func);
 
