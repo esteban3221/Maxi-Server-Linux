@@ -9,7 +9,6 @@ Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuild
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
-    CROW_ROUTE(RestApp::app, "/accion/deten_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::deten));
 }
 
 Venta::~Venta()
@@ -23,7 +22,8 @@ void Venta::on_btn_retry_click()
 
 void Venta::on_btn_cancel_click()
 {
-    deten(crow::request());
+    Global::EValidador::is_running.store(false);
+    cancelado = true;
 }
 
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
@@ -52,28 +52,37 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         }
     }
 
+    if (status == "ESCROW")
+    {
+        Device::dv_bill.acepta_dinero(status, true);
+    }
+
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
+
         balance.ingreso_parcial.store(data["value"].i());
-        Device::dv_bill.acepta_dinero(status, true);
         s_level_ant = Device::dv_coin.get_level_cash_actual(true);
 
         balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
         async_gui.dispatch_to_gui([this]()
-                                  {
+        {
             v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
 
             faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
+            std::cout << "Faltante: " << faltante << '\n';
             balance.cambio.store(balance.ingreso.load() > balance.total.load() ? balance.ingreso.load() - balance.total.load() : 0);
+            std::cout << "Ingreso: " << balance.ingreso.load() << "\n" 
+                      << "Cambio: " << balance.cambio.load() << '\n'
+                      << "Total: " << balance.total.load() << '\n';
 
             v_lbl_cambio->set_text(std::to_string(balance.cambio.load()));
-            v_lbl_faltante->set_text(std::to_string(faltante)); });
+            v_lbl_faltante->set_text(std::to_string(faltante)); 
+        });
 
         if (balance.ingreso.load() >= balance.total.load())
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
             Global::EValidador::is_running.store(false);
             Device::dv_coin.deten_cobro_v6();
             Device::dv_bill.deten_cobro_v6();
@@ -95,6 +104,7 @@ crow::response Venta::inicia(const crow::request &req)
     balance.total.store(faltante);
     balance.ingreso.store(0);
     balance.cambio.store(0);
+    Pago::faltante = 0;
 
     is_busy.store(true);
     is_running.store(true);
@@ -146,6 +156,7 @@ crow::response Venta::inicia(const crow::request &req)
     t_log->m_id = log.insert_log(t_log);
     t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito.");
     Global::Utility::is_ok = true;
+    Pago::faltante = 0;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
@@ -163,13 +174,4 @@ crow::response Venta::inicia(const crow::request &req)
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
 
     return crow::response(data);
-}
-
-crow::response Venta::deten(const crow::request &req)
-{
-    Global::EValidador::is_running.store(false);
-    cancelado = true;
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
-    return crow::response();
 }

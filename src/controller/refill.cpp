@@ -388,6 +388,7 @@ size_t Refill::saca_cassette()
 
 crow::response Refill::retirada(const crow::request &req)
 {
+    Pago::faltante = 0;
     async_gui.dispatch_to_gui([this]()
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     Device::dv_bill.inicia_dispositivo_v6();

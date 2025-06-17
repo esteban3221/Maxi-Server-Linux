@@ -30,20 +30,20 @@ void Pago::on_btn_cancel_click()
 void Pago::poll_pago(const std::pair<int, std::string> &status)
 {
     auto json_data = crow::json::load(status.second);
-    if (json_data.has("dispenseResult"))
-        if (json_data["dispenseResult"].s() == "COMPLETED")
+    if (std::string data = json_data["dispenseResult"].s(); json_data.has("dispenseResult"))
+        if (data == "COMPLETED")
         {
             Global::System::showNotify("Pago", "Pago completado con éxito", "dialog-information");
         }
-        else if (json_data["dispenseResult"].s() == "IN_PROGRESS")
+        else if (data == "IN_PROGRESS")
         {
             /*continue*/
         }
-        else if (json_data["dispenseResult"].s() == "ERROR")
+        else if (data == "ERROR")
         {
             Global::System::showNotify("Pago", "Error al procesar el pago: Error en validador", "dialog-error");
         }
-        else if (json_data["dispenseResult"].s() == "TIME_OUT")
+        else if (data == "TIME_OUT")
         {
             Global::System::showNotify("Pago", "Pago Incompleto", "dialog-warning");
         }
@@ -59,8 +59,12 @@ void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus)
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
     if (cambio > 0)
+    {
         Pago::faltante = cambio;
-
+        Global::Utility::is_ok = false;
+        Global::System::showNotify(tipo.c_str(), "No se cuenta con suficiente efectivo", "dialog-error");
+    }
+    
     da_pago(r_bill.dump(), r_coin.dump(), tipo, estatus);
 }
 
@@ -109,6 +113,7 @@ crow::response Pago::inicia(const crow::request &req)
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_A);
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
+    Pago::faltante = 0;
 
     int cambio = balance.cambio = bodyParams["value"].i();
     if (cambio <= 0)
@@ -144,6 +149,7 @@ crow::response Pago::inicia(const crow::request &req)
 
     t_log->m_id = log.insert_log(t_log);
     Global::Utility::is_ok = true;
+    Pago::faltante = 0;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {

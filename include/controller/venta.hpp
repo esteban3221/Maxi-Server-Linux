@@ -26,7 +26,6 @@ private:
     Glib::RefPtr<Gio::ListStore<MLevelCash>> s_level_ant;
 
     crow::response inicia(const crow::request &req);
-    crow::response deten(const crow::request &req);
 public:
     Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Venta();

@@ -61,7 +61,7 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(<interface>
         </child>
         <child>
             <object class="GtkLabel" id="lbl_version">
-                <property name="label">Version ; 1.0.0.1</property>
+                <property name="label">Version ; 1.0.15.1</property>
                 <property name="halign">2</property>
                 <property name="valign">2</property>
             </object>
