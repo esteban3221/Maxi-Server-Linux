@@ -30,27 +30,25 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
 
-    if (status == "STACKED")
-    {
-        auto s_level = Device::dv_bill.get_level_cash_actual(true);
-
-        for (size_t i = 0; i < s_level->get_n_items(); i++)
-        {
-            auto m_list = s_level->get_item(i);
-            if (m_list->m_denominacion == balance.ingreso_parcial / 100)
-            {
-                auto m_list_ant = s_level_ant->get_item(i);
-
-                if (m_list_ant->m_cant_recy < m_list->m_cant_recy)
-                {
-                    auto db = std::make_unique<LevelCash>("Level_Bill");
-                    m_list_ant->m_cant_alm++;
-                    db->update_level_cash(m_list_ant);
-                }
-                break;
-            }
-        }
-    }
+    // if (status == "STACKED")
+    // {
+    //     auto s_level = Device::dv_bill.get_level_cash_actual(true);
+    //     for (size_t i = 0; i < s_level->get_n_items(); i++)
+    //     {
+    //         auto m_list = s_level->get_item(i);
+    //         if (m_list->m_denominacion == balance.ingreso_parcial / 100)
+    //         {
+    //             auto m_list_ant = s_level_ant->get_item(i);
+    //             if (m_list_ant->m_cant_recy < m_list->m_cant_recy)
+    //             {
+    //                 auto db = std::make_unique<LevelCash>("Level_Bill");
+    //                 m_list_ant->m_cant_alm++;
+    //                 db->update_level_cash(m_list_ant);
+    //             }
+    //             break;
+    //         }
+    //     }
+    // }
 
     if (status == "ESCROW")
     {

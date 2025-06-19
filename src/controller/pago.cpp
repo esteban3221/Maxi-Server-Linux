@@ -113,6 +113,7 @@ crow::response Pago::inicia(const crow::request &req)
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_A);
     using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
+    Global::Utility::is_ok = true;
     Pago::faltante = 0;
 
     int cambio = balance.cambio = bodyParams["value"].i();
@@ -178,6 +179,8 @@ crow::response Pago::inicia_manual(const crow::request &req)
     auto bodyParams = crow::json::load(req.body);
 
     int cambio = balance.cambio = bodyParams["total"].i();
+    Global::Utility::is_ok = true;
+    Pago::faltante = 0;
     balance.total = cambio;
 
     std::vector<int> bill_values;
@@ -250,6 +253,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
         not Global::Utility::is_ok ? estatus : "Pago Realizada con Exito.",
         Glib::DateTime::create_now_local());
     Global::Utility::is_ok = true;
+    Pago::faltante = 0;
     t_log->m_id = log.insert_log(t_log);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
