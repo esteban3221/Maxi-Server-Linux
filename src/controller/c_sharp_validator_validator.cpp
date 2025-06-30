@@ -299,9 +299,9 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual(bool e
 
         m_list->append(MLevelCash::create(
             m_list_db->m_denominacion,       // denomonacion
-            json[i]["StoredInCashbox"].i(),           // cassete
-            not extendido ? m_list_db->m_cant_recy : json[i]["stored"].i(), // i["value"].i(), // recyclado
-            m_list_db->m_nivel_inmo,         // i["value"].i() // tope dinero
+            json[i]["storedInCashbox"].i(),           // cassete
+            not extendido ? m_list_db->m_cant_recy : json[i]["stored"].i(),
+            m_list_db->m_nivel_inmo,
             0));
     }
 

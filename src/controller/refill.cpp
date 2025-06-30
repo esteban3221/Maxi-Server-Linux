@@ -218,6 +218,7 @@ crow::response Refill::inicia(const crow::request &req)
 
     balance.ingreso.store(0);
     balance.cambio.store(0);
+    Pago::faltante = 0;
 
     async_gui.dispatch_to_gui([this]()
     { 
@@ -375,7 +376,7 @@ size_t Refill::saca_cassette()
             for (int i = 0; i < datos_bill->get_n_items(); i++)
             {
                 auto item = datos_bill->get_item(i);
-                total_bill += item->m_cant_recy * item->m_denominacion;
+                total_bill += item->m_cant_alm * item->m_denominacion;
                 item->m_cant_alm = 0;
                 db_bill->update_level_cash(item);
             }

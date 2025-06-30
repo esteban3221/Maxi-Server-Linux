@@ -134,7 +134,7 @@ crow::response Venta::inicia(const crow::request &req)
     }   
     else if (balance.cambio.load() > 0)
         Pago::da_pago(balance.cambio.load(), "Venta", estatus);
-    else if (Pago::faltante > 0)
+    if (Pago::faltante > 0)
         estatus = "Venta incompleta, faltante: " + std::to_string(Pago::faltante);
     
     crow::json::wvalue data;
@@ -154,7 +154,6 @@ crow::response Venta::inicia(const crow::request &req)
     t_log->m_id = log.insert_log(t_log);
     t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito.");
     Global::Utility::is_ok = true;
-    Pago::faltante = 0;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {

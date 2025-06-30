@@ -150,7 +150,6 @@ crow::response Pago::inicia(const crow::request &req)
 
     t_log->m_id = log.insert_log(t_log);
     Global::Utility::is_ok = true;
-    Pago::faltante = 0;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
@@ -253,7 +252,6 @@ crow::response Pago::inicia_manual(const crow::request &req)
         not Global::Utility::is_ok ? estatus : "Pago Realizada con Exito.",
         Glib::DateTime::create_now_local());
     Global::Utility::is_ok = true;
-    Pago::faltante = 0;
     t_log->m_id = log.insert_log(t_log);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
