@@ -62,7 +62,7 @@ std::pair<int, std::string> Validator::command_post(const std::string &command, 
 
 std::pair<int, std::string> Validator::reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos)
 {
-    const int max_intentos = 10;
+    const int max_intentos = 15;
     std::pair<int, std::string> status;
     do
     {
