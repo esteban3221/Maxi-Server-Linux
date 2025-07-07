@@ -1,5 +1,4 @@
 #include "controller/pago.hpp"
-#include "pago.hpp"
 
 Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
@@ -87,8 +86,18 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const std::
             Device::dv_bill.inicia_dispositivo_v6();
 
             status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", bill, max_intentos);
+            if (max_intentos == 15)
+            {
+                Device::dv_bill.deten_cobro_v6();
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                Device::dv_bill.inicia_dispositivo_v6();
+                status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", bill, max_intentos);
+            }
+
             poll_pago(status_bill);
         }
+
+        max_intentos = 0;
 
         // Procesamiento para dv_coin
         if (coin != "[0,0,0,0]")
@@ -96,6 +105,13 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const std::
             Device::dv_coin.inicia_dispositivo_v6();
 
             status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", coin , max_intentos);
+            if (max_intentos == 15)
+            {
+                Device::dv_coin.deten_cobro_v6();
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                Device::dv_coin.inicia_dispositivo_v6();
+                status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", coin , max_intentos);
+            }
             poll_pago(status_coin);
         }
 
