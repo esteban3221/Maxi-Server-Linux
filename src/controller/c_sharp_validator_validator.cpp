@@ -41,7 +41,7 @@ void Validator::imprime_debug(const cpr::Response &r, const std::string &comando
               << BOLDBLACK << "Validador: " << WHITE << validator << '\n'
               << BOLDBLACK << "Comando: " << WHITE << comando << '\n'
               << BOLDBLACK << "Tiempo: " << WHITE << r.elapsed << '\n'
-              << BOLDBLACK << "Responde Code: " << (r.status_code != crow::status::OK ? RED : GREEN) << r.status_code << '\n'
+              << BOLDBLACK << "Code: " << (r.status_code != crow::status::OK ? RED : GREEN) << r.status_code << '\n'
               << BOLDBLACK << "Body: " << WHITE << r.text << '\n'
 
               << RESET;
@@ -233,7 +233,7 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
     json_data_status_coneccion = crow::json::load(data_out.second);
     this->validator = data_out.first == crow::status::OK ? std::string(json_data_status_coneccion["deviceID"].s()) : validator;
 
-    int intentos_start = 0, intentos_enable_payout = 0, intentos_enable_acceptor = 0;
+    int intentos_start = 0;
     if (reintenta_comando_post("StartDevice", "", intentos_start).first != crow::status::OK)
     {
         return {}; // Si falla, sal de la función
@@ -301,7 +301,9 @@ Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual(bool e
             m_list_db->m_denominacion,       // denomonacion
             json[i]["storedInCashbox"].i(),           // cassete
             not extendido ? m_list_db->m_cant_recy : json[i]["stored"].i(),
+            m_list_db->m_nivel_inmo_min,
             m_list_db->m_nivel_inmo,
+            m_list_db->m_nivel_inmo_max,
             0));
     }
 

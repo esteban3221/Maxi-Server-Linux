@@ -141,7 +141,9 @@ void Refill::on_show_map()
             list_store_bill->append(MLevelCash::create(level_bill->get_item(i)->m_denominacion,
                                                        level_bill->get_item(i)->m_cant_alm,
                                                        level_bill->get_item(i)->m_cant_recy,
+                                                       level_bill->get_item(i)->m_nivel_inmo_min,
                                                        level_bill->get_item(i)->m_nivel_inmo,
+                                                       level_bill->get_item(i)->m_nivel_inmo_max,
                                                        total_parcial_billetes[i]));
         }
         list_store_coin->remove_all();
@@ -150,7 +152,9 @@ void Refill::on_show_map()
             list_store_coin->append(MLevelCash::create(level_coin->get_item(i)->m_denominacion,
                                                        level_coin->get_item(i)->m_cant_alm,
                                                        level_coin->get_item(i)->m_cant_recy,
+                                                       level_coin->get_item(i)->m_nivel_inmo_min,
                                                        level_coin->get_item(i)->m_nivel_inmo,
+                                                       level_coin->get_item(i)->m_nivel_inmo_max,
                                                        total_parcial_monedas[i]));
         }
 
@@ -288,7 +292,9 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["bill"][i]["Denominacion"] = m_list->m_denominacion;
         json["bill"][i]["Almacenado"] = m_list->m_cant_alm;
         json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["bill"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
         json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+        json["bill"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
     }
 
     auto coin_selection = Device::dv_coin.get_level_cash_actual(true,true);
@@ -298,7 +304,9 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["coin"][i]["Denominacion"] = m_list->m_denominacion;
         json["coin"][i]["Almacenado"] = m_list->m_cant_alm;
         json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["coin"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
         json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+        json["coin"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
     }
 
     json["total"] = v_lbl_total->get_text();
@@ -313,10 +321,12 @@ crow::response Refill::update_imovilidad(const crow::request &req)
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto data = crow::json::load(req.body);
     auto denominacion = data["denominacion"].i();
+    auto nivel_inmo_min = data["nivel_inmo_min"].i();
     auto nivel_inmo = data["nivel_inmo"].i();
+    auto nivel_inmo_max = data["nivel_inmo_max"].i();
 
     auto bd = denominacion > 10 ? std::make_unique<LevelCash>("Level_Bill") : std::make_unique<LevelCash>("Level_Coin");
-    bd->update_nivel_inmo(denominacion, nivel_inmo);
+    bd->update_nivel_inmo(denominacion,nivel_inmo_min, nivel_inmo, nivel_inmo_max);
     return crow::response();
 }
 
@@ -393,46 +403,17 @@ crow::response Refill::retirada(const crow::request &req)
     async_gui.dispatch_to_gui([this]()
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     Device::dv_bill.inicia_dispositivo_v6();
-    Device::dv_coin.inicia_dispositivo_v6();
-    auto datos_coin = Device::dv_coin.get_level_cash_actual(true);
-    auto status_bill = Device::dv_bill.command_post("Purge","",true);
-    auto status_coin = Device::dv_coin.command_post("SmartEmpty", "{"
-                                                                  "\"ModuleNumber\": 0,"
-                                                                  "\"IsNV4000\": false"
-                                                                  "}",true);
-    
+
+    saca_cassette();
     auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
     Log log;
-
-    if (status_coin.first == 200)
-    {
-        size_t total_coin = 0;
-        
-        for (size_t i = 0; i < datos_coin->get_n_items(); i++)
-        {
-            auto item = datos_coin->get_item(i);
-            total_coin += item->m_cant_recy * item->m_denominacion;
-        }
-        Global::EValidador::is_running.store(true);
-        size_t total_bill = saca_cassette();
-
-        t_log->m_total = total_bill + total_coin;
-    }
-    else
-    {
-        t_log->m_total = 0;
-        t_log->m_estatus = "Error";
-    }
-
     t_log->m_id = log.insert_log(t_log);
     auto data = Global::Utility::json_ticket(t_log);
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
-
     Device::dv_bill.deten_cobro_v6();
-    Device::dv_coin.deten_cobro_v6();
     
-    return crow::response(status_bill.first, data);
+    return crow::response(200, data);
 }
 
 void Refill::deten()

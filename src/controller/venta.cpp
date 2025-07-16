@@ -69,11 +69,7 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
             v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
 
             faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
-            std::cout << "Faltante: " << faltante << '\n';
             balance.cambio.store(balance.ingreso.load() > balance.total.load() ? balance.ingreso.load() - balance.total.load() : 0);
-            std::cout << "Ingreso: " << balance.ingreso.load() << "\n" 
-                      << "Cambio: " << balance.cambio.load() << '\n'
-                      << "Total: " << balance.total.load() << '\n';
 
             v_lbl_cambio->set_text(std::to_string(balance.cambio.load()));
             v_lbl_faltante->set_text(std::to_string(faltante)); 
@@ -98,7 +94,9 @@ crow::response Venta::inicia(const crow::request &req)
     estatus.clear();
     faltante = bodyParams["value"].i();
     std::string concepto;
-    concepto = bodyParams.has("concepto") ? bodyParams["concepto"].operator std::string() : "*- Sin Concepto -*";
+    concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+    bodyParams["concepto"].operator std::string() : 
+    "*- Sin Concepto -*";
     balance.total.store(faltante);
     balance.ingreso.store(0);
     balance.cambio.store(0);
