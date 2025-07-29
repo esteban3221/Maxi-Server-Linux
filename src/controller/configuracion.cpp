@@ -14,6 +14,7 @@ CConfiguracion::CConfiguracion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
+    CROW_ROUTE(RestApp::app, "/configuracion/sube_imagen_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_imagen_pos));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -178,6 +179,28 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
     response_json["coin"] = json_coin;
 
     return crow::response(response_json);
+}
+
+crow::response CConfiguracion::sube_imagen_pos(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    crow::multipart::message msg(req);
+
+    auto file_part = msg.get_part_by_name("file");
+    std::string filename;
+
+    auto content_disp = file_part.get_header_object("Content-Disposition");
+    if (auto param = file_part.get_header_object("Content-Disposition").params; param.size() > 0)
+        filename = param.at("filename");
+    else
+        filename = "archivo_sin_nombre";
+    
+    auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
+    std::ofstream out(path + "/" + filename, std::ios::binary);
+    out.write(file_part.body.data(), file_part.body.size());
+    out.close();
+
+    return crow::response(200, "Imagen recibido: " + filename);
 }
 
 crow::response CConfiguracion::actualiza_pos(const crow::request &req)

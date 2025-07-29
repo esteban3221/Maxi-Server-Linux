@@ -13,7 +13,7 @@ find_package(cpr REQUIRED)
 pkg_check_modules(GTKMM gtkmm-4.0)
 pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 find_package(SQLite3 REQUIRED)
-find_package(GTest REQUIRED) # Google Test instalado en el sistema
+find_package(GTest REQUIRED)
 
 include_directories(
     ${GTKMM_INCLUDE_DIRS}

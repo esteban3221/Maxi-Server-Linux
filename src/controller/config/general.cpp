@@ -153,8 +153,8 @@ void General::on_button_file_clicked()
     dialog->add_filter(filter_images);
     dialog->set_filter(filter_images);
 
-    auto path = Glib::get_user_special_dir(Glib::UserDirectory::DOCUMENTS);
-    auto doc = Gio::File::create_for_path(path + "/img");
+    auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
+    auto doc = Gio::File::create_for_path(path);
     dialog->set_current_folder(doc);
 
     dialog->show();

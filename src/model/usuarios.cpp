@@ -51,7 +51,7 @@ size_t Usuarios::insert_usuario(const Glib::RefPtr<MUsuarios> &usuario)
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("SELECT * FROM usuarios WHERE username = ? LIMIT 1", usuario->m_usuario.c_str());
 
-        if (contenedor_data->at("id").size() > 0)
+        if (contenedor_data->size() > 0)
             throw std::runtime_error("El usuario ya existe");
 
     database.sqlite3->command("INSERT INTO usuarios VALUES(null,?,?)",

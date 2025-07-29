@@ -119,10 +119,8 @@ namespace Global
         int find_position(const std::unordered_map<int, int> &index_map, int value)
         {
             for (auto &&i : index_map)
-            {
                 if (i.second == value)
                     return i.first;
-            }
 
             return -1;
         }
@@ -147,8 +145,8 @@ namespace Global
             auto body = json.dump();
 
             auto r = cpr::Post(cpr::Url{URI + "/api/Users/Authenticate"},
-                               cpr::Header{{"Content-Type", "application/json"},
-                                           {"Authorization", "Bearer " + token}},
+                               cpr::Header{{"Content-Type", "application/json"}/*,
+                                           {"Authorization", "Bearer " + token}*/},
                                cpr::Body{body});
 
             if (r.status_code == crow::status::OK)
