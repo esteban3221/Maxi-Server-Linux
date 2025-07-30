@@ -47,7 +47,7 @@ public:
     const crow::json::rvalue &get_status_coneccion();
 
     void init(Global::EValidador::Conf conf);
-    void acepta_dinero(const std::string &state, bool recy = false);
+    void acepta_dinero(int deno, bool recy = false);
 
     Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual(bool extendido = false, bool debug = false) const;
 

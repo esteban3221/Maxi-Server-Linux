@@ -86,7 +86,7 @@ void General::on_click_reboot()
     v_dialog->signal_response().connect([this](int response)
                                         {
         if(Gtk::ResponseType::OK == response)
-            Global::System::exec("shutdown -r");
+            Global::System::exec("shutdown -r -h 0");
 
         v_dialog->close(); });
 
@@ -100,7 +100,7 @@ void General::on_click_shutdown()
     v_dialog->signal_response().connect([this](int response)
                                         {
         if(Gtk::ResponseType::OK == response)
-            Global::System::exec("shutdown +1");
+            Global::System::exec("shutdown -h 0");
 
         v_dialog->close(); });
 
@@ -110,7 +110,7 @@ void General::on_click_shutdown()
 void General::on_rest_app()
 {
     v_dialog.reset(new Gtk::MessageDialog(*Global::Widget::v_main_window, "Reinicio de Fabrica", false, Gtk::MessageType::QUESTION, Gtk::ButtonsType::CANCEL, true));
-    auto btn = v_dialog->add_button("Ok", Gtk::ResponseType::OK);
+    auto btn = v_dialog->add_button("Continuar", Gtk::ResponseType::OK);
     btn->add_css_class({"destructive-action"});
     btn->set_sensitive(false);
     v_dialog->set_secondary_text("Esto eliminara toda configuración y datos guardados.\n"
@@ -124,7 +124,7 @@ void General::on_rest_app()
     v_dialog->signal_response().connect([this](int response)
     {
         if(Gtk::ResponseType::OK == response)
-            std::cout << "Reinicio de Fabrica\n";
+            Global::System::exec("rm $HOME/data.db && systemctl restart");
 
         v_dialog->close(); 
     });

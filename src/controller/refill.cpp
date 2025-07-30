@@ -197,9 +197,6 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
             {
                 ingreso_[indice]++;
                 select->set_selected(indice);
-                if (status == "ESCROW")
-                    Device::dv_bill.acepta_dinero(status, true);
-
                 on_show_map();
             }
             else
@@ -281,6 +278,11 @@ crow::response Refill::get_dashboard(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
     crow::json::wvalue json;
+    size_t total = 0,
+           total_monedas = 0,
+           total_billetes = 0,
+           total_monedas_recy = 0,
+           total_billetes_recy = 0;
 
     json["bill"] = crow::json::wvalue::list();
     json["coin"] = crow::json::wvalue::list();
@@ -295,6 +297,14 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["bill"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
         json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
         json["bill"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
+
+        if(m_list->m_cant_recy <= m_list->m_nivel_inmo_min)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+        else if(m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+
+        total_billetes += m_list->m_cant_alm * m_list->m_denominacion;
+        total_billetes_recy += m_list->m_cant_recy * m_list->m_denominacion;
     }
 
     auto coin_selection = Device::dv_coin.get_level_cash_actual(true,true);
@@ -307,11 +317,16 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["coin"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
         json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
         json["coin"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
+
+        total_monedas += m_list->m_cant_alm * m_list->m_denominacion;
+        total_monedas_recy += m_list->m_cant_recy * m_list->m_denominacion;
     }
 
-    json["total"] = v_lbl_total->get_text();
-    json["total_monedas"] = v_lbl_total_monedas->get_text();
-    json["total_billetes"] = v_lbl_total_billetes->get_text();
+    json["total"] = std::to_string(total_billetes + total_monedas + total_billetes_recy + total_monedas_recy);
+    json["total_billetes_recy"] = std::to_string(total_billetes_recy);
+    json["total_monedas_recy"] = std::to_string(total_monedas_recy);
+    json["total_billetes"] = std::to_string(total_billetes);
+    json["total_monedas"] = std::to_string(total_monedas);
 
     return crow::response(json);
 }
@@ -379,7 +394,7 @@ size_t Refill::saca_cassette()
     auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
     size_t total_bill = 0;
 
-    Device::dv_bill.poll([this,datos_bill,db_bill,&total_bill](const std::string &status, const crow::json::rvalue &data)
+    Device::dv_bill.poll([this,datos_bill,db_bill,&total_bill](const std::string &status, const crow::json::rvalue &)
     {
         if (status == "CASHBOX_REMOVED")
         {
@@ -399,6 +414,7 @@ size_t Refill::saca_cassette()
 
 crow::response Refill::retirada(const crow::request &req)
 {
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Retirada);
     Pago::faltante = 0;
     async_gui.dispatch_to_gui([this]()
     { Global::Widget::v_main_stack->set_visible_child(*this); });

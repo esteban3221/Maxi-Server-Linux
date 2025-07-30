@@ -50,11 +50,6 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
     //     }
     // }
 
-    if (status == "ESCROW")
-    {
-        Device::dv_bill.acepta_dinero(status, true);
-    }
-
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED" ||
         status == "ESCROW")

@@ -269,17 +269,15 @@ void Validator::deten_cobro_v6()
     command_post("StopDevice", "", true);
 }
 
-void Validator::acepta_dinero(const std::string &state, bool recy)
+void Validator::acepta_dinero(int deno, bool recy)
 {
     crow::json::wvalue json;
 
-    json["Value"] = Global::EValidador::balance.ingreso_parcial;
+    json["Value"] = deno * 100;
     json["CountryCode"] = "MXN";
     json["Route"] = (int)recy;
 
     command_post("SetDenominationRoute", json.dump(), true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    command_post("AcceptFromEscrow");
 }
 
 Glib::RefPtr<Gio::ListStore<MLevelCash>> Validator::get_level_cash_actual(bool extendido, bool debug) const
