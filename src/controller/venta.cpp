@@ -88,8 +88,11 @@ crow::response Venta::inicia(const crow::request &req)
     cancelado = false;
     estatus.clear();
     faltante = bodyParams["value"].i();
-    std::string concepto;
-    concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+
+    bool is_view_ingreso = bodyParams.has("is_view_ingreso") && bodyParams["is_view_ingreso"].b();
+    is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
+
+    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
     bodyParams["concepto"].operator std::string() : 
     "*- Sin Concepto -*";
     balance.total.store(faltante);
@@ -121,14 +124,14 @@ crow::response Venta::inicia(const crow::request &req)
 
     if (cancelado)
     {
-        estatus = "Venta cancelada";
+        estatus = "Operación cancelada";
         if (balance.ingreso.load() > 0)
-            Pago::da_pago(balance.ingreso.load(), "Venta", estatus);
+            Pago::da_pago(balance.ingreso.load(), is_view_ingreso ? "Venta" : "Ingreso", estatus);
     }   
     else if (balance.cambio.load() > 0)
-        Pago::da_pago(balance.cambio.load(), "Venta", estatus);
+        Pago::da_pago(balance.cambio.load(), is_view_ingreso ? "Venta" : "Ingreso", estatus);
     if (Pago::faltante > 0)
-        estatus = "Venta incompleta, faltante: " + std::to_string(Pago::faltante);
+        estatus = "Cambio Incompleto, faltante: " + std::to_string(Pago::faltante);
     
     crow::json::wvalue data;
     Log log;
@@ -136,16 +139,16 @@ crow::response Venta::inicia(const crow::request &req)
     (
         0,
         Global::User::id,
-        "Venta",
+        is_view_ingreso ? "Venta" : "Ingreso",
         balance.ingreso.load(),
         balance.cambio.load(),
         balance.total.load(),
-        "- " + concepto + " | " + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito."),
+        "- " + concepto + " | " + (not Global::Utility::is_ok || cancelado ? estatus : "Exito."),
         Glib::DateTime::create_now_local()
     );
 
     t_log->m_id = log.insert_log(t_log);
-    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Venta Realizada con Exito.");
+    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Exito.");
     Global::Utility::is_ok = true;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())

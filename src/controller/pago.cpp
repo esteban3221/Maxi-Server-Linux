@@ -1,4 +1,5 @@
 #include "controller/pago.hpp"
+#include "pago.hpp"
 
 Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
@@ -187,102 +188,143 @@ crow::response Pago::inicia(const crow::request &req)
     return crow::response(data);
 }
 
-crow::response Pago::inicia_manual(const crow::request &req)
-{
+crow::response Pago::inicia_manual(const crow::request &req) {
+    estatus.clear();
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
-    using namespace Global::EValidador;
     auto bodyParams = crow::json::load(req.body);
+    auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
 
+    validar_inventario_disponible(bill_values, coin_values);
+    configurar_estado_pago(cambio);
+    mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
+
+    auto t_log = registrar_pago_y_log(bill_values, coin_values, "Pago Manual");
+
+    imprimir_ticket_si_corresponde(t_log);
+
+    return finalizar_proceso_pago(t_log);
+}
+
+// Funciones auxiliares factorizadas:
+
+std::tuple<int, std::vector<int>, std::vector<int>> Pago::procesar_parametros_iniciales(const crow::json::rvalue& bodyParams) {
+    using namespace Global::EValidador;
     int cambio = balance.cambio = bodyParams["total"].i();
+    concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+    bodyParams["concepto"].operator std::string() : 
+    "*- Sin Concepto -*";
     Global::Utility::is_ok = true;
     Pago::faltante = 0;
     balance.total = cambio;
 
     std::vector<int> bill_values;
-    for (auto &&i : bodyParams["bill"])
+    for (auto&& i : bodyParams["bill"])
         bill_values.push_back(i.i());
-    
 
     std::vector<int> coin_values;
-    for (auto &&i : bodyParams["coin"])
+    for (auto&& i : bodyParams["coin"])
         coin_values.push_back(i.i());
 
+    return {cambio, bill_values, coin_values};
+}
 
+void Pago::validar_inventario_disponible(const std::vector<int>& bill_values, const std::vector<int>& coin_values) {
     auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
     auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
 
-    int total = 0;
-
-    for (size_t i = 0; i < s_level_mon.size(); i++)
-    {
+    for (size_t i = 0; i < s_level_mon.size(); i++) {
         if (coin_values[i] > s_level_mon.at(map_coin.at(i)))
-            return crow::response(crow::status::CONFLICT, "No hay suficiente cambio en la denominacion: " + std::to_string(map_coin.at(i)) + " de monedas");
-        total += coin_values[i] * map_coin.at(i);
+            throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_coin.at(i)) + " de monedas");
     }
 
-    for (size_t i = 0; i < s_level_bill.size(); i++)
-    {
+    for (size_t i = 0; i < s_level_bill.size(); i++) {
         if (bill_values[i] > s_level_bill.at(map_bill.at(i)))
-            return crow::response(crow::status::CONFLICT, "No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
-        total += bill_values[i] * map_bill.at(i);
+            throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
     }
+}
+
+void Pago::configurar_estado_pago(int cambio) {
+    using namespace Global::EValidador;
 
     is_running.store(true);
     balance.ingreso.store(0);
     is_busy.store(true);
+    balance.total = cambio;
+}
 
-    async_gui.dispatch_to_gui([this, total]()
-    { 
+int Pago::calcular_total_pago(const std::vector<int>& bill_values, const std::vector<int>& coin_values) {
+    int total = 0;
+    for (size_t i = 0; i < coin_values.size(); i++)
+        total += coin_values[i] * map_coin.at(i);
+    
+    for (size_t i = 0; i < bill_values.size(); i++)
+        total += bill_values[i] * map_bill.at(i);
+    
+    return total;
+}
+
+void Pago::mostrar_interfaz_pago_manual(int total) {
+    async_gui.dispatch_to_gui([this, total]() {
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text("Monto Manual: " + std::to_string(total));
         v_lbl_faltante->set_text("0");
         v_lbl_recibido->set_text("0"); 
     });
+}
 
-    std::string bill = "[";
-    for (size_t i = 0; i < bill_values.size(); i++)
-        bill += std::to_string(bill_values[i]) + ",";
-    bill.pop_back();
-    bill += "]";
-    std::string coin = "[";
-    for (size_t i = 0; i < coin_values.size(); i++)
-        coin += std::to_string(coin_values[i]) + ",";
-    coin.pop_back();
-    coin += "]";
+std::shared_ptr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_values, const std::vector<int>& coin_values, const std::string& tipo_pago) {
+    std::string bill_str = vector_to_json_array(bill_values);
+    std::string coin_str = vector_to_json_array(coin_values);
 
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
     const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
     const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
-    Pago::da_pago(bill, coin, "Pago Manual", estatus);
+    Pago::da_pago(bill_str, coin_str, tipo_pago, estatus);
 
     Log log;
-    crow::json::wvalue data;
-    auto t_log = MLog::create
-    (
+    auto t_log = MLog::create(
         0,
         Global::User::id,
-        "Pago Manual",
+        tipo_pago,
         0,
-        total,
+        calcular_total_pago(bill_values, coin_values),
         0,
-        not Global::Utility::is_ok ? estatus : "Pago Realizada con Exito.",
+        "- " + concepto + " | " + (not Global::Utility::is_ok ? estatus : "Exito."),
         Glib::DateTime::create_now_local());
+    
     Global::Utility::is_ok = true;
     t_log->m_id = log.insert_log(t_log);
+    
+    return t_log;
+}
 
-    if (Global::Widget::Impresora::v_switch_impresion->get_active())
-    {
+void Pago::imprimir_ticket_si_corresponde(const std::shared_ptr<MLog>& t_log) {
+    if (Global::Widget::Impresora::v_switch_impresion->get_active()) {
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());
     }
+}
 
-    data = Global::Utility::json_ticket(t_log);
+crow::response Pago::finalizar_proceso_pago(const std::shared_ptr<MLog>& t_log) {
+    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok ? estatus : "Exito.");
+    crow::json::wvalue data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([](){ Global::Widget::v_main_stack->set_visible_child("0"); });
 
     return crow::response(data);
+}
+
+std::string Pago::vector_to_json_array(const std::vector<int>& values) {
+    std::string result = "[";
+    for (size_t i = 0; i < values.size(); i++)
+        result += std::to_string(values[i]) + ",";
+    if (!values.empty()) result.pop_back();
+    result += "]";
+    return result;
 }

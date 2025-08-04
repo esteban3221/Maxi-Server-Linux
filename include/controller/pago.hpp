@@ -16,6 +16,7 @@ private:
 
     static void poll_pago(const std::pair<int, std::string> &);
     std::string estatus;
+    std::string concepto;
 
     crow::response inicia(const crow::request &req);
     crow::response inicia_manual(const crow::request &req);
@@ -40,4 +41,14 @@ public:
     static void da_pago(int cambio, const std::string &tipo, std::string &estatus);
     static void da_pago(const std::string &bill, const std::string &coin, const std::string &tipo, std::string &estatus);
     static inline std::atomic_int32_t faltante;
+
+    std::tuple<int, std::vector<int>, std::vector<int>> procesar_parametros_iniciales(const crow::json::rvalue &bodyParams);
+    void validar_inventario_disponible(const std::vector<int> &bill_values, const std::vector<int> &coin_values);
+    void configurar_estado_pago(int cambio);
+    int calcular_total_pago(const std::vector<int> &bill_values, const std::vector<int> &coin_values);
+    void mostrar_interfaz_pago_manual(int total);
+    std::shared_ptr<MLog> registrar_pago_y_log(const std::vector<int> &bill_values, const std::vector<int> &coin_values, const std::string &tipo_pago);
+    void imprimir_ticket_si_corresponde(const std::shared_ptr<MLog> &t_log);
+    crow::response finalizar_proceso_pago(const std::shared_ptr<MLog> &t_log);
+    std::string vector_to_json_array(const std::vector<int> &values);
 };
