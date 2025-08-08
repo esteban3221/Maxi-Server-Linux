@@ -30,31 +30,23 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
 
-    // if (status == "STACKED")
-    // {
-    //     auto s_level = Device::dv_bill.get_level_cash_actual(true);
-    //     for (size_t i = 0; i < s_level->get_n_items(); i++)
-    //     {
-    //         auto m_list = s_level->get_item(i);
-    //         if (m_list->m_denominacion == balance.ingreso_parcial / 100)
-    //         {
-    //             auto m_list_ant = s_level_ant->get_item(i);
-    //             if (m_list_ant->m_cant_recy < m_list->m_cant_recy)
-    //             {
-    //                 auto db = std::make_unique<LevelCash>("Level_Bill");
-    //                 m_list_ant->m_cant_alm++;
-    //                 db->update_level_cash(m_list_ant);
-    //             }
-    //             break;
-    //         }
-    //     }
-    // }
+    if (status == "ESCROW")
+    {
+        auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
+        for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+        {
+            auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+            if (m_list->m_denominacion == (data["value"].i() / 100))
+                if (m_list->m_cant_recy <= m_list->m_nivel_inmo_min)
+                    Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+                else if (m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
+                    Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+        }
+    }
 
     if (status == "COIN_CREDIT" ||
-        status == "VALUE_ADDED" ||
-        status == "ESCROW")
+        status == "VALUE_ADDED")
     {
-
         balance.ingreso_parcial.store(data["value"].i());
         s_level_ant = Device::dv_coin.get_level_cash_actual(true);
 
@@ -126,10 +118,10 @@ crow::response Venta::inicia(const crow::request &req)
     {
         estatus = "Operación cancelada";
         if (balance.ingreso.load() > 0)
-            Pago::da_pago(balance.ingreso.load(), is_view_ingreso ? "Venta" : "Ingreso", estatus);
+            Pago::da_pago(balance.ingreso.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
     }   
     else if (balance.cambio.load() > 0)
-        Pago::da_pago(balance.cambio.load(), is_view_ingreso ? "Venta" : "Ingreso", estatus);
+        Pago::da_pago(balance.cambio.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
     if (Pago::faltante > 0)
         estatus = "Cambio Incompleto, faltante: " + std::to_string(Pago::faltante);
     
@@ -139,7 +131,7 @@ crow::response Venta::inicia(const crow::request &req)
     (
         0,
         Global::User::id,
-        is_view_ingreso ? "Venta" : "Ingreso",
+        is_view_ingreso ? "Ingreso" : "Venta",
         balance.ingreso.load(),
         balance.cambio.load(),
         balance.total.load(),

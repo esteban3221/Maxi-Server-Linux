@@ -277,17 +277,19 @@ crow::response Refill::inicia(const crow::request &req)
 crow::response Refill::get_dashboard(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
+    auto jload = crow::json::load(req.body);
+    bool refresh = true;
     crow::json::wvalue json;
     size_t total = 0,
            total_monedas = 0,
-           total_billetes = 0,
+           total_billetes_cass = 0,
            total_monedas_recy = 0,
            total_billetes_recy = 0;
 
     json["bill"] = crow::json::wvalue::list();
     json["coin"] = crow::json::wvalue::list();
 
-    auto bill_selection = Device::dv_bill.get_level_cash_actual(true,true);
+    auto bill_selection = Device::dv_bill.get_level_cash_actual(refresh);
     for (size_t i = 0; i < bill_selection->get_n_items(); i++)
     {
         auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
@@ -298,16 +300,11 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
         json["bill"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
 
-        if(m_list->m_cant_recy <= m_list->m_nivel_inmo_min)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-        else if(m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-
-        total_billetes += m_list->m_cant_alm * m_list->m_denominacion;
+        total_billetes_cass += m_list->m_cant_alm * m_list->m_denominacion;
         total_billetes_recy += m_list->m_cant_recy * m_list->m_denominacion;
     }
 
-    auto coin_selection = Device::dv_coin.get_level_cash_actual(true,true);
+    auto coin_selection = Device::dv_coin.get_level_cash_actual(refresh);
     for (size_t i = 0; i < coin_selection->get_n_items(); i++)
     {
         auto m_list = coin_selection->get_typed_object<MLevelCash>(i);
@@ -318,14 +315,14 @@ crow::response Refill::get_dashboard(const crow::request &req)
         json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
         json["coin"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
 
-        total_monedas += m_list->m_cant_alm * m_list->m_denominacion;
         total_monedas_recy += m_list->m_cant_recy * m_list->m_denominacion;
     }
 
-    json["total"] = std::to_string(total_billetes + total_monedas + total_billetes_recy + total_monedas_recy);
+    json["total"] = std::to_string(total_billetes_cass + total_monedas + total_billetes_recy + total_monedas_recy);
     json["total_billetes_recy"] = std::to_string(total_billetes_recy);
     json["total_monedas_recy"] = std::to_string(total_monedas_recy);
-    json["total_billetes"] = std::to_string(total_billetes);
+    json["total_billetes_cass"] = std::to_string(total_billetes_cass);
+    json["total_billetes"] = std::to_string(total_billetes_cass + total_billetes_recy);
     json["total_monedas"] = std::to_string(total_monedas);
 
     return crow::response(json);
