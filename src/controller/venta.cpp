@@ -45,7 +45,8 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
     }
 
     if (status == "COIN_CREDIT" ||
-        status == "VALUE_ADDED")
+        status == "VALUE_ADDED" ||
+        status == "ESCROW" )
     {
         balance.ingreso_parcial.store(data["value"].i());
         s_level_ant = Device::dv_coin.get_level_cash_actual(true);

@@ -13,6 +13,8 @@ Glib::RefPtr<Gio::ListStore<MUsuariosRoles>> UsuariosRoles::get_usuario_roles_by
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("select * from usuario_roles WHERE id_usuario = ?", id);
 
+    if (contenedor_data->empty())
+        return {};
     auto m_list = Gio::ListStore<MUsuariosRoles>::create();
 
     for (size_t i = 0; i < contenedor_data->at("id").size(); i++)

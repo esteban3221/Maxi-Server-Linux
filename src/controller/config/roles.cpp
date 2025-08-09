@@ -54,10 +54,10 @@ void Roles::on_active_list(guint num)
 
     UsuariosRoles u_roles;
     auto roles = u_roles.get_usuario_roles_by_id(m_list->m_id);
-
-    for (size_t i = 0; i < roles->get_n_items(); i++)
-    {
-        auto list = roles->get_item(i);
-        v_rol[list->m_id_rol - 1]->set_active();
-    }
+    if (roles)
+        for (size_t i = 0; i < roles->get_n_items(); i++)
+        {
+            auto list = roles->get_item(i);
+            v_rol[list->m_id_rol - 1]->set_active();
+        }
 }
