@@ -117,6 +117,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
 
 void Refill::on_show_map()
 {
+    Device::dv_bill.command_post("GetAllLevels", "", true);
     Glib::signal_idle().connect_once([this]()
     {
         try
@@ -174,27 +175,28 @@ void Refill::on_show_map()
 
 void Refill::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
-    using namespace Global::EValidador;
-    auto ingreso = data["value"].i() / 100;
-
     if (status == "ESCROW")
     {
+        auto ingreso = data["value"].i() / 100;
         auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
         for (size_t i = 0; i < bill_selection->get_n_items(); i++)
         {
             if (auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
                 m_list->m_denominacion == ingreso)
 
-                if (m_list->m_cant_recy <= m_list->m_nivel_inmo_max)
+                if (m_list->m_cant_recy +1 < m_list->m_nivel_inmo_max)
                 {
                     Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-                    balance.ingreso += ingreso;
+                    Device::dv_bill.command_post("AcceptFromEscrow");
+                    Global::EValidador::balance.ingreso += ingreso;
                     on_show_map();
                 }
-                else if (m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
+                else // if (m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
                 {
-                    Device::dv_bill.command_post("ReturnFromEscrow");
+                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    Device::dv_bill.command_post("ReturnFromEscrow","",true);
                     Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+                    Global::EValidador::balance.ingreso += ingreso;
                 }
         }
     }
@@ -202,7 +204,8 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
     if (status == "COIN_CREDIT" ||
         status == "VALUE_ADDED")
     {
-        balance.ingreso += ingreso;
+        auto ingreso = data["value"].i() / 100;
+        Global::EValidador::balance.ingreso += ingreso;
         on_show_map();
     }
 }
@@ -224,8 +227,20 @@ crow::response Refill::inicia(const crow::request &req)
     is_busy.store(true);
     is_running.store(true);
 
-    Device::dv_coin.inicia_dispositivo_v6();
-    Device::dv_bill.inicia_dispositivo_v6();
+    Device::dv_coin.inicia_dispositivo_v6(false);
+    Device::dv_bill.inicia_dispositivo_v6(false);
+
+    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
+    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    {
+        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+
+        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+        else if (m_list->m_nivel_inmo_max == 0)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    }
 
     auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
     auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Refill::func_poll)); });
@@ -382,22 +397,23 @@ crow::response Refill::transpaso(const crow::request &req)
 
 size_t Refill::saca_cassette()
 {
-    auto db_bill = std::make_shared<LevelCash>("Level_Bill");
-    auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
     size_t total_bill = 0;
+    Global::EValidador::is_running.store(true);
 
-    Device::dv_bill.poll([this,datos_bill,db_bill,&total_bill](const std::string &status, const crow::json::rvalue &)
+    auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
+
+    for (int i = 0; i < datos_bill->get_n_items(); i++)
+    {
+        auto item = datos_bill->get_item(i);
+        total_bill += item->m_cant_alm * item->m_denominacion;
+    }
+
+    Device::dv_bill.poll([this](const std::string &status, const crow::json::rvalue &)
     {
         if (status == "CASHBOX_REMOVED")
         {
-            for (int i = 0; i < datos_bill->get_n_items(); i++)
-            {
-                auto item = datos_bill->get_item(i);
-                total_bill += item->m_cant_alm * item->m_denominacion;
-                item->m_cant_alm = 0;
-                db_bill->update_level_cash(item);
-            }
             Global::EValidador::is_running.store(false);
+            Device::dv_bill.command_post("ClearCashboxLevels", "", true);
         }
     });
 
@@ -412,8 +428,7 @@ crow::response Refill::retirada(const crow::request &req)
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     Device::dv_bill.inicia_dispositivo_v6();
 
-    saca_cassette();
-    auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
+    auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
     Log log;
     t_log->m_id = log.insert_log(t_log);
     auto data = Global::Utility::json_ticket(t_log);

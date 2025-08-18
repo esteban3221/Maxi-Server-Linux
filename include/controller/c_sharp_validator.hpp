@@ -36,7 +36,7 @@ public:
     void poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func);
 
     //version con net 6
-    void inicia_dispositivo_v6();
+    void inicia_dispositivo_v6(bool auto_acepta_billetes = true);
     void deten_cobro_v6();
 
     //version con net 8

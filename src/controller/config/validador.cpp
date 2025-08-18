@@ -26,7 +26,7 @@ void DetallesValidador::init_detalles()
     conf_coin.puerto = data_coin->get_item(0)->m_valor;
     conf_coin.ssp = std::stoi(data_coin->get_item(1)->m_valor);
 
-    conf_bill.auto_acepta_billetes = conf_coin.auto_acepta_billetes = true;
+    conf_bill.auto_acepta_billetes = conf_coin.auto_acepta_billetes = false;
     conf_bill.habilita_recolector = conf_coin.habilita_recolector = false;
     conf_bill.dispositivo = conf_coin.dispositivo = "";
     conf_bill.log_ruta = conf_coin.log_ruta = "";

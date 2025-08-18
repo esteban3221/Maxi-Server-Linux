@@ -88,17 +88,21 @@ crow::response Sesion::get_all_roles_by_id(const crow::request &req)
 
     UsuariosRoles u_roles;
     auto roles = u_roles.get_usuario_roles_by_id(id_usuario);
-
-    crow::json::wvalue json;
-
-    for (size_t i = 0; i < roles->get_n_items(); i++)
+    if(roles)
     {
-        auto list = roles->get_item(i);
-        json["roles"][i]["id"] = list->m_id;
-        json["roles"][i]["id_usuario"] = list->m_id_usuario;
-        json["roles"][i]["id_rol"] = list->m_id_rol;
+        crow::json::wvalue json;
+
+        for (size_t i = 0; i < roles->get_n_items(); i++)
+        {
+            auto list = roles->get_item(i);
+            json["roles"][i]["id"] = list->m_id;
+            json["roles"][i]["id_usuario"] = list->m_id_usuario;
+            json["roles"][i]["id_rol"] = list->m_id_rol;
+        }
+        return crow::response(json);
     }
-    return crow::response(json);
+        return crow::response(crow::status::NOT_FOUND);
+    
 }
 
 crow::response Sesion::alta_usuario(const crow::request &req)

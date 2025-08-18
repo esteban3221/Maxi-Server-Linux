@@ -101,7 +101,7 @@ void Validator::poll(const std::function<void(const std::string &, const crow::j
 {
     Global::EValidador::balance.cambio.store(0);
 
-    while (Global::EValidador::is_running.load() /*|| (Global::EValidador::balance.ingreso.load() >= Global::EValidador::balance.total.load())*/)
+    while (Global::EValidador::is_running.load())
     {
         std::lock_guard<std::mutex> lock(poll_mutedx);
         /*Se queda con una cola de eventos y de vez en cuando retiene dinero logicamente hasta que se vuelve a consultar*/
@@ -256,9 +256,10 @@ const crow::json::rvalue &Validator::get_status_coneccion()
     return this->json_data_status_coneccion;
 }
 
-void Validator::inicia_dispositivo_v6()
+void Validator::inicia_dispositivo_v6(bool auto_acepta_billetes)
 {
     conf.habilita_recolector = true;
+    conf.auto_acepta_billetes = auto_acepta_billetes;
     inicia_dispositivo_v8(conf);
 }
 

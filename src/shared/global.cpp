@@ -82,13 +82,15 @@ namespace Global
 
             UsuariosRoles u_roles;
             auto roles = u_roles.get_usuario_roles_by_id(User::id);
-            for (size_t i = 0; i < roles->get_n_items(); i++)
-            {
-                auto list = roles->get_item(i);
-                if (list->m_id_rol == static_cast<u_int16_t>(rol))
-                    return;
-            }
-            throw std::runtime_error("No tiene permisos para esta operacion");
+            if(roles)
+                for (size_t i = 0; i < roles->get_n_items(); i++)
+                {
+                    auto list = roles->get_item(i);
+                    if (list->m_id_rol == static_cast<u_int16_t>(rol))
+                        return;
+                }
+            else
+                throw std::runtime_error("No tiene permisos para esta operacion");
         }
 
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador)
