@@ -226,9 +226,10 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
             {"LogFilePath", conf.log_ruta},
             {"EnableAcceptor", conf.habilita_recolector},
             {"EnablePayout", conf.habilita_recolector},
-            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}};
+            {"EnableAutoAcceptEscrow", conf.auto_acepta_billetes}
+        };
     this->conf = conf;
-    auto data_out = command_post("OpenConnection", data_in.dump());
+    auto data_out = command_post("OpenConnection", data_in.dump(),true);
 
     json_data_status_coneccion = crow::json::load(data_out.second);
     this->validator = data_out.first == crow::status::OK ? std::string(json_data_status_coneccion["deviceID"].s()) : validator;

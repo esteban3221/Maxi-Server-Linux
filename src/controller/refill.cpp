@@ -196,7 +196,6 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
                     std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     Device::dv_bill.command_post("ReturnFromEscrow","",true);
                     Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-                    Global::EValidador::balance.ingreso += ingreso;
                 }
         }
     }
