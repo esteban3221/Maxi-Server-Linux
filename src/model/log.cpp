@@ -9,6 +9,13 @@ Log::~Log()
 {
 }
 
+const std::shared_ptr<ResultMap> Log::get_corte(int id_user)
+{
+    auto &database = Database::getInstance();
+
+    return database.sqlite3->command("SELECT * FROM log WHERE Fecha >= date('now','localtime') AND IdUser = ? ORDER BY id DESC", /* Global::User::id*/ id_user);
+}
+
 Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int paginacion)
 {
     auto &database = Database::getInstance();

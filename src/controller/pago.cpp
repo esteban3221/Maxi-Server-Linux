@@ -272,7 +272,7 @@ void Pago::mostrar_interfaz_pago_manual(int total) {
     });
 }
 
-std::shared_ptr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_values, const std::vector<int>& coin_values, const std::string& tipo_pago) {
+Glib::RefPtr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_values, const std::vector<int>& coin_values, const std::string& tipo_pago) {
     std::string bill_str = vector_to_json_array(bill_values);
     std::string coin_str = vector_to_json_array(coin_values);
 
@@ -300,14 +300,14 @@ std::shared_ptr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_va
     return t_log;
 }
 
-void Pago::imprimir_ticket_si_corresponde(const std::shared_ptr<MLog>& t_log) {
+void Pago::imprimir_ticket_si_corresponde(const Glib::RefPtr<MLog>& t_log) {
     if (Global::Widget::Impresora::v_switch_impresion->get_active()) {
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());
     }
 }
 
-crow::response Pago::finalizar_proceso_pago(const std::shared_ptr<MLog>& t_log) {
+crow::response Pago::finalizar_proceso_pago(const Glib::RefPtr<MLog>& t_log) {
     t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok ? estatus : "Exito.");
     crow::json::wvalue data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;

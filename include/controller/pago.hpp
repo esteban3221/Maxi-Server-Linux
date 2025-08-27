@@ -47,8 +47,8 @@ public:
     void configurar_estado_pago(int cambio);
     int calcular_total_pago(const std::vector<int> &bill_values, const std::vector<int> &coin_values);
     void mostrar_interfaz_pago_manual(int total);
-    std::shared_ptr<MLog> registrar_pago_y_log(const std::vector<int> &bill_values, const std::vector<int> &coin_values, const std::string &tipo_pago);
-    void imprimir_ticket_si_corresponde(const std::shared_ptr<MLog> &t_log);
-    crow::response finalizar_proceso_pago(const std::shared_ptr<MLog> &t_log);
+    Glib::RefPtr<MLog> registrar_pago_y_log(const std::vector<int> &bill_values, const std::vector<int> &coin_values, const std::string &tipo_pago);
+    void imprimir_ticket_si_corresponde(const Glib::RefPtr<MLog> &t_log);
+    crow::response finalizar_proceso_pago(const Glib::RefPtr<MLog> &t_log);
     std::string vector_to_json_array(const std::vector<int> &values);
 };

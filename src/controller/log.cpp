@@ -3,10 +3,33 @@
 LogData::LogData(/* args */)
 {
     CROW_ROUTE(RestApp::app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
+    CROW_ROUTE(RestApp::app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
 }
 
 LogData::~LogData()
 {
+}
+
+crow::response LogData::corte_caja(const crow::request &req)
+{
+    auto log = std::make_unique<Log>();
+    auto contenedor_log = log->get_corte(Global::User::id);
+
+    crow::json::wvalue json;
+    json["log"] = crow::json::wvalue::list();
+    for (size_t i = 0; i < contenedor_log->at("Id").size(); i++)
+    {
+        json["log"][i]["id"] = std::stoull(contenedor_log->at("Id")[i]);
+        json["log"][i]["id_user"] = std::stoull(contenedor_log->at("IdUser")[i]);
+        json["log"][i]["tipo"] = contenedor_log->at("Tipo")[i];
+        json["log"][i]["ingreso"] = std::stoi(contenedor_log->at("Ingreso")[i]);
+        json["log"][i]["cambio"] = std::stoi(contenedor_log->at("Cambio")[i]);
+        json["log"][i]["total"] = std::stoi(contenedor_log->at("Total")[i]);
+        json["log"][i]["estatus"] = contenedor_log->at("Estatus")[i];
+        json["log"][i]["fecha"] = contenedor_log->at("Fecha")[i];
+    }
+
+    return crow::response(json);
 }
 
 crow::response LogData::get_log(const crow::request &req)

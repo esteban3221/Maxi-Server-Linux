@@ -84,11 +84,12 @@ void General::on_click_reboot()
     v_dialog->set_secondary_text("¿Desea reinicia el dispositivo?");
 
     v_dialog->signal_response().connect([this](int response)
-                                        {
+    {
         if(Gtk::ResponseType::OK == response)
             Global::System::exec("shutdown -r -h 0");
 
-        v_dialog->close(); });
+        v_dialog->close(); 
+    });
 
     v_dialog->show();
 }
@@ -98,11 +99,12 @@ void General::on_click_shutdown()
     v_dialog->add_button("Apagar", Gtk::ResponseType::OK)->add_css_class({"warning"});
     v_dialog->set_secondary_text("¿Desea Apagar el dispositivo?");
     v_dialog->signal_response().connect([this](int response)
-                                        {
+    {
         if(Gtk::ResponseType::OK == response)
             Global::System::exec("shutdown -h 0");
 
-        v_dialog->close(); });
+        v_dialog->close(); 
+    });
 
     v_dialog->show();
 }
