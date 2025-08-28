@@ -5,6 +5,7 @@
 #include <functional>
 #include <glibmm.h>
 #include <giomm.h>
+#include <iostream>
 #include "coneccion.hpp"
 
 class MLog : public Glib::Object
@@ -60,7 +61,7 @@ public:
     ~Log();
 
     Glib::RefPtr<Gio::ListStore<MLog>> get_log(const std::string &tipo = "",const std::string &f_ini = "",const std::string &f_fin = "", int paginacion = 0);
-    const std::shared_ptr<ResultMap> get_corte(int id_user);
+    const std::shared_ptr<ResultMap> get_corte(int id_user, const std::string &tipo);
     size_t insert_log(const Glib::RefPtr<MLog> &list);
     void update_log(const Glib::RefPtr<MLog> &list);
     size_t tam_row;

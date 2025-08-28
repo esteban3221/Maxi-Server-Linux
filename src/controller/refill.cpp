@@ -189,6 +189,7 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
                     Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
                     Device::dv_bill.command_post("AcceptFromEscrow");
                     Global::EValidador::balance.ingreso += ingreso;
+                    total_parcial_billetes[i]++;
                     on_show_map();
                 }
                 else // if (m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
@@ -205,6 +206,12 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
     {
         auto ingreso = data["value"].i() / 100;
         Global::EValidador::balance.ingreso += ingreso;
+        total_parcial_monedas[ingreso == 1 ? 0 :
+                              ingreso == 2 ? 1 :
+                              ingreso == 5 ? 2 :
+                              ingreso == 10 ? 3 :
+                              ingreso == 20 ? 4 :
+                              ingreso == 50 ? 5 : 6] ++;
         on_show_map();
     }
 }

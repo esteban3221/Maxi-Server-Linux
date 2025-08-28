@@ -13,7 +13,10 @@ LogData::~LogData()
 crow::response LogData::corte_caja(const crow::request &req)
 {
     auto log = std::make_unique<Log>();
-    auto contenedor_log = log->get_corte(Global::User::id);
+    auto bodyParams = crow::json::load(req.body);
+
+    auto tipo = bodyParams["tipo"].s();
+    auto contenedor_log = log->get_corte(Global::User::id, tipo);
 
     crow::json::wvalue json;
     json["log"] = crow::json::wvalue::list();
