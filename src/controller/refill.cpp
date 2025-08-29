@@ -194,8 +194,10 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
                 }
                 else // if (m_list->m_cant_recy >= m_list->m_nivel_inmo_max)
                 {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-                    Device::dv_bill.command_post("ReturnFromEscrow","",true);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    if(auto response = Device::dv_bill.command_post("ReturnFromEscrow","",true);
+                        response.first == 400)
+                        Global::EValidador::balance.ingreso += ingreso; // seguramente se fue a cassette
                     Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
                 }
         }
