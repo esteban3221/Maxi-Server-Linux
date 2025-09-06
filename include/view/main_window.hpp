@@ -1,7 +1,6 @@
 #pragma once
 #include <gtkmm.h>
 
-
 class VMainWindow : public Gtk::Window
 {
 

@@ -3,16 +3,14 @@
 
 General::General(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VGeneral(cobject, refBuilder)
 {
-    //@@@ por el momento no se tiene una vista de carrousel
-    v_Drop_temporizador->set_sensitive(false);
-    v_btn_select_carrousel->set_sensitive(false);
-
     carga_estado_inicial();
     v_list_configurable->signal_row_activated().connect(sigc::mem_fun(*this, &General::on_list_checked));
     v_list_config_general->signal_row_activated().connect(sigc::mem_fun(*this, &General::on_list_activate));
 
     v_btn_select_icon->signal_clicked().connect(sigc::mem_fun(*this, &General::on_button_file_clicked));
+    v_btn_select_carrousel->signal_clicked().connect(sigc::mem_fun(*this, &General::on_button_directory_clicked));
     v_ety_mensaje_inicio->signal_changed().connect(sigc::mem_fun(*this, &General::on_ety_changed));
+    v_Drop_temporizador->property_selected().signal_changed().connect(sigc::mem_fun(*this, &General::on_dropdown_directory_time_selected));
 }
 
 General::~General()
@@ -134,11 +132,11 @@ void General::on_rest_app()
     v_dialog->show();
 }
 
-void General::on_button_file_clicked()
+void General::on_button_image_clicked()
 {
     auto dialog = new Gtk::FileChooserDialog(*Global::Widget::v_main_window,
-                                             /*type ? "Escoge un Directorio" : */ "Escoge una Imágen",
-                                             /*type ? Gtk::FileChooser::Action::SELECT_FOLDER :*/ Gtk::FileChooser::Action::OPEN,
+                                             type ? "Escoge un Directorio" :  "Escoge una Imágen",
+                                             type ? Gtk::FileChooser::Action::SELECT_FOLDER : Gtk::FileChooser::Action::OPEN,
                                              true);
 
     dialog->set_modal(true);
@@ -149,17 +147,93 @@ void General::on_button_file_clicked()
     dialog->add_button("_Cancel", Gtk::ResponseType::CANCEL);
     dialog->add_button("_Open", Gtk::ResponseType::OK);
 
-    auto filter_images = Gtk::FileFilter::create();
-    filter_images->set_name("Image files");
-    filter_images->add_mime_type("image/*");
-    dialog->add_filter(filter_images);
-    dialog->set_filter(filter_images);
+    if(type)
+    {
+        auto filter_images = Gtk::FileFilter::create();
+        filter_images->set_name("Image files");
+        filter_images->add_mime_type("image/*");
+        dialog->add_filter(filter_images);
+        dialog->set_filter(filter_images);
+    }
+    
 
     auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
     auto doc = Gio::File::create_for_path(path);
     dialog->set_current_folder(doc);
 
     dialog->show();
+}
+void General::on_button_directory_clicked()
+{
+    type = true;
+    on_button_image_clicked();
+}
+void General::on_button_file_clicked()
+{
+    type = false;
+    on_button_image_clicked();
+}
+
+void General::on_dropdown_directory_time_selected()
+{
+    auto db = std::make_unique<Configuracion>();
+    auto data = MConfiguracion::create(9, "Tiempo Carrusel", std::to_string(v_Drop_temporizador->get_selected()));
+    db->update_conf(data);
+    
+    obtener_tiempo_carrousel();
+    init_carrousel();
+}
+
+void General::init_carrousel(){
+    using namespace Global::Widget;
+    v_carrousel->clear_pages();
+    // tngo que meter las imagenes en el carrousel std::vector<Gtk::Image*>
+    std::vector<Gtk::Image *> vec_imgs;
+    for (auto &&i : listar_contenido(v_lbl_path_carrousel->get_text()))
+    {
+        auto img = Gtk::manage(new Gtk::Image());
+        img->set(i);
+        vec_imgs.push_back(img);
+    }
+    v_carrousel->set_image_pages(vec_imgs);
+    v_carrousel->init_imgs();
+}
+
+void General::obtener_tiempo_carrousel()
+{
+    using namespace Global::Widget;
+    size_t millis = 0;
+    switch (v_Drop_temporizador->get_selected())
+    {
+        
+        case 0: default_home = "0"; break;
+        case 1: millis = 5000; default_home = "10"; break;
+        case 2: millis = 10000; default_home = "10"; break;
+        case 3: millis = 15000; default_home = "10"; break;
+        case 4: millis = 30000; default_home = "10"; break;
+        case 5: millis = 60000; default_home = "10"; break;
+        default: default_home = "10"; break;
+    }
+
+    v_carrousel->property_miliseconds_move() = millis;
+}
+
+std::vector<std::string> General::listar_contenido(const std::string &ruta_carpeta)
+{
+    std::vector<std::string> archivos;
+    try
+    {
+        for (const auto & entry : std::filesystem::directory_iterator(ruta_carpeta))
+        {
+            if(entry.is_regular_file())
+                archivos.push_back(entry.path().string());
+        }
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        std::cerr << "Error al acceder al directorio: " << e.what() << std::endl;
+    }
+    return archivos;
 }
 
 void General::on_file_dialog_response(int response_id, Gtk::FileChooserDialog *dialog)
@@ -170,10 +244,19 @@ void General::on_file_dialog_response(int response_id, Gtk::FileChooserDialog *d
         {
             std::cout << "Open clicked." << std::endl;
             auto filename = dialog->get_file()->get_path();
-            v_lbl_path_icon->set_text(filename);
 
             auto db = std::make_unique<Configuracion>();
-            auto data = MConfiguracion::create(6, "Ruta logo incio", filename);
+            Glib::RefPtr<MConfiguracion> data;
+            if(not type)
+            {
+                data = MConfiguracion::create(6, "Ruta logo incio", filename);
+                v_lbl_path_icon->set_text(filename);
+            }
+            else
+            {
+                data = MConfiguracion::create(8, "Ruta Carrusel", filename);
+                v_lbl_path_carrousel->set_text(filename);
+            }
             db->update_conf(data);
 
             break;

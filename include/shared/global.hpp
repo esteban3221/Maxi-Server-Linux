@@ -1,6 +1,7 @@
 #pragma once
 #include <usuarios_roles.hpp>
 #include <model/log.hpp>
+// #include "carrousel.hpp"
 #include <usuarios.hpp>
 
 #include <crow.h>
@@ -54,7 +55,6 @@ namespace Global
             extern bool state_vizualizacion[6];
             extern Gtk::Switch *v_switch_impresion;
         } // namespace Impresora
-        
     } // namespace Widget
 
     namespace User

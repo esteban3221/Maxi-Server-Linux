@@ -38,6 +38,7 @@ set(SOURCES
     src/view/main_window.cpp
     src/view/refill.cpp
     src/view/config.cpp
+    src/view/carrousel.cpp
 
     src/view/config/base.validador.cpp
     src/view/config/validador.cpp

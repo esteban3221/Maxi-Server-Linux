@@ -1,5 +1,6 @@
 #include "controller/pago.hpp"
 #include "pago.hpp"
+#include "carrousel.hpp"
 
 Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
@@ -180,7 +181,7 @@ crow::response Pago::inicia(const crow::request &req)
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     balance.ingreso.store(0);
     balance.cambio.store(0);
@@ -315,7 +316,7 @@ crow::response Pago::finalizar_proceso_pago(const Glib::RefPtr<MLog>& t_log) {
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(data);
 }

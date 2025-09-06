@@ -116,7 +116,10 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(<interface>
     auto nnip = Gtk::Builder::get_widget_derived<NuevoNip>(builder, "box_nip");
     Global::Widget::v_main_stack->add(*nnip, "7", "Nuevo Nip");
 
-    Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::ROTATE_LEFT_RIGHT);
+    Global::Widget::v_carrousel = Gtk::manage(new VCarrousel);
+    Global::Widget::v_main_stack->add(*Global::Widget::v_carrousel, "10", "Carrousel");
+
+    Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::SLIDE_LEFT_RIGHT);
     this->set_decorated(false);
     this->maximize();
 

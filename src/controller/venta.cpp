@@ -1,4 +1,5 @@
 #include "controller/venta.hpp"
+#include "carrousel.hpp"
 
 Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder),
                                                                                       faltante(0)
@@ -163,7 +164,7 @@ crow::response Venta::inicia(const crow::request &req)
     Device::dv_bill.deten_cobro_v6();
 
     async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child("0"); });
+                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(data);
 }

@@ -4,6 +4,8 @@
 #include "view/config/validador.hpp"
 #include "global.hpp"
 #include "c_sharp_validator.hpp"
+#include "carrousel.hpp"
+
 
 class DetallesValidador : public VDetallesValidador
 {

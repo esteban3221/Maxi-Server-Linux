@@ -25,7 +25,7 @@ namespace Global
     namespace Widget
     {
         Gtk::Stack *v_main_stack = nullptr;
-        Gtk::Window *v_main_window = nullptr;
+        Gtk::Window *v_main_window = nullptr;        
 
         namespace Refill
         {

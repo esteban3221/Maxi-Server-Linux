@@ -1,4 +1,5 @@
 #include "controller/nip.hpp"
+#include "carrousel.hpp"
 
 Nip::Nip(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VBaseNip(cobject, refBuilder) 
 {
@@ -30,5 +31,5 @@ void Nip::on_btn_nip_enter()
 
 void Nip::on_btn_nip_back()
 {
-    Global::Widget::v_main_stack->set_visible_child("0");
+    Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
 }

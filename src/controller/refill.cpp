@@ -1,4 +1,5 @@
 #include "controller/refill.hpp"
+#include "carrousel.hpp"
 
 Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VRefill(cobject, refBuilder),
                                                                                         total(0),
@@ -285,7 +286,7 @@ crow::response Refill::inicia(const crow::request &req)
 
     data["Cambio_faltante"] = Pago::faltante;
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
     is_busy.store(false);
     is_running.store(false);
 
@@ -441,7 +442,7 @@ crow::response Refill::retirada(const crow::request &req)
     t_log->m_id = log.insert_log(t_log);
     auto data = Global::Utility::json_ticket(t_log);
 
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("0"); });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
     Device::dv_bill.deten_cobro_v6();
     
     return crow::response(200, data);
