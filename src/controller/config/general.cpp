@@ -196,7 +196,9 @@ void General::init_carrousel(){
         vec_imgs.push_back(img);
     }
     v_carrousel->set_image_pages(vec_imgs);
+    v_carrousel->property_miliseconds_move() = 0;
     v_carrousel->init_imgs();
+    obtener_tiempo_carrousel();
 }
 
 void General::obtener_tiempo_carrousel()

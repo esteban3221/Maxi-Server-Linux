@@ -1,5 +1,5 @@
 #include "controller/configuracion.hpp"
-
+//@@@ Añadir ruta para quitar carrousel y para guardar carpeta de imagenes
 CConfiguracion::CConfiguracion(/* args */)
 {
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
@@ -11,10 +11,12 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/test_impresion").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::test_impresion));
     CROW_ROUTE(RestApp::app, "/configuracion/reiniciar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::reiniciar));
     CROW_ROUTE(RestApp::app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
+    CROW_ROUTE(RestApp::app, "/configuracion/desactiva_carrousel").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::desactiva_carrousel));
 
     CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
     CROW_ROUTE(RestApp::app, "/configuracion/sube_imagen_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_imagen_pos));
+    CROW_ROUTE(RestApp::app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
 }
 
 CConfiguracion::~CConfiguracion()
@@ -179,6 +181,40 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
     response_json["coin"] = json_coin;
 
     return crow::response(response_json);
+}
+
+crow::response CConfiguracion::desactiva_carrousel(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Global::Widget::v_main_stack->set_visible_child("0");
+
+    return crow::response();
+}
+
+crow::response CConfiguracion::sube_carpeta_pos(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    crow::multipart::message msg(req);
+
+    auto file_part = msg.get_part_by_name("file");
+    std::string filename;
+
+    auto content_disp = file_part.get_header_object("Content-Disposition");
+    if (auto param = file_part.get_header_object("Content-Disposition").params; param.size() > 0)
+        filename = param.at("filename");
+    else
+        filename = "archivo_sin_nombre";
+
+    auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
+    std::ofstream out(filename, std::ios::binary);
+    out.write(file_part.body.data(), file_part.body.size());
+    out.close();
+
+    std::string command = "unzip -o " + filename + " -d " + path + "/carrousel/";
+    auto resultado = std::system(command.c_str());
+    // limpiar_archivos(filename, path);
+
+    return crow::response(200, "Archivo recibido: " + filename);
 }
 
 crow::response CConfiguracion::sube_imagen_pos(const crow::request &req)
