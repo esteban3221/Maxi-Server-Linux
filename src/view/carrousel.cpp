@@ -114,8 +114,8 @@ void VCarrousel::init_imgs(void)
         {
             while (mili_seconds_move != 0)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
                 mueve_carrousel();
+                std::this_thread::sleep_for(std::chrono::seconds(vec_pages.size() * mili_seconds_move / 1000));
             }
         }).detach();
     }
