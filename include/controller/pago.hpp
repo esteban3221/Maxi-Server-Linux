@@ -15,11 +15,17 @@ private:
     void on_btn_cancel_click() override;
 
     static void poll_pago(const std::pair<int, std::string> &);
+    void poll_cambio(const std::string &status, const crow::json::rvalue &data);
     std::string estatus;
     std::string concepto;
 
     crow::response inicia(const crow::request &req);
     crow::response inicia_manual(const crow::request &req);
+
+    crow::response inicia_cambio(const crow::request &req);
+    crow::response inicia_cambio_manual(const crow::request &req);
+    crow::response termina_cambio_manual(const crow::request &req);
+    crow::response cancelar_cambio_manual(const crow::request &req);
 
     const std::unordered_map<int, int> map_bill = {
         {0, 20},
@@ -39,6 +45,7 @@ public:
     ~Pago();
 
     static void da_pago(int cambio, const std::string &tipo, std::string &estatus);
+    static void da_pago(int cambio, const std::string &tipo, std::string &estatus, bool is_cambio);
     static void da_pago(const std::string &bill, const std::string &coin, const std::string &tipo, std::string &estatus);
     static inline std::atomic_int32_t faltante;
 

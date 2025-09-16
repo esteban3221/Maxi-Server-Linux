@@ -88,7 +88,7 @@ namespace Global
 
     namespace Utility
     {
-        extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador);
+        extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio = false);
         extern bool is_ok;
         extern crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log);
         extern void valida_autorizacion(const crow::request &req, User::Rol rol);

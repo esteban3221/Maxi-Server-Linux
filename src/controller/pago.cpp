@@ -12,6 +12,11 @@ Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_pago").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia));
     CROW_ROUTE(RestApp::app, "/accion/inicia_pago_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_manual));
+
+    CROW_ROUTE(RestApp::app, "/accion/inicia_cambio").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio));
+    CROW_ROUTE(RestApp::app, "/accion/inicia_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio_manual));
+    CROW_ROUTE(RestApp::app, "/accion/termina_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::termina_cambio_manual));
+    CROW_ROUTE(RestApp::app, "/accion/cancelar_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::cancelar_cambio_manual));
 }
 
 Pago::~Pago()
@@ -26,6 +31,21 @@ void Pago::on_btn_retry_click()
 void Pago::on_btn_cancel_click()
 {
     std::cout << "Click cancela desde Pago\n";
+}
+
+void Pago::poll_cambio(const std::string &status, const crow::json::rvalue &data)
+{
+    if (status == "COIN_CREDIT" ||
+        status == "VALUE_ADDED" ||
+        status == "ESCROW")
+    {
+        Global::EValidador::balance.ingreso.store((data["value"].i() / 100));
+
+        Global::EValidador::is_running.store(false);
+        Device::dv_coin.deten_cobro_v6();
+        Device::dv_bill.deten_cobro_v6();
+    }
+
 }
 
 void Pago::poll_pago(const std::pair<int, std::string> &status)
@@ -58,6 +78,25 @@ void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus)
 
     auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
     auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
+
+    if (cambio > 0)
+    {
+        Pago::faltante = cambio;
+        Global::Utility::is_ok = false;
+        Global::System::showNotify(tipo.c_str(), "No se cuenta con suficiente efectivo", "dialog-error");
+    }
+    
+    da_pago(r_bill.dump(), r_coin.dump(), tipo, estatus);
+}
+
+void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus, bool is_cambio)
+{
+    Pago::faltante = 0;
+    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
+    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
+
+    auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill, is_cambio);
+    auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon, is_cambio);
 
     if (cambio > 0)
     {
@@ -135,6 +174,9 @@ crow::response Pago::inicia(const crow::request &req)
     Pago::faltante = 0;
 
     int cambio = balance.cambio = bodyParams["value"].i();
+    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+    bodyParams["concepto"].operator std::string() : 
+    "*- Sin Concepto -*";
     if (cambio <= 0)
         return crow::response("Nada que devolver");
 
@@ -328,4 +370,197 @@ std::string Pago::vector_to_json_array(const std::vector<int>& values) {
     if (!values.empty()) result.pop_back();
     result += "]";
     return result;
+}
+
+
+crow::response Pago::inicia_cambio(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_A);
+    using namespace Global::EValidador;
+    auto bodyParams = crow::json::load(req.body);
+    Global::Utility::is_ok = true;
+    Pago::faltante = 0;
+    is_running.store(true);
+
+    Device::dv_coin.inicia_dispositivo_v6();
+    Device::dv_bill.inicia_dispositivo_v6();
+
+    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
+    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    {
+        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+
+        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+        else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    }
+
+    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+
+    future1.wait();
+    future2.wait();
+
+    int cambio = balance.ingreso.load();
+
+    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+    bodyParams["concepto"].operator std::string() : 
+    "*- Sin Concepto -*";
+    if (cambio <= 0)
+        return crow::response("Nada que devolver");
+
+    balance.total.store(cambio);
+    
+    balance.ingreso.store(0);
+    is_busy.store(true);
+
+    async_gui.dispatch_to_gui([this, cambio]()
+    { 
+        auto s_total = std::to_string(cambio);
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+        v_lbl_monto_total->set_text(s_total);
+        v_lbl_faltante->set_text(s_total);
+        v_lbl_recibido->set_text("0"); 
+    });
+
+    Pago::da_pago(balance.cambio.load(), "Cambio Automatico", estatus, true);
+
+    Log log;
+    crow::json::wvalue data;
+    auto t_log = MLog::create(
+        0,
+        Global::User::id,
+        "Cambio Automatico",
+        0,
+        balance.cambio.load(),
+        0,
+        not Global::Utility::is_ok ? estatus : "Cambio Realizada con Exito.",
+        Glib::DateTime::create_now_local());
+
+    t_log->m_id = log.insert_log(t_log);
+    Global::Utility::is_ok = true;
+
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
+        std::system(command.c_str());
+    }
+
+    data = Global::Utility::json_ticket(t_log);
+    data["Cambio_faltante"] = Pago::faltante;
+
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
+
+    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+
+    balance.ingreso.store(0);
+    balance.cambio.store(0);
+
+    return crow::response(data);
+}
+
+crow::response Pago::inicia_cambio_manual(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    using namespace Global::EValidador;
+    auto bodyParams = crow::json::load(req.body);
+    Global::Utility::is_ok = true;
+    Pago::faltante = 0;
+    is_running.store(true);
+
+    Device::dv_coin.inicia_dispositivo_v6();
+    Device::dv_bill.inicia_dispositivo_v6();
+
+    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
+    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    {
+        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+
+        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+        else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    }
+
+    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+
+    future1.wait();
+    future2.wait();
+
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
+
+    int cambio = balance.ingreso.load();
+    crow::json::wvalue data;
+    
+    data["ingresado"] = cambio;
+    data["pos_coin"] = Global::Utility::find_position(map_coin, cambio);
+    data["pos_bill"] = Global::Utility::find_position(map_bill, cambio);
+    balance.ingreso = 0;
+    return crow::response(data);
+}
+
+crow::response Pago::termina_cambio_manual(const crow::request &req)
+{
+    estatus.clear();
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    auto bodyParams = crow::json::load(req.body);
+    auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
+
+    validar_inventario_disponible(bill_values, coin_values);
+    configurar_estado_pago(cambio);
+    mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
+
+    auto t_log = registrar_pago_y_log(bill_values, coin_values, "Cambio Manual");
+
+    imprimir_ticket_si_corresponde(t_log);
+
+    return finalizar_proceso_pago(t_log);
+}
+
+crow::response Pago::cancelar_cambio_manual(const crow::request &req)
+{
+    auto bodyParams = crow::json::load(req.body);
+    int cambio = Global::EValidador::balance.cambio = bodyParams["value"].i();
+    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
+    bodyParams["concepto"].operator std::string() : 
+    "*- Sin Concepto -*";
+    if (cambio <= 0)
+        return crow::response("Nada que devolver");
+
+    Pago::da_pago(cambio, "Cambio Manual", estatus);
+
+    Log log;
+    crow::json::wvalue data;
+    auto t_log = MLog::create(
+        0,
+        Global::User::id,
+        "Cambio Manual",
+        0,
+        cambio,
+        0,
+        not Global::Utility::is_ok ? estatus : "Cambio Cancelado",
+        Glib::DateTime::create_now_local());
+
+    t_log->m_id = log.insert_log(t_log);
+    Global::Utility::is_ok = true;
+
+    if (Global::Widget::Impresora::v_switch_impresion->get_active())
+    {
+        std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
+        std::system(command.c_str());
+    }
+
+    data = Global::Utility::json_ticket(t_log);
+    data["Cambio_faltante"] = Pago::faltante;
+
+    Device::dv_coin.deten_cobro_v6();
+    Device::dv_bill.deten_cobro_v6();
+
+    return crow::response(data);
 }
