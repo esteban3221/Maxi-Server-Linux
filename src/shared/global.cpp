@@ -93,7 +93,7 @@ namespace Global
                 throw std::runtime_error("No tiene permisos para esta operacion");
         }
 
-        crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio = false)
+        crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
 
