@@ -1,5 +1,4 @@
 #include "controller/config/general.hpp"
-#include "general.hpp"
 
 General::General(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VGeneral(cobject, refBuilder)
 {
@@ -9,6 +8,7 @@ General::General(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refB
 
     v_btn_select_icon->signal_clicked().connect(sigc::mem_fun(*this, &General::on_button_file_clicked));
     v_btn_select_carrousel->signal_clicked().connect(sigc::mem_fun(*this, &General::on_button_directory_clicked));
+    v_btn_file_explorer->signal_clicked().connect(sigc::mem_fun(*this, &General::on_button_file_explorer_clicked));
     v_ety_mensaje_inicio->signal_changed().connect(sigc::mem_fun(*this, &General::on_ety_changed));
     v_Drop_temporizador->property_selected().signal_changed().connect(sigc::mem_fun(*this, &General::on_dropdown_directory_time_selected));
 }
@@ -27,6 +27,13 @@ void General::carga_estado_inicial()
     v_ety_mensaje_inicio->set_text(db_general->get_item(2)->m_valor);
     v_lbl_path_carrousel->set_text(db_general->get_item(3)->m_valor);
     v_Drop_temporizador->set_selected(std::stoi(db_general->get_item(4)->m_valor));
+}
+
+void General::on_button_file_explorer_clicked()
+{
+    auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
+    auto cmd = "xdg-open " + path + " &";
+    Global::System::exec(cmd.c_str());
 }
 
 void General::on_list_activate(Gtk::ListBoxRow *row)

@@ -1,68 +1,71 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 0.96.1 -->
 <interface>
-    <requires lib="gtk" version="4.0"/>
-    <object class="GtkBox" id="box_principal">
-        <property name="orientation">1</property>
-        <property name="homogeneous">false</property>
-        <property name="margin-bottom">10</property>
-        <property name="margin-start">10</property>
-        <property name="margin-end">10</property>
-        <property name="margin-top">10</property>
+  <!-- interface-name main_window.ui -->
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkBox" id="box_principal">
+    <property name="homogeneous">false</property>
+    <property name="margin-bottom">10</property>
+    <property name="margin-end">10</property>
+    <property name="margin-start">10</property>
+    <property name="margin-top">10</property>
+    <property name="orientation">vertical</property>
+    <child>
+      <object class="GtkBox">
+        <property name="homogeneous">true</property>
+        <property name="orientation">vertical</property>
         <child>
-            <object class="GtkBox">
-                <property name="homogeneous">true</property>
-                <property name="orientation">1</property>
-                <child>
-                    <object class="GtkLabel" id="lbl_main">
-                        <property name="label">Bienvenido</property>
-                        <style>
-                            <class name="title-1"/>
-                        </style>
-                    </object>
-                </child>
-                <child>
-                    <object class="GtkOverlay">
-                        <property name="child">
-                            <object class="GtkImage" id="img_main_logo">
-                                <property name="file">/home/esteban/Descargas/ll/TicketImages/logo_blanco.png</property>
-                                <property name="pixel-size">150</property>
-                                <property name="use-fallback">true</property>
-                            </object>
-                        </property>
-                        <child type="overlay">
-                            <object class="GtkButton" id="btn_logo_nip">
-                                <property name="label">Maxicajero</property>
-                                <property name="halign">3</property>
-                                <property name="valign">3</property>
-                                <property name="margin-bottom">150</property>
-                                <property name="margin-start">150</property>
-                                <property name="margin-end">150</property>
-                                <property name="margin-top">150</property>
-                                <property name="opacity">0</property>
-                            </object>
-                        </child>
-                    </object>
-                </child>
-            </object>
+          <object class="GtkLabel" id="lbl_main">
+            <property name="label">Bienvenido</property>
+            <style>
+              <class name="title-1"/>
+            </style>
+          </object>
         </child>
         <child>
-            <object class="GtkButton" id="btn_pill">
-                <property name="label" translatable="true">1</property>
-                <property name="halign">3</property>
-                <property name="valign">3</property>
-                <property name="vexpand">true</property>
-                <property name="opacity">0</property>
-                <style>
-                    <class name="pill"/>
-                    <class name="suggested-action"/>
-                </style>
-            </object>
+          <object class="GtkOverlay">
+            <property name="child">
+              <object class="GtkImage" id="img_main_logo">
+                <property name="file">/home/esteban/Descargas/ll/TicketImages/logo_blanco.png</property>
+                <property name="pixel-size">150</property>
+                <property name="use-fallback">true</property>
+              </object>
+            </property>
+            <child type="overlay">
+              <object class="GtkButton" id="btn_logo_nip">
+                <property name="halign">center</property>
+                <property name="height-request">200</property>
+                <property name="hexpand">True</property>
+                <property name="label">Maxicajero</property>
+                <property name="opacity">0.0</property>
+                <property name="valign">center</property>
+                <property name="vexpand">True</property>
+                <property name="width-request">200</property>
+              </object>
+            </child>
+          </object>
         </child>
-        <child>
-            <object class="GtkLabel" id="lbl_version">
-                <property name="label">Version ; 1.0.0.1</property>
-                <property name="halign">2</property>
-                <property name="valign">2</property>
-            </object>
-        </child>
-    </object>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="btn_pill">
+        <property name="halign">center</property>
+        <property name="label" translatable="yes">1</property>
+        <property name="opacity">0</property>
+        <property name="valign">center</property>
+        <property name="vexpand">true</property>
+        <style>
+          <class name="pill"/>
+          <class name="suggested-action"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="lbl_version">
+        <property name="halign">end</property>
+        <property name="label">Version ; 1.0.0.1</property>
+        <property name="valign">end</property>
+      </object>
+    </child>
+  </object>
 </interface>

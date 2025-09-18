@@ -7,7 +7,7 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
 
 protected:
-    Gtk::Button *v_btn_select_carrousel = nullptr, *v_btn_select_icon = nullptr;
+    Gtk::Button *v_btn_select_carrousel = nullptr, *v_btn_select_icon = nullptr, *v_btn_file_explorer = nullptr;
     Gtk::Label *v_lbl_path_icon = nullptr, *v_lbl_path_carrousel = nullptr;
     Gtk::CheckButton *v_check_config_notifi = nullptr;
 

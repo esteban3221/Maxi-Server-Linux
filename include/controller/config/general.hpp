@@ -20,6 +20,7 @@ private:
 
     void on_button_file_clicked();
     void on_button_directory_clicked();
+    void on_button_file_explorer_clicked();
     void on_dropdown_directory_time_selected();
     void on_button_image_clicked();
 
