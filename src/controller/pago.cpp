@@ -411,7 +411,7 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     if (cambio <= 0)
         return crow::response("Nada que devolver");
 
-    balance.total.store(cambio);
+    balance.cambio.store(cambio);
     
     balance.ingreso.store(0);
     is_busy.store(true);

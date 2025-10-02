@@ -96,14 +96,14 @@ namespace Global
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
-
+            auto cambio_original = cambio; // Guardamos el valor original del cambio 
             int index = reciclador.size() - 1; // Índice para insertar en el vector
             for (auto it = reciclador.rbegin(); it != reciclador.rend(); ++it, --index)
             {
                 int denominacion = it->first;         // Denominación del billete
                 int &cantidadDisponible = it->second; // Cantidad disponible en el reciclador
 
-                while ((is_cambio ? cambio < denominacion : cambio >= denominacion) && cantidadDisponible > 0)
+                while ((is_cambio ? denominacion < cambio_original && cambio > 0 : cambio >= denominacion) && cantidadDisponible > 0)
                 {
                     cambio -= denominacion; // Reducir el cambio
                     cantidadDisponible--;   // Usar un billete del reciclador

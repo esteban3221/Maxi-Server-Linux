@@ -36,7 +36,7 @@ namespace View
 <!-- Created with Cambalache 0.96.1 -->
 <interface>
   <!-- interface-name general.ui -->
-  <requires lib="gtk" version="4.18"/>
+  <requires lib="gtk" version="4.12"/>
   <object class="GtkBox" id="page_0">
     <property name="orientation">vertical</property>
     <property name="spacing">10</property>
