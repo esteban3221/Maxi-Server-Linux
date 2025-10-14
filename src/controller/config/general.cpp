@@ -91,7 +91,7 @@ void General::on_click_reboot()
     v_dialog->signal_response().connect([this](int response)
     {
         if(Gtk::ResponseType::OK == response)
-            Global::System::exec("shutdown -r -h 0");
+            Global::System::exec("systemctl reboot");
 
         v_dialog->close(); 
     });
