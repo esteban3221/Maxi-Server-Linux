@@ -3,11 +3,95 @@
 Wifi::Wifi(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VWifi(cobject, refBuilder) 
 {
     this->v_btn_red->signal_clicked().connect([]() { std::system("nm-connection-editor &"); });
+    this->v_btn_redes->signal_clicked().connect(sigc::mem_fun(*this, &Wifi::on_btn_redes_clicked));
+    this->v_btn_regresar->signal_clicked().connect(sigc::mem_fun(*this, &Wifi::on_btn_regresar_clicked));
+    v_list_box_wifi->signal_map().connect(sigc::mem_fun(*this, &Wifi::on_show_map_wifi));
     init_data();
 }
 
 Wifi::~Wifi()
 {
+}
+
+std::vector<Wifi::NetworkInfo> Wifi::obten_datos_redes(const std::string &data)
+{
+    std::istringstream stream(data);
+    std::string line;
+    std::vector<NetworkInfo> networks;
+    
+    while (std::getline(stream, line)) {
+        // Cada línea representa una red diferente
+        // Dividir la línea por ':' para obtener los campos
+        std::istringstream linestream(line);
+        std::vector<std::string> fields;
+        std::string field;
+        
+        while (std::getline(linestream, field, ':')) {
+            fields.push_back(field);
+        }
+        
+        // Verificar que tenemos al menos los campos básicos
+        if (fields.size() >= 5) {
+            NetworkInfo network;
+            network.ssid = fields[0];
+            network.signal = fields[1];
+            network.security = fields[2];
+            network.bars = fields[3];
+            network.is_connected = (fields[4] == "*");
+            
+            networks.push_back(network);
+        }
+    }
+    return networks;
+}
+
+void Wifi::on_show_map_wifi()
+{
+    v_list_box_wifi->remove_all();
+    escanea_redes();
+}
+
+void Wifi::escanea_redes()
+{
+    std::string stdout_output, stderr_output;
+    int exit_status = 0;
+    
+    try {
+        Glib::spawn_sync("",
+            std::vector<std::string>{"sh", "-c", "nmcli -t -f SSID,SIGNAL,SECURITY,BARS,IN-USE dev wifi"},
+            Glib::SpawnFlags::SEARCH_PATH,
+            {},
+            &stdout_output,
+            &stderr_output,
+            &exit_status
+        );
+        
+        if (exit_status != 0) {
+            throw std::runtime_error("Command failed: " + stderr_output);
+        }
+        
+    } catch (const Glib::Error& error) {
+        throw std::runtime_error("Glib spawn error: " + std::string(error.what()));
+    }
+
+
+    for (auto &&i : obten_datos_redes(stdout_output))
+    {
+        auto row = Gtk::make_managed<VWifi::VWifiRow>(i.ssid, i.security + " - " + i.signal + "%");
+        v_list_box_wifi->append(*row);
+
+        //std::cout << "SSID: " << i.ssid << ", Signal: " << i.signal << ", Security: " << i.security << ", Bars: " << i.bars << ", Connected: " << (i.is_connected ? "Yes" : "No") << std::endl;
+    }
+}
+
+void Wifi::on_btn_redes_clicked()
+{
+    v_stack_wifi->set_visible_child("redes_wifi");
+}
+
+void Wifi::on_btn_regresar_clicked()
+{
+    v_stack_wifi->set_visible_child("status_red");
 }
 
 void Wifi::init_data()
