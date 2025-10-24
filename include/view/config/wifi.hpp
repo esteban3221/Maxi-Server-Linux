@@ -11,6 +11,7 @@ protected:
     Gtk::Button *v_btn_red = nullptr, *v_btn_redes, *v_btn_regresar, *v_btn_refresh = nullptr;
     Gtk::Stack *v_stack_wifi = nullptr;
     Gtk::ListBox /**v_list_info_red = nullptr,*/ *v_list_box_wifi = nullptr;
+    std::unique_ptr<Gtk::MessageDialog> v_dialog;
 
     class VWifiRow : public Gtk::ListBoxRow
     {

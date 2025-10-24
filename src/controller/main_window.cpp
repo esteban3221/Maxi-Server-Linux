@@ -4,7 +4,7 @@
 MainWindow::MainWindow(/* args */) : contador_click(0)
 {
     // inicializacion de servidor
-    Global::Rest::future = Global::Rest::app.port(44333).run_async();
+    Global::Rest::future = Global::Rest::app.port(44333).loglevel(crow::LogLevel::Error).run_async();
     v_btn_pill->set_opacity(1);
 
     v_box_principal->signal_map().connect(sigc::mem_fun(*this, &MainWindow::on_map_view));

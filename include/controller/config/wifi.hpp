@@ -11,6 +11,8 @@ private:
     void on_btn_redes_clicked();
     void on_btn_regresar_clicked();
     void on_show_map_wifi();
+    void on_list_box_wifi_row_activated(Gtk::ListBoxRow* row);
+    void init_dialog(const std::string &wifi_ssid);
 
     void escanea_redes();
 

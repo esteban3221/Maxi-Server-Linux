@@ -35,6 +35,7 @@ VWifi::VWifiRow::VWifiRow(const std::string &titulo,const std::string &subtitulo
     v_SSID->set_halign(Gtk::Align::START);
     v_SSID->set_css_classes({"title-4"});
     v_subtitulo = Gtk::manage(new Gtk::Label(subtitulo));
+    v_subtitulo->set_halign(Gtk::Align::START);
     v_subtitulo->set_css_classes({"dim-label"});
     v_subtitulo->set_ellipsize(Pango::EllipsizeMode::END);
     v_subtitulo->set_justify(Gtk::Justification::LEFT);
