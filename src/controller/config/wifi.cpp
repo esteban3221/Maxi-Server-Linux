@@ -46,8 +46,8 @@ void Wifi::init_dialog(const std::string &wifi_ssid)
 
 void Wifi::on_list_box_wifi_row_activated(Gtk::ListBoxRow *row)
 {
-    auto box = dynamic_cast<Gtk::Box*>(row->get_child());
-    auto box_label = dynamic_cast<Gtk::Box*>(box->get_children()[1]);
+    auto box = dynamic_cast<Gtk::Box*>(row->get_first_child());
+    auto box_label = dynamic_cast<Gtk::Box*>(box->get_first_child()->get_next_sibling());
     auto label_ssid = dynamic_cast<Gtk::Label*>(box_label->get_first_child());
 
     if (label_ssid)
