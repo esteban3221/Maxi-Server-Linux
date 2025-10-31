@@ -17,10 +17,41 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
     CROW_ROUTE(RestApp::app, "/configuracion/sube_imagen_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_imagen_pos));
     CROW_ROUTE(RestApp::app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
+
+    CROW_ROUTE(RestApp::app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
 }
 
 CConfiguracion::~CConfiguracion()
 {
+}
+
+crow::response CConfiguracion::get_volcado_servicio(const crow::request &req)
+{
+    // std::string log_content = Global::System::exec("journalctl --user-unit=thunar.service -n 100 --no-pager");
+    std::string stdout_output, stderr_output;
+    int exit_status = 0;
+
+    try
+    {
+        Glib::spawn_command_line_sync(
+            "journalctl --user-unit=maxicajero.service -n 100 --no-pager",
+            &stdout_output,
+            &stderr_output,
+            &exit_status);
+
+        if (exit_status != 0)
+        {
+            throw std::runtime_error("Command failed: " + stderr_output);
+        }
+        return crow::response(stdout_output);
+    }
+    catch (const Glib::Error &error)
+    {
+        throw std::runtime_error("Glib spawn error: " + std::string(error.what()));
+    }
+
+    return crow::response();
+    
 }
 
 crow::response CConfiguracion::actualiza_impresion(const crow::request &req)

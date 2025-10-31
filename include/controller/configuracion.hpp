@@ -21,6 +21,7 @@ crow::response reiniciar(const crow::request &req);
 crow::response apagar(const crow::request &req);
 
 crow::response get_informacion_sistema(const crow::request &req);
+crow::response get_volcado_servicio(const crow::request &req);
 crow::response actualiza_pos(const crow::request &req);
 crow::response sube_imagen_pos(const crow::request &req);
 
