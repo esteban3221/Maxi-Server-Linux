@@ -72,6 +72,7 @@ std::vector<std::string> VCarrousel::listar_contenido(const std::string &ruta_ca
 
 bool VCarrousel::mueve_carrousel()
 {
+    
     for (auto &&i : vec_pages)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(mili_seconds_move));
@@ -96,8 +97,11 @@ void VCarrousel::obtener_tiempo_carrousel()
         case DropdownTime::FIFTEEN: millis = 15000; default_home = "10"; break;
         case DropdownTime::THIRTY: millis = 30000; default_home = "10"; break;
         case DropdownTime::ONE_MIN: millis = 60000; default_home = "10"; break;
-        default: default_home = "10"; break;
+        default: default_home = "0"; break;
     }
+
+    if (vec_pages.size() > 0)
+        default_home = "0";
 
     mili_seconds_move = millis;
 }
@@ -144,8 +148,15 @@ void VCarrousel::init_imgs(void)
             }
         }).detach();
     }
+    //else std::cout << "No se encontro ningun elemento a mostrar\n";
     else
-        std::cout << "No se encontro ningun elemento a mostrar\n";
+    {
+        Gtk::Button* btn = Gtk::manage(new Gtk::Button());
+        btn->set_opacity(0.0);
+        btn->signal_clicked().connect(sigc::mem_fun(*this, &VCarrousel::on_img_clicked));
+        add(*btn);
+    }
+    
 }
 
 namespace Global

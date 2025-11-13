@@ -422,7 +422,7 @@ size_t Refill::saca_cassette()
         if (status == "CASHBOX_REMOVED")
         {
             Global::EValidador::is_running.store(false);
-            Device::dv_bill.command_post("ClearCashboxLevels", "", true);
+            Device::dv_bill.command_post("ClearNoteCashboxLevels", "", true);
         }
     });
 

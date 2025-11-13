@@ -18,44 +18,22 @@ const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &
                                     " AND Fecha >= date('now','localtime') AND IdUser = ? ORDER BY id DESC", /* Global::User::id*/ id_user);
 }
 
-Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int last_id)
+Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int paginacion)
 {
     auto &database = Database::getInstance();
 
-    std::vector<std::string> conditions;
-    std::vector<std::string> params;
+    auto sql = "SELECT count(*) FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'");
+    auto contenedor_data = database.sqlite3->command(sql);
+    auto tam = contenedor_data->at("count(*)")[0];
+    tam_row = std::stoi(tam);
 
-    if (tipo != "Todo") {
-        conditions.push_back("Tipo = ?");
-        params.push_back(tipo);
-    }
-
-    if (!f_ini.empty() && !f_fin.empty()) {
-        conditions.push_back("Fecha BETWEEN ? AND ?");
-        params.push_back(f_ini);
-        params.push_back(f_fin);
-    }
-
-    if (last_id > 0) {
-        conditions.push_back("id < ?");
-        params.push_back(std::to_string(last_id));
-    }
-
-    std::string where_clause = conditions.empty() ? "1=1" : "";
-    for (size_t i = 0; i < conditions.size(); ++i) {
-        if (i > 0) where_clause += " AND ";
-        where_clause += conditions[i];
-    }
-
-    auto count_sql = "SELECT count(*) FROM log WHERE " + where_clause;
-    auto contenedor_data = database.sqlite3->command(count_sql, params);
-    tam_row = std::stoi(contenedor_data->at("count(*)")[0]);
-
-    auto query = "SELECT * FROM log WHERE " + where_clause + " ORDER BY id DESC LIMIT 100";
-    contenedor_data = database.sqlite3->command(query, params);
-
+    auto query = "SELECT * FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
+                 " ORDER BY id DESC LIMIT 100 OFFSET ?";
+    contenedor_data = database.sqlite3->command(query, paginacion);
     auto m_list = Gio::ListStore<MLog>::create();
-    for (size_t i = 0; i < contenedor_data->at("Id").size(); i++) {
+
+    for (size_t i = 0; i < contenedor_data->at("Id").size(); i++)
+    {
         m_list->append(MLog::create(
             std::stoull(contenedor_data->at("Id")[i]),
             std::stoull(contenedor_data->at("IdUser")[i]),

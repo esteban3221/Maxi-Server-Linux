@@ -2,8 +2,7 @@
 
 Wifi::Wifi(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VWifi(cobject, refBuilder)
 {
-    this->v_btn_red->signal_clicked().connect([]()
-                                              { std::system("nm-connection-editor &"); });
+    this->v_btn_red->signal_clicked().connect([](){ std::system("nm-connection-editor &"); });
     this->v_btn_redes->signal_clicked().connect(sigc::mem_fun(*this, &Wifi::on_btn_redes_clicked));
     this->v_btn_regresar->signal_clicked().connect(sigc::mem_fun(*this, &Wifi::on_btn_regresar_clicked));
     v_list_box_wifi->signal_map().connect(sigc::mem_fun(*this, &Wifi::on_show_map_wifi));
