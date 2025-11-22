@@ -247,7 +247,7 @@ crow::response Refill::inicia(const crow::request &req)
 
         if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
             Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-        else if (m_list->m_nivel_inmo_max == 0)
+        else //if (m_list->m_nivel_inmo_max == 0)
             Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
     }
 
