@@ -14,7 +14,6 @@ Glib::RefPtr<Gio::ListStore<MUsuarios>> Usuarios::get_usuarios()
     auto contenedor_data = database.sqlite3->command("select * from usuarios");
     auto m_list = Gio::ListStore<MUsuarios>::create();
 
-
     for (size_t i = 0; i < contenedor_data->at("id").size(); i++)
     {
         m_list->append(MUsuarios::create(
@@ -29,10 +28,12 @@ const Glib::RefPtr<MUsuarios> Usuarios::get_usuarios(int id)
 {
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("select * from usuarios where id = ?", id);
-    return MUsuarios::create(
-        std::stoull(contenedor_data->at("id")[0]),
-        contenedor_data->at("username")[0],
-        contenedor_data->at("password")[0]);
+    if (contenedor_data->contains("id"))
+        return MUsuarios::create(
+            std::stoull(contenedor_data->at("id")[0]),
+            contenedor_data->at("username")[0],
+            "" /* No se regresa el password */);
+    return MUsuarios::create(0, "<span weight=\"bold\">Usuario Eliminado</span>", "");
 }
 
 const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pass) const
@@ -43,7 +44,7 @@ const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pa
     if (contenedor_data->at("id").size() == 0)
         return {0, ""};
 
-    return {std::stoi(contenedor_data->at("id")[0]) ,contenedor_data->at("username")[0]};
+    return {std::stoi(contenedor_data->at("id")[0]), contenedor_data->at("username")[0]};
 }
 
 size_t Usuarios::insert_usuario(const Glib::RefPtr<MUsuarios> &usuario)
@@ -51,8 +52,8 @@ size_t Usuarios::insert_usuario(const Glib::RefPtr<MUsuarios> &usuario)
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("SELECT * FROM usuarios WHERE username = ? LIMIT 1", usuario->m_usuario.c_str());
 
-        if (contenedor_data->size() > 0)
-            throw std::runtime_error("El usuario ya existe");
+    if (contenedor_data->size() > 0)
+        throw std::runtime_error("El usuario ya existe");
 
     database.sqlite3->command("INSERT INTO usuarios VALUES(null,?,?)",
                               usuario->m_usuario.c_str(),
@@ -66,9 +67,9 @@ void Usuarios::update_usuario(const Glib::RefPtr<MUsuarios> &usuario)
 {
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("UPDATE usuarios SET username = ?, password = ? WHERE id = ?",
-                              usuario->m_usuario.c_str(),
-                              usuario->m_passsword.c_str(),
-                              usuario->m_id);
+                                                     usuario->m_usuario.c_str(),
+                                                     usuario->m_passsword.c_str(),
+                                                     usuario->m_id);
 }
 
 void Usuarios::delete_usuario(const Glib::RefPtr<MUsuarios> &usuario)
