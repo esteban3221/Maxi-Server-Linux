@@ -93,6 +93,23 @@ namespace Global
                 throw std::runtime_error("No tiene permisos para esta operacion");
         }
 
+        bool valida_administrador(const crow::request &req)
+        {
+            auto auth_header = req.get_header_value("Authorization");
+            if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
+                throw std::runtime_error("Error en la peticion, no se recibieron datos / token");
+
+            std::string mycreds = auth_header.substr(7);
+            if (mycreds != ApiConsume::token)
+                throw std::runtime_error("token invalido");
+
+            size_t cont_admin = 0;
+            UsuariosRoles u_roles;
+            auto roles = u_roles.get_usuario_roles_by_id(User::id);
+
+            return roles->get_n_items() >= 19;
+        }
+
         crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio)
         {
             std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver

@@ -92,6 +92,7 @@ namespace Global
         extern bool is_ok;
         extern crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log);
         extern void valida_autorizacion(const crow::request &req, User::Rol rol);
+        extern bool valida_administrador(const crow::request &req);
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
     } // namespace Utility

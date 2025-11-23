@@ -12,15 +12,26 @@ Log::~Log()
 const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &tipo)
 {
 
-    //@@@ verificar que el administrador pueda ver todos los cortes del dia
-    auto &database = Database::getInstance();
-    
-    auto result = database.sqlite3->command("SELECT * FROM log WHERE " + 
-                                    (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + 
-                                    " AND Fecha >= date('now','localtime') AND IdUser = ? ORDER BY id DESC",true , /* Global::User::id*/ id_user);
-    
-    return result;
 
+    auto &database = Database::getInstance();
+    std::string query = "SELECT * FROM log WHERE ";
+    
+    if (tipo == "Todo" || tipo.empty()) 
+        query += "1=1"; // condición siempre verdadera
+    else 
+        query += "Tipo = '" + tipo + "'";
+    
+    query += " AND Fecha >= date('now','localtime')";
+    
+    if (id_user != 0) 
+        query += " AND IdUser = ?";
+    
+    query += " ORDER BY id DESC";
+
+    auto result = (id_user != 0) 
+        ? database.sqlite3->command(query, id_user)
+        : database.sqlite3->command(query);
+    return result;
 }
 
 Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int paginacion)
@@ -73,12 +84,12 @@ void Log::update_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
-                              list->m_id_user,
-                              list->m_tipo.c_str(),
-                              list->m_ingreso,
-                              list->m_cambio,
-                              list->m_total,
-                              list->m_estatus.c_str(),
-                              list->m_fecha.format_iso8601().c_str(),
-                              list->m_id);
+                                                     list->m_id_user,
+                                                     list->m_tipo.c_str(),
+                                                     list->m_ingreso,
+                                                     list->m_cambio,
+                                                     list->m_total,
+                                                     list->m_estatus.c_str(),
+                                                     list->m_fecha.format_iso8601().c_str(),
+                                                     list->m_id);
 }

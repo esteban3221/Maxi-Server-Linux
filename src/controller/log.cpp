@@ -14,12 +14,14 @@ crow::response LogData::corte_caja(const crow::request &req)
 {
     auto log = std::make_unique<Log>();
     auto bodyParams = crow::json::load(req.body);
-
     auto tipo = bodyParams["tipo"].s();
-    auto contenedor_log = log->get_corte(Global::User::id, tipo);
-
     crow::json::wvalue json;
     json["log"] = crow::json::wvalue::list();
+
+    auto contenedor_log = Global::Utility::valida_administrador(req)
+                              ? log->get_corte(0, tipo)
+                              : log->get_corte(Global::User::id, tipo);
+
     for (size_t i = 0; i < contenedor_log->at("Id").size(); i++)
     {
         json["log"][i]["id"] = std::stoull(contenedor_log->at("Id")[i]);
@@ -65,6 +67,6 @@ crow::response LogData::get_log(const crow::request &req)
         json["log"][i]["estatus"] = contenedor_log->get_item(i)->m_estatus;
         json["log"][i]["fecha"] = contenedor_log->get_item(i)->m_fecha.format_iso8601();
     }
-    
+
     return crow::response(json);
 }

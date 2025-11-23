@@ -296,6 +296,7 @@ crow::response Refill::inicia(const crow::request &req)
 crow::response Refill::get_dashboard(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
+    
     auto jload = crow::json::load(req.body);
     bool refresh = true;
     crow::json::wvalue json;
