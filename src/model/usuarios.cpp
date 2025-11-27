@@ -33,7 +33,7 @@ const Glib::RefPtr<MUsuarios> Usuarios::get_usuarios(int id)
             std::stoull(contenedor_data->at("id")[0]),
             contenedor_data->at("username")[0],
             "" /* No se regresa el password */);
-    return MUsuarios::create(0, "<span weight=\"bold\">Usuario Eliminado</span>", "");
+    return MUsuarios::create(0, "", "");
 }
 
 const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pass) const
@@ -41,7 +41,7 @@ const std::pair<int, std::string> Usuarios::existe_usuario(const std::string &pa
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("select * from usuarios where password = ?", pass.c_str());
 
-    if (contenedor_data->at("id").size() == 0)
+    if (not contenedor_data->contains("id"))
         return {0, ""};
 
     return {std::stoi(contenedor_data->at("id")[0]), contenedor_data->at("username")[0]};

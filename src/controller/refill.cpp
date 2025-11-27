@@ -118,7 +118,7 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
 
 void Refill::on_show_map()
 {
-    Device::dv_bill.command_post("GetAllLevels", "", true);
+    Device::dv_bill.command_post("GetAllLevels");
     Glib::signal_idle().connect_once([this]()
     {
         try
@@ -438,7 +438,7 @@ crow::response Refill::retirada(const crow::request &req)
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto t_log = MLog::create(0, Global::User::id, "Retirada", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
+    auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
     Log log;
     t_log->m_id = log.insert_log(t_log);
     auto data = Global::Utility::json_ticket(t_log);
