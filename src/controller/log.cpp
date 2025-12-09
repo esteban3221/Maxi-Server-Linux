@@ -14,13 +14,17 @@ crow::response LogData::corte_caja(const crow::request &req)
 {
     auto log = std::make_unique<Log>();
     auto bodyParams = crow::json::load(req.body);
+
     auto tipo = bodyParams["tipo"].s();
+    auto f_ini = bodyParams["f_ini"].s();
+    auto f_fin = bodyParams["f_fin"].s();
+
     crow::json::wvalue json;
     json["log"] = crow::json::wvalue::list();
 
     auto contenedor_log = Global::Utility::valida_administrador(req)
-                              ? log->get_corte(0, tipo)
-                              : log->get_corte(Global::User::id, tipo);
+                              ? log->get_corte(0, tipo, f_ini, f_fin)
+                              : log->get_corte(Global::User::id, tipo, f_ini, f_fin);
 
     for (size_t i = 0; i < contenedor_log->at("Id").size(); i++)
     {

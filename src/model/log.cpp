@@ -9,10 +9,8 @@ Log::~Log()
 {
 }
 
-const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &tipo)
+const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &tipo, const std::string &f_ini, const std::string &f_fin)
 {
-
-
     auto &database = Database::getInstance();
     std::string query = "SELECT * FROM log WHERE ";
     
@@ -21,7 +19,10 @@ const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &
     else 
         query += "Tipo = '" + tipo + "'";
     
-    query += " AND Fecha >= date('now','localtime')";
+    if (f_ini.empty() || f_fin.empty())
+        query += " AND Fecha >= date('now','localtime')";
+    else
+        query += " AND Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'";
     
     if (id_user != 0) 
         query += " AND IdUser = ?";
