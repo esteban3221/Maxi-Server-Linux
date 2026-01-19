@@ -74,35 +74,36 @@ namespace Global
         {
             auto auth_header = req.get_header_value("Authorization");
             if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
-                throw std::runtime_error("Error en la peticion, no se recibieron datos / token");
+                throw BadRequestError("Error en la peticion, no se recibieron datos / token");
 
             std::string mycreds = auth_header.substr(7);
             if (mycreds != ApiConsume::token)
-                throw std::runtime_error("token invalido");
-
+                throw UnauthorizedError("token invalido");
             UsuariosRoles u_roles;
             auto roles = u_roles.get_usuario_roles_by_id(User::id);
             if(roles)
+            {
                 for (size_t i = 0; i < roles->get_n_items(); i++)
                 {
                     auto list = roles->get_item(i);
-                    if (list->m_id_rol == static_cast<u_int16_t>(rol))
+                    if (list->m_id_rol == static_cast<guint>(rol))
                         return;
                 }
+                throw UnauthorizedError("No autorizado para realizar esta operacion");
+            }
             else
-                throw std::runtime_error("No tiene permisos para esta operacion");
+                throw ServerError("Error al cargar roles");
         }
 
         bool valida_administrador(const crow::request &req)
         {
             auto auth_header = req.get_header_value("Authorization");
             if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
-                throw std::runtime_error("Error en la peticion, no se recibieron datos / token");
+                throw BadRequestError("Error en la peticion, no se recibieron datos / token");
 
             std::string mycreds = auth_header.substr(7);
             if (mycreds != ApiConsume::token)
-                throw std::runtime_error("token invalido");
-
+                throw UnauthorizedError("token invalido");
             size_t cont_admin = 0;
             UsuariosRoles u_roles;
             auto roles = u_roles.get_usuario_roles_by_id(User::id);

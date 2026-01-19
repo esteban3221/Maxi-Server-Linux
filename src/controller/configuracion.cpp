@@ -19,6 +19,8 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
 
     CROW_ROUTE(RestApp::app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
+
+
 }
 
 CConfiguracion::~CConfiguracion()

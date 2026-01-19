@@ -27,7 +27,19 @@
 #define BOLDMAGENTA "\033[1m\033[35m" /* Bold Magenta */
 #define BOLDCYAN "\033[1m\033[36m"    /* Bold Cyan */
 #define BOLDWHITE "\033[1m\033[37m"   /* Bold White */
-    
+
+struct AuthException : public std::runtime_error {
+    int http_code;
+    AuthException(int code, const std::string& msg)
+        : std::runtime_error(msg), http_code(code) {}
+};
+
+struct BadRequestError    : AuthException { BadRequestError(const std::string& m) : AuthException(400, m) {} };
+struct UnauthorizedError  : AuthException { UnauthorizedError(const std::string& m) : AuthException(401, m) {} };
+struct ForbiddenError     : AuthException { ForbiddenError(const std::string& m) : AuthException(403, m) {} };
+struct ServerError        : AuthException { ServerError(const std::string& m) : AuthException(500, m) {} };
+
+
 // por conveniencia algunas cosas estan en ingles
 namespace Global
 {
@@ -183,5 +195,16 @@ namespace Global
         }
         dispatcher.emit();
     }
+
+    // class AuthException : public std::runtime_error
+    // {
+    // public:
+    //     int http_code;
+    //     AuthException(int code, const std::string &message) : std::runtime_error(message), http_code(code) {}
+    //     const char *what() const noexcept override
+    //     {
+    //         return std::runtime_error::what();
+    //     }
+    // };
 
 } // namespace Helper
