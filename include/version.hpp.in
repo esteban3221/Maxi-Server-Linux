@@ -1,0 +1,40 @@
+// include/version.hpp.in
+#ifndef VERSION_HPP
+#define VERSION_HPP
+
+#include <string>
+
+namespace Maxicajero {
+    class Version {
+    public:
+        // Constantes estáticas
+        static constexpr int MAJOR = @PROJECT_VERSION_MAJOR@;
+        static constexpr int MINOR = @PROJECT_VERSION_MINOR@;
+        static constexpr int PATCH = @PROJECT_VERSION_PATCH@;
+        static constexpr const char* STRING = "@PROJECT_VERSION@";
+        static constexpr const char* NAME = "@PROJECT_NAME@";
+        static constexpr const char* DESCRIPTION = "@PROJECT_DESCRIPTION@";
+        
+        // Métodos estáticos
+        static std::string getFullVersion() {
+            return std::string(NAME) + " v" + STRING;
+        }
+        
+        static std::string getVersion() {
+            return STRING;
+        }
+        
+        static int getMajor() { return MAJOR; }
+        static int getMinor() { return MINOR; }
+        static int getPatch() { return PATCH; }
+        
+        // Comparación de versiones
+        static bool isAtLeast(int major, int minor = 0, int patch = 0) {
+            return (MAJOR > major) ||
+                   (MAJOR == major && MINOR > minor) ||
+                   (MAJOR == major && MINOR == minor && PATCH >= patch);
+        }
+    };
+}
+
+#endif // VERSION_HPP

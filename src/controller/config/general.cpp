@@ -131,7 +131,7 @@ void General::on_rest_app()
     v_dialog->signal_response().connect([this](int response)
     {
         if(Gtk::ResponseType::OK == response)
-            Global::System::exec("rm $HOME/data.db && systemctl restart");
+            Global::System::exec("rm $HOME/data.db; rm /opt/maxi/data.db && systemctl restart");
 
         v_dialog->close(); 
     });
@@ -151,8 +151,8 @@ void General::on_button_image_clicked()
 
     dialog->signal_response().connect(sigc::bind(sigc::mem_fun(*this, &General::on_file_dialog_response), dialog));
 
-    dialog->add_button("_Cancel", Gtk::ResponseType::CANCEL);
-    dialog->add_button("_Open", Gtk::ResponseType::OK);
+    dialog->add_button("_Cancelar", Gtk::ResponseType::CANCEL);
+    dialog->add_button("_Abrir", Gtk::ResponseType::OK);
 
     if(type)
     {

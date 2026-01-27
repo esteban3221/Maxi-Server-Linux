@@ -1,0 +1,294 @@
+
+
+************************************************************************************************************
+************************************************************************************************************
+
+20/01/26 16:55:42.538  - Log started
+
+ITLComms.dll              Version 1.3.0.0         Checksum 6A6B748D795DA91E950DC368AC5448CD
+ITLCashDevice.dll         Version 1.3.0.0         Checksum FA5A4656061F4B89DC7CE6FBECAB3573
+
+************************************************************************************************************
+************************************************************************************************************
+
+20/01/26 16:55:42.631 <- Timeout
+
+20/01/26 16:55:42.631  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [2]
+20/01/26 16:55:42.839 OpenComPort (Port: /dev/ttyUSB2, Baud rate: 9600) OK
+20/01/26 16:55:42.840 CashSystem.Open - OK
+
+20/01/26 16:55:42.840  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:42.863  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:42.881  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:42.909  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:42.909  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-4A-8D-F6-EA-2B-00-00-00-00-8D-B1 | SET_GENERATOR | 
+
+20/01/26 16:55:42.941  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+
+20/01/26 16:55:42.941  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-09-4B-FD-6D-6B-2D-00-00-00-00-CB-FD | SET_MODULUS | 
+
+20/01/26 16:55:42.973  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:42.973  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-4C-87-FE-B8-22-00-00-00-00-9C-FF | REQUEST_KEY_EXCHANGE | 
+
+20/01/26 16:55:43.021  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-09-F0-F8-12-80-2A-00-00-00-00-3C-1F | RESPONSE_OK | 
+
+20/01/26 16:55:43.022  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-20-C0-02 | GET_FIRMWARE_VERSION | 
+
+20/01/26 16:55:43.102  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-11-F0-4E-56-53-32-30-30-34-32-39-31-30-30-31-30-30-30-8D-BB | RESPONSE_OK | 
+20/01/26 16:55:43.102 Firmware: NVS2004291001000
+
+20/01/26 16:55:43.102  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-21-C6-08 | GET_DATASET_VERSION | 
+20/01/26 16:55:43.132 <- Timeout
+
+20/01/26 16:55:43.132  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [3]
+
+20/01/26 16:55:43.165  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-09-F0-4D-58-4E-30-31-30-31-37-10-A7 | RESPONSE_OK | 
+20/01/26 16:55:43.165 Dataset: MXN01017
+
+20/01/26 16:55:43.165  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-02-06-07-21-94 | HOST_PROTOCOL_VERSION | 
+
+20/01/26 16:55:43.229  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:43.230  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-05-1E-08 | SETUP_REQUEST | 
+
+20/01/26 16:55:43.373  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-47-F0-06-30-34-32-39-4D-58-4E-00-00-0A-06-02-05-0A-14-32-64-02-02-02-02-02-02-00-00-64-07-4D-58-4E-4D-58-4E-4D-58-4E-4D-58-4E-4D-58-4E-4D-58-4E-14-00-00-00-32-00-00-00-64-00-00-00-C8-00-00-00-F4-01-00-00-E8-03-00-00-95-C1 | RESPONSE_OK | 
+
+20/01/26 16:55:43.374  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-0C-2B-82 | GET_SERIAL_NUMBER | 
+
+20/01/26 16:55:43.437  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-05-F0-00-09-21-D5-CF-A6 | RESPONSE_OK | 
+20/01/26 16:55:43.437 Main Serial number: 598485
+
+20/01/26 16:55:43.437  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-02-0C-01-0A-28 | GET_SERIAL_NUMBER | 
+
+20/01/26 16:55:43.517  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-05-F0-00-5C-EF-6F-5B-8D | RESPONSE_OK | 
+20/01/26 16:55:43.517 Payout Module Serial number: 6090607
+
+20/01/26 16:55:43.518  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-79-16-03 | UNHANDLED COMMAND : 0x79 | 
+
+20/01/26 16:55:43.581  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F2-2C-00 | RESPONSE_COMMAND_NOT_KNOWN | 
+
+20/01/26 16:55:43.581  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-78-10-09 | UNHANDLED COMMAND : 0x78 | 
+20/01/26 16:55:43.633 <- Timeout
+
+20/01/26 16:55:43.633  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:43.645  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F2-2F-8A | RESPONSE_COMMAND_NOT_KNOWN | 
+
+20/01/26 16:55:43.645  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-78-13-83 | UNHANDLED COMMAND : 0x78 | 
+
+20/01/26 16:55:43.709  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F2-2C-00 | RESPONSE_COMMAND_NOT_KNOWN | 
+
+20/01/26 16:55:43.709  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-03-30-05-39-56-05 | EXPANSION_COMMAND | 
+
+20/01/26 16:55:43.773  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-05-F0-28-02-48-00-A4-FA | RESPONSE_OK | 
+
+20/01/26 16:55:43.774  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-4F-A2-03 | GET_BUILD_REVISION | 
+
+20/01/26 16:55:43.837  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-07-F0-00-34-03-06-65-00-0A-04 | RESPONSE_OK | 
+20/01/26 16:55:43.837 Payout Module Build Revision: 1.01
+20/01/26 16:55:43.837 Main Build Revision: 8.20
+20/01/26 16:55:43.837 ##### CashDevice_Connection_Thread STARTING #####
+
+20/01/26 16:55:43.838 Device state event = CONNECTING
+
+20/01/26 16:55:43.838  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:43.869  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+20/01/26 16:55:43.870 ##### [SystemThread_Connection] CHANGE OF STATE : SYNC --> NEGOTIATE_KEYS #####
+
+
+20/01/26 16:55:43.873  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:43.901  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:43.901  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-4A-5F-7F-27-F0-2D-A2-51-3E-F2-66 | SET_GENERATOR | 
+
+20/01/26 16:55:43.949  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+
+20/01/26 16:55:43.949  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-09-4B-1F-BE-E9-64-F7-87-68-45-7C-BB | SET_MODULUS | 
+
+20/01/26 16:55:43.997  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:43.997  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-4C-95-FE-57-EB-CB-E8-4D-2E-4F-E9 | REQUEST_KEY_EXCHANGE | 
+
+20/01/26 16:55:44.045  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-09-F0-C1-94-7A-AB-C7-93-E8-2B-E6-9A | RESPONSE_OK | 
+20/01/26 16:55:44.045 ##### [SystemThread_Connection] CHANGE OF STATE : NEGOTIATE_KEYS --> HOST_PROTOCOL_VERSION #####
+
+
+20/01/26 16:55:44.045  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-02-06-07-21-94 | HOST_PROTOCOL_VERSION | 
+
+20/01/26 16:55:44.108  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+20/01/26 16:55:44.109 ##### [SystemThread_Connection] CHANGE OF STATE : HOST_PROTOCOL_VERSION --> GET_INFO #####
+
+20/01/26 16:55:44.109 ##### [SystemThread_Connection] CHANGE OF STATE : GET_INFO --> GOT_INFO #####
+
+20/01/26 16:55:44.109 ##### [SystemThread_Connection] CHANGE OF STATE : GOT_INFO --> SET_INITIAL_ROUTES #####
+
+
+20/01/26 16:55:44.109  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-3B-01-D0-07-00-00-4D-58-4E-7F-E2 | SET_DENOMINATION_ROUTE | 
+20/01/26 16:55:44.134 <- Timeout
+
+20/01/26 16:55:44.134  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [2]
+
+20/01/26 16:55:44.173  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+
+20/01/26 16:55:44.173  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-09-3B-01-88-13-00-00-4D-58-4E-D7-7F | SET_DENOMINATION_ROUTE | 
+
+20/01/26 16:55:44.236  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:44.236  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-3B-01-10-27-00-00-4D-58-4E-5E-AE | SET_DENOMINATION_ROUTE | 
+
+20/01/26 16:55:44.300  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+
+20/01/26 16:55:44.300  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-09-3B-01-20-4E-00-00-4D-58-4E-0D-05 | SET_DENOMINATION_ROUTE | 
+
+20/01/26 16:55:44.364  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+
+20/01/26 16:55:44.365  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-09-3B-01-50-C3-00-00-4D-58-4E-B6-0A | SET_DENOMINATION_ROUTE | 
+
+20/01/26 16:55:44.428  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+
+20/01/26 16:55:44.429  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-09-3B-01-A0-86-01-00-4D-58-4E-B0-CD | SET_DENOMINATION_ROUTE | 
+
+20/01/26 16:55:44.492  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+20/01/26 16:55:44.492 ##### [SystemThread_Connection] CHANGE OF STATE : SET_INITIAL_ROUTES --> GET_LEVELS #####
+
+
+20/01/26 16:55:44.493  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-22-CC-08 | GET_ALL_LEVELS | 
+20/01/26 16:55:44.635 <- Timeout
+
+20/01/26 16:55:44.635  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [3]
+
+20/01/26 16:55:44.652  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-38-F0-06-00-00-D0-07-00-00-4D-58-4E-00-00-88-13-00-00-4D-58-4E-00-00-10-27-00-00-4D-58-4E-00-00-20-4E-00-00-4D-58-4E-00-00-50-C3-00-00-4D-58-4E-00-00-A0-86-01-00-4D-58-4E-6A-71 | RESPONSE_OK | 
+20/01/26 16:55:44.653 Device state event = CONNECTED
+20/01/26 16:55:44.653 ##### CashDevice_Connection_Thread TERMINATED #####
+
+20/01/26 16:55:44.839 ##### CashDeviceThread STARTING #####
+
+20/01/26 16:55:44.839 Host - Disable
+
+20/01/26 16:55:44.839  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:44.860  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F0-23-80 | RESPONSE_OK | 
+20/01/26 16:55:44.860 ##### [SystemThread] CHANGE OF STATE : SYNC --> SET_INHIBITS #####
+
+
+20/01/26 16:55:44.860  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-04-02-FF-FF-FF-39-A5 | SET_CHANNEL_INHIBITS | 
+
+20/01/26 16:55:44.924  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+20/01/26 16:55:44.924 ##### [SystemThread] CHANGE OF STATE : SET_INHIBITS --> HOST_PROTOCOL_VERSION #####
+
+
+20/01/26 16:55:44.924  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-11-58-BF-F6-54-0C-1E-B8-6A-BB-B2-91-61-B6-84-44-DD-91-DE-C3 | GET_COUNTERS | 
+
+20/01/26 16:55:45.020  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-16-F0-05-C7-00-00-00-28-02-00-00-76-01-00-00-96-00-00-00-72-01-00-00-96-26 | RESPONSE_OK | 
+
+20/01/26 16:55:45.021  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-02-06-07-1E-14 | HOST_PROTOCOL_VERSION | 
+
+20/01/26 16:55:45.084  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+20/01/26 16:55:45.084 ##### [SystemThread] CHANGE OF STATE : HOST_PROTOCOL_VERSION --> GET_INFO #####
+
+20/01/26 16:55:45.084 Device state event = STARTING
+20/01/26 16:55:45.084 ##### [SystemThread] CHANGE OF STATE : GET_INFO --> GOT_INFO #####
+
+
+20/01/26 16:55:45.084  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-07-64-14-01-1A-10-37-2D-90-E9 | SET_REAL_TIME_CLOCK | 
+20/01/26 16:55:45.135 <- Timeout
+
+20/01/26 16:55:45.136  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:45.148  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-01-F2-2C-00 | RESPONSE_COMMAND_NOT_KNOWN | 
+
+20/01/26 16:55:45.148  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-22-CC-08 | GET_ALL_LEVELS | 
+
+20/01/26 16:55:45.308  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-38-F0-06-00-00-D0-07-00-00-4D-58-4E-00-00-88-13-00-00-4D-58-4E-00-00-10-27-00-00-4D-58-4E-00-00-20-4E-00-00-4D-58-4E-00-00-50-C3-00-00-4D-58-4E-00-00-A0-86-01-00-4D-58-4E-6A-71 | RESPONSE_OK | 
+20/01/26 16:55:45.308 ##### [SystemThread] CHANGE OF STATE : GOT_INFO --> GET_LEVELS #####
+
+
+20/01/26 16:55:45.308  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-22-CF-82 | GET_ALL_LEVELS | 
+
+20/01/26 16:55:45.468  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-38-F0-06-00-00-D0-07-00-00-4D-58-4E-00-00-88-13-00-00-4D-58-4E-00-00-10-27-00-00-4D-58-4E-00-00-20-4E-00-00-4D-58-4E-00-00-50-C3-00-00-4D-58-4E-00-00-A0-86-01-00-4D-58-4E-62-B1 | RESPONSE_OK | 
+20/01/26 16:55:45.468 ##### [SystemThread] CHANGE OF STATE : GET_LEVELS --> ENABLE_PAYOUT #####
+
+
+20/01/26 16:55:45.468  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-5C-C8-09 | ENABLE_PAYOUT_DEVICE | 
+
+20/01/26 16:55:45.564  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+20/01/26 16:55:45.564 ##### [SystemThread] CHANGE OF STATE : ENABLE_PAYOUT --> POLL #####
+
+
+20/01/26 16:55:45.572  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-56-F7-83 | POLL_WITH_ACK | 
+
+20/01/26 16:55:45.627  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-02-F0-F1-1A-22 | RESPONSE_OKRESET |  | 
+20/01/26 16:55:45.630 Device state event = RESET
+20/01/26 16:55:45.630 Device state event = STARTED
+
+20/01/26 16:55:45.633  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-09-36-08 | DISABLE | 
+20/01/26 16:55:45.636 <- Timeout
+
+20/01/26 16:55:45.636  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [2]
+
+20/01/26 16:55:45.691  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-01-F0-20-0A | RESPONSE_OK | 
+20/01/26 16:55:45.691 Device state event = IDLE
+
+20/01/26 16:55:45.691  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-56-F7-83 | POLL_WITH_ACK | 
+
+20/01/26 16:55:45.755  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-02-F0-E8-4F-A2 | RESPONSE_OKDISABLED |  | 
+20/01/26 16:55:45.755 Device state event = DISABLED
+
+20/01/26 16:55:45.956  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-56-F4-09 | POLL_WITH_ACK | 
+
+20/01/26 16:55:46.011  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-02-F0-E8-70-22 | RESPONSE_OKDISABLED |  | 
+20/01/26 16:55:46.137 <- Timeout
+
+20/01/26 16:55:46.137  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [3]
+
+20/01/26 16:55:46.211  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-56-F7-83 | POLL_WITH_ACK | 
+
+20/01/26 16:55:46.267  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-02-F0-E8-4F-A2 | RESPONSE_OKDISABLED |  | 
+
+20/01/26 16:55:46.467  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-56-F4-09 | POLL_WITH_ACK | 
+
+
+************************************************************************************************************
+************************************************************************************************************
+
+20/01/26 16:55:46.474  - Log started
+
+ITLComms.dll              Version 1.3.0.0         Checksum 6A6B748D795DA91E950DC368AC5448CD
+ITLCashDevice.dll         Version 1.3.0.0         Checksum FA5A4656061F4B89DC7CE6FBECAB3573
+
+************************************************************************************************************
+************************************************************************************************************
+
+20/01/26 16:55:46.476 OpenComPort (Port: /dev/ttyUSB1, Baud rate: 9600) Failed - UnauthorizedAccessException - port is probably already open by another task
+20/01/26 16:55:46.476 CashSystem.Open - failed - com port error
+
+20/01/26 16:55:46.523  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-02-F0-E8-70-22 | RESPONSE_OKDISABLED |  | 
+20/01/26 16:55:46.638 <- Timeout
+
+20/01/26 16:55:46.638  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC | 
+
+20/01/26 16:55:46.723  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-56-F7-83 | POLL_WITH_ACK | 
+
+20/01/26 16:55:46.779  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-02-F0-E8-4F-A2 | RESPONSE_OKDISABLED |  | 
+
+20/01/26 16:55:46.979  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-56-F4-09 | POLL_WITH_ACK | 
+
+20/01/26 16:55:47.034  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-02-F0-E8-70-22 | RESPONSE_OKDISABLED |  | 
+20/01/26 16:55:47.139 <- Timeout
+
+20/01/26 16:55:47.139  | Port:/dev/ttyUSB1 | Address:0 | Tx | 7F-80-01-11-65-82 | SYNC |  [2]
+
+20/01/26 16:55:47.234  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-80-01-56-F7-83 | POLL_WITH_ACK | 
+
+20/01/26 16:55:47.290  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-80-02-F0-E8-4F-A2 | RESPONSE_OKDISABLED |  | 
+
+20/01/26 16:55:47.490  | Port:/dev/ttyUSB2 | Address:0 | Tx | 7F-00-01-56-F4-09 | POLL_WITH_ACK | 
+
+20/01/26 16:55:47.546  | Port:/dev/ttyUSB2 | Address:0 | Rx | 7F-00-02-F0-E8-70-22 | RESPONSE_OKDISABLED |  | 

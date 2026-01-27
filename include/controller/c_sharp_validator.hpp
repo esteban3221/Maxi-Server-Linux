@@ -51,6 +51,8 @@ public:
 
     Glib::RefPtr<Gio::ListStore<MLevelCash>> get_level_cash_actual(bool extendido = false, bool debug = false) const;
 
+    std::atomic<bool> is_busy;
+
     Validator(const std::string &validator, const std::source_location location = std::source_location::current());
     ~Validator();
 };

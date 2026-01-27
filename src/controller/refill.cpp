@@ -1,5 +1,4 @@
 #include "controller/refill.hpp"
-#include "carrousel.hpp"
 
 Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VRefill(cobject, refBuilder),
                                                                                         total(0),
@@ -17,6 +16,7 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     v_btn_deten->signal_clicked().connect(sigc::mem_fun(*this, &Refill::deten));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
+    CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("GET"_method)(sigc::mem_fun(*this, &Refill::deten_remoto));
     CROW_ROUTE(RestApp::app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
     CROW_ROUTE(RestApp::app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
 
@@ -219,6 +219,12 @@ void Refill::func_poll(const std::string &status, const crow::json::rvalue &data
     }
 }
 
+crow::response Refill::deten_remoto(const crow::request &req)
+{
+    deten();
+    return crow::response(200);
+}
+
 crow::response Refill::inicia(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Carga);
@@ -233,8 +239,8 @@ crow::response Refill::inicia(const crow::request &req)
         Global::Widget::v_main_stack->set_visible_child(*this); 
     });
 
-    is_busy.store(true);
     is_running.store(true);
+    
 
     Device::dv_coin.inicia_dispositivo_v6(false);
     Device::dv_bill.inicia_dispositivo_v6(false);
@@ -287,8 +293,8 @@ crow::response Refill::inicia(const crow::request &req)
     data["Cambio_faltante"] = Pago::faltante;
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
-    is_busy.store(false);
     is_running.store(false);
+    
 
     return crow::response(data);
 }
@@ -409,7 +415,7 @@ size_t Refill::saca_cassette()
 {
     size_t total_bill = 0;
     Global::EValidador::is_running.store(true);
-
+    
     auto datos_bill = Device::dv_bill.get_level_cash_actual(true);
 
     for (int i = 0; i < datos_bill->get_n_items(); i++)
@@ -423,7 +429,7 @@ size_t Refill::saca_cassette()
         if (status == "CASHBOX_REMOVED")
         {
             Global::EValidador::is_running.store(false);
-            Device::dv_bill.command_post("ClearNoteCashboxLevels", "", true);
+                        Device::dv_bill.command_post("ClearNoteCashboxLevels", "", true);
         }
     });
 
@@ -458,6 +464,6 @@ void Refill::deten()
         i = 0; 
 
     Global::EValidador::is_running.store(false);
-    Device::dv_coin.deten_cobro_v6();
+        Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 }

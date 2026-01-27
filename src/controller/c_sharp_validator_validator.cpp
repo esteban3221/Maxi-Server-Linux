@@ -7,7 +7,6 @@ namespace Device
     std::map<int, int> map_cantidad_recyclador(const Validator &val)
     {
         auto level = val.get_level_cash_actual(true);
-
         std::map<int, int> actual_level;
 
         for (size_t i = 0; i < level->get_n_items(); i++)
@@ -219,6 +218,12 @@ http://localhost:5000/api/CashDevice/OpenConnection
 
 crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Conf &conf)
 {
+    if (this->is_busy.load())
+    {
+        std::cerr << RED << "Error: " << RESET << "El validador " << validator << " está ocupado. No se puede iniciar el dispositivo." << std::endl;
+        return {};
+    }
+
     crow::json::wvalue data_in =
         {
             {"ComPort", conf.puerto},
@@ -236,9 +241,9 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
 
     int intentos_start = 0;
     if (reintenta_comando_post("StartDevice", "", intentos_start).first != crow::status::OK)
-    {
-        return {}; // Si falla, sal de la función
-    }
+        return {}; 
+    else
+        Global::EValidador::is_connected.store(true);
 
     return json_data_status_coneccion;
 }
@@ -269,6 +274,7 @@ void Validator::deten_cobro_v6()
     std::this_thread::sleep_for(std::chrono::milliseconds(900));
 
     command_post("StopDevice", "", true);
+    this->is_busy.store(false);
 }
 
 void Validator::acepta_dinero(int deno, bool recy)

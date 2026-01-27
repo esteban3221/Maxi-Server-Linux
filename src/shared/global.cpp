@@ -12,7 +12,6 @@ namespace Global
     namespace EValidador
     {
         std::atomic<bool> is_running;
-        std::atomic<bool> is_busy;
 
         std::atomic<bool> is_retry_connected;
         std::atomic<bool> is_connected;

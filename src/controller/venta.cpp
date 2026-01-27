@@ -1,5 +1,4 @@
 #include "controller/venta.hpp"
-#include "carrousel.hpp"
 
 Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder),
                                                                                       faltante(0)
@@ -10,6 +9,7 @@ Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuild
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
+    CROW_ROUTE(RestApp::app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
 }
 
 Venta::~Venta()
@@ -25,6 +25,13 @@ void Venta::on_btn_cancel_click()
 {
     Global::EValidador::is_running.store(false);
     cancelado = true;
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+}
+
+crow::response Venta::deten(const crow::request &req)
+{
+    on_btn_cancel_click();
+    return crow::response(200, "Venta detenida");
 }
 
 void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
@@ -90,7 +97,6 @@ crow::response Venta::inicia(const crow::request &req)
     balance.cambio.store(0);
     Pago::faltante = 0;
 
-    is_busy.store(true);
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
@@ -158,13 +164,11 @@ crow::response Venta::inicia(const crow::request &req)
 
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
-    Global::EValidador::is_busy.store(false);
-
+    
     Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
 
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(data);
 }

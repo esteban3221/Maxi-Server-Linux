@@ -4,7 +4,9 @@
 MainWindow::MainWindow(/* args */) : contador_click(0)
 {
     // inicializacion de servidor
-    Global::Rest::future = Global::Rest::app.port(44333).loglevel(crow::LogLevel::Info).run_async();
+    Global::Rest::future = Global::Rest::app.port(44333).loglevel(crow::LogLevel::Info).multithreaded().run_async();
+    // por el momento es mejor que las peticiones sean en un solo hilo para evitar 
+    // problemas de concurrencia con la base de datos y proceso con validadores
     v_btn_pill->set_opacity(1);
 
     v_box_principal->signal_map().connect(sigc::mem_fun(*this, &MainWindow::on_map_view));
@@ -31,7 +33,8 @@ bool MainWindow::estado_validador()
         v_btn_pill->set_css_classes({"pill", "destructive-action"});
         v_btn_pill->set_label("Uno o mas validadores no se iniciarion.\nPuerto incorrecto?");
     }
-    else if (Global::EValidador::is_busy.load())
+    else if (Device::dv_bill.is_busy.load() ||
+             Device::dv_coin.is_busy.load())
     {
         v_btn_pill->set_css_classes({"pill", "warning"});
         v_btn_pill->set_label("Ejecutando tarea.");

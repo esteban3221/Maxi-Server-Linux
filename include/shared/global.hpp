@@ -112,7 +112,6 @@ namespace Global
     namespace EValidador
     {
         extern std::atomic<bool> is_running;
-        extern std::atomic<bool> is_busy;
         extern std::atomic<bool> is_connected;
         extern std::atomic<bool> is_retry_connected;
         extern std::atomic<bool> is_wrong_port;

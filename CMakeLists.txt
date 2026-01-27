@@ -1,10 +1,21 @@
 cmake_minimum_required(VERSION 3.25)
-project(Backend)
+project("Maxicajero Server Local" VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC") 
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC")
 
+message(STATUS "Proyecto: ${PROJECT_NAME}")
+message(STATUS "Versión: ${PROJECT_VERSION}")
+message(STATUS "Versión mayor: ${PROJECT_VERSION_MAJOR}")
+message(STATUS "Versión menor: ${PROJECT_VERSION_MINOR}")
+message(STATUS "Parche: ${PROJECT_VERSION_PATCH}")
+
+# Configurar archivo de versión
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/config/version.hpp
+)
 
 find_package(Crow REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -18,6 +29,13 @@ find_package(GTest REQUIRED)
 include_directories(
     ${GTKMM_INCLUDE_DIRS}
     ${LIBNOTIFY_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/config/version.hpp
 )
 
 set(SOURCES
@@ -99,6 +117,5 @@ target_link_libraries(Maxicajero
 )
 target_include_directories(Maxicajero PRIVATE ${GTKMM_INCLUDE_DIRS})
 
-# Habilitar pruebas
 enable_testing()
 add_subdirectory(test)

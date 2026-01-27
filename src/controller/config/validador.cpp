@@ -46,19 +46,18 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
         async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
         auto json_bill = Device::dv_bill.inicia_dispositivo_v8(bill);
-        auto json_coin = Device::dv_coin.inicia_dispositivo_v8(coin);
-
         crow::json::wvalue json_bill_copy(json_bill);
-        crow::json::wvalue json_coin_copy(json_coin);
-
         std::string device_bill = json_bill["deviceModel"].s();
+
+        auto json_coin = Device::dv_coin.inicia_dispositivo_v8(coin);
+        crow::json::wvalue json_coin_copy(json_coin);
         std::string device_coin = json_coin["deviceModel"].s();
 
         if (device_bill != "UNKNOWN" && device_coin != "UNKNOWN")
         {
-            is_busy.store(false);
+            
             is_connected.store(true);
-            is_running.store(true);
+            
             is_driver_correct.store(true);
             is_wrong_port.store(false);
 
@@ -76,14 +75,17 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
         }
         else
         {
-            is_busy.store(false);
+            
             is_connected.store(false);
-            is_running.store(false);
+            
             is_wrong_port.store(true);
             is_driver_correct.store(true);
 
             is_retry_connected.store(false);
         }
+
+        Device::dv_bill.is_busy.store(false);
+        Device::dv_coin.is_busy.store(false);
     }
     catch (const std::exception &e)
     {

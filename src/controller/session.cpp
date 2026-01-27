@@ -13,10 +13,15 @@ Sesion::Sesion(/* args */)
     CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario));
     CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario_roles").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario_roles));
     CROW_ROUTE(RestApp::app, "/sesion/logout").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::logout));
-    CROW_ROUTE(RestApp::app, "/test_coneccion").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::poll_status));
 
     CROW_ROUTE(RestApp::app, "/sesion/get_all_users").methods("GET"_method)(sigc::mem_fun(*this, &Sesion::get_all_users));
     CROW_ROUTE(RestApp::app, "/sesion/get_all_roles_by_id").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::get_all_roles_by_id));
+
+    // WebSocket route
+    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/heartbeat")
+        .onopen(sigc::mem_fun(*this, &Sesion::on_websocket_open))
+        .onclose(sigc::mem_fun(*this, &Sesion::on_websocket_close))
+        .onmessage(sigc::mem_fun(*this, &Sesion::on_websocket_message));
 }
 
 Sesion::~Sesion()
@@ -57,9 +62,46 @@ crow::response Sesion::logout(const crow::request &req)
     return crow::response();
 }
 
-crow::response Sesion::poll_status(const crow::request &req)
+
+void Sesion::on_websocket_open(crow::websocket::connection& conn)
 {
-    return crow::response(crow::status::OK);
+    CROW_LOG_INFO << "New WebSocket connection established";
+}
+
+void Sesion::on_websocket_close(crow::websocket::connection& conn, const std::string& reason, uint16_t code)
+{
+    CROW_LOG_INFO << "WebSocket connection closed: " << reason;
+}
+
+void Sesion::on_websocket_message(crow::websocket::connection& conn, const std::string& data, bool is_binary)
+{
+    CROW_LOG_INFO << "Received WebSocket message: ";
+    // se debe de recibir version del cliente, sistema operativo y responder si es compatible, si lo es se devolvera la version del servidor
+    auto json_data = crow::json::load(data);
+    std::string client_version = json_data["version"].s();
+    std::string plataform = json_data["plataform"].s();
+    // Aquí se puede agregar la lógica para verificar la compatibilidad de la versión
+    CROW_LOG_INFO << "Client version: " << client_version; 
+
+    Maxicajero::VersionUtils::CompatibilityChecker checker;
+    Maxicajero::VersionUtils::Version clientVer = Maxicajero::VersionUtils::Version::fromString(client_version);
+    Maxicajero::VersionUtils::Version serverVer = Maxicajero::VersionUtils::Version::fromString(Maxicajero::Version::getVersion());
+
+    if (!checker.isCompatible(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::BACKWARD)) {
+        crow::json::wvalue response; 
+        response["status"] = "incompatible";
+        response["message"] = checker.getCompatibilityMessage(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::BACKWARD);
+        conn.send_text(response.dump());
+        return;
+    }
+    else 
+    {
+        CROW_LOG_INFO << "Versiones compatible: " << client_version << " <= " << Maxicajero::Version::getVersion();
+        crow::json::wvalue response; 
+        response["status"] = "compatible";
+        response["local_server_version"] = Maxicajero::Version::getVersion();
+        conn.send_text(response.dump());
+    }
 }
 
 crow::response Sesion::get_all_users(const crow::request &req)

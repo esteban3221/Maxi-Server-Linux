@@ -183,7 +183,7 @@ crow::response Pago::inicia(const crow::request &req)
     balance.total.store(bodyParams["value"].i());
     is_running.store(true);
     balance.ingreso.store(0);
-    is_busy.store(true);
+    
 
     async_gui.dispatch_to_gui([this, cambio]()
     { 
@@ -291,7 +291,7 @@ void Pago::configurar_estado_pago(int cambio) {
 
     is_running.store(true);
     balance.ingreso.store(0);
-    is_busy.store(true);
+    
     balance.total = cambio;
 }
 
@@ -414,7 +414,7 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     balance.cambio.store(cambio);
     
     balance.ingreso.store(0);
-    is_busy.store(true);
+    
 
     async_gui.dispatch_to_gui([this, cambio]()
     { 

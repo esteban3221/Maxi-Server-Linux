@@ -83,6 +83,8 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(<interface>
     this->v_btn_logo_nip = builder->get_widget<Gtk::Button>("btn_logo_nip");
     this->v_btn_pill = builder->get_widget<Gtk::Button>("btn_pill");
 
+    v_lbl_version->set_label(Maxicajero::Version::getFullVersion());
+
     Global::Widget::v_main_stack = Gtk::manage(new Gtk::Stack);
     Global::Widget::v_main_stack->add(*v_box_principal, "0", "Home");
 

@@ -17,6 +17,7 @@ private:
     Global::Async async_gui;
 
     crow::response inicia(const crow::request &req);
+    crow::response deten_remoto(const crow::request &req);
     crow::response get_dashboard(const crow::request &req);
     crow::response update_imovilidad(const crow::request &req);
 
