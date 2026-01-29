@@ -224,6 +224,8 @@ crow::json::rvalue Validator::inicia_dispositivo_v8(const Global::EValidador::Co
         return {};
     }
 
+    this->is_busy.store(true);
+
     crow::json::wvalue data_in =
         {
             {"ComPort", conf.puerto},

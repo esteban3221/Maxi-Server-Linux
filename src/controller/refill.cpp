@@ -22,6 +22,11 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
 
     CROW_ROUTE(RestApp::app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &Refill::transpaso));
     CROW_ROUTE(RestApp::app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &Refill::retirada));
+
+    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/refill")
+        .onopen(sigc::mem_fun(*this, &Refill::on_wb_socket_open))
+        .onclose(sigc::mem_fun(*this, &Refill::on_wb_socket_close))
+        .onmessage(sigc::mem_fun(*this, &Refill::on_wb_socket_message));
 }
 
 Refill::~Refill()
@@ -464,6 +469,76 @@ void Refill::deten()
         i = 0; 
 
     Global::EValidador::is_running.store(false);
-        Device::dv_coin.deten_cobro_v6();
+    Device::dv_coin.deten_cobro_v6();
     Device::dv_bill.deten_cobro_v6();
+}
+
+void Refill::on_wb_socket_open(crow::websocket::connection &conn)
+{
+    std::cout << "WebSocket connection opened: " << conn.get_remote_ip() << std::endl;
+}
+
+void Refill::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
+{
+    std::cout << "WebSocket connection closed: " << conn.get_remote_ip()
+              << " Reason: " << reason
+              << " Code: " << code << std::endl;
+}
+
+void Refill::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
+{
+    bool is_busy = Device::dv_bill.is_busy || Device::dv_coin.is_busy;
+    if (not is_busy)
+    {
+        conn.send_text(R"({"status":"idle"})");
+        return;
+    }
+
+    auto json_data = crow::json::load(data);
+    if (json_data.has("action") && json_data["action"] == "detener")
+    {
+        deten();
+        conn.send_text(R"({"status":"detenido"})");
+        return;
+    }
+
+    auto selection_bill_model = Global::Widget::Refill::v_tree_reciclador_billetes->get_model();
+    single_bill_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_bill_model);
+    auto list_store_bill = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_bill_selection->get_model());
+
+    auto selection_coin_model = Global::Widget::Refill::v_tree_reciclador_monedas->get_model();
+    single_coin_selection = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection_coin_model);
+    auto list_store_coin = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single_coin_selection->get_model());
+
+    crow::json::wvalue json;
+    json["status"] = "En Proceso";
+
+    json["bill"] = crow::json::wvalue::list();
+    json["coin"] = crow::json::wvalue::list();
+
+    for (size_t i = 0; i < list_store_bill->get_n_items(); i++)
+    {
+        auto m_list = list_store_bill->get_typed_object<MLevelCash>(i);
+        json["bill"][i]["Denominacion"] = m_list->m_denominacion;
+        json["bill"][i]["Almacenado"] = m_list->m_cant_alm;
+        json["bill"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["bill"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
+        json["bill"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+        json["bill"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
+        json["bill"][i]["Ingreso"] = m_list->m_ingreso;
+    }
+
+    for (size_t i = 0; i < list_store_coin->get_n_items(); i++)
+    {
+        auto m_list = list_store_coin->get_typed_object<MLevelCash>(i);
+        json["coin"][i]["Denominacion"] = m_list->m_denominacion;
+        json["coin"][i]["Almacenado"] = m_list->m_cant_alm;
+        json["coin"][i]["Recyclador"] = m_list->m_cant_recy;
+        json["coin"][i]["Inmovilidad_Min"] = m_list->m_nivel_inmo_min;
+        json["coin"][i]["Inmovilidad"] = m_list->m_nivel_inmo;
+        json["coin"][i]["Inmovilidad_Max"] = m_list->m_nivel_inmo_max;
+        json["coin"][i]["Ingreso"] = m_list->m_ingreso;
+    }
+
+    conn.send_text(json.dump());
 }

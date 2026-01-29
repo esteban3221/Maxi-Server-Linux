@@ -48,6 +48,11 @@ private:
 
     std::shared_ptr<Gtk::SingleSelection> single_bill_selection, single_coin_selection;
 
+    // websocket
+    void on_wb_socket_open(crow::websocket::connection &conn);
+    void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
+    void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
+
 public:
     Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Refill();

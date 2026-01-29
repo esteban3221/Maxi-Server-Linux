@@ -10,10 +10,54 @@ Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuild
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
     CROW_ROUTE(RestApp::app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
+
+    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/venta")
+        .onopen(sigc::mem_fun(*this, &Venta::on_wb_socket_open))
+        .onclose(sigc::mem_fun(*this, &Venta::on_wb_socket_close))
+        .onmessage(sigc::mem_fun(*this, &Venta::on_wb_socket_message));
 }
 
 Venta::~Venta()
 {
+}
+
+void Venta::on_wb_socket_open(crow::websocket::connection &conn)
+{
+    std::cout << "WebSocket connected: " << conn.get_remote_ip() << std::endl;
+}
+
+void Venta::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
+{
+    std::cout << "WebSocket disconnected: " << conn.get_remote_ip() << " Reason: " << reason << " Code: " << code << std::endl;
+}
+
+void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
+{
+    bool is_busy = Device::dv_bill.is_busy || Device::dv_coin.is_busy;
+    if (not is_busy)
+    {
+        conn.send_text(R"({"status":"idle"})");
+        return;
+    }
+
+    auto json_data = crow::json::load(data);
+    if(json_data["action"] == "consulta")
+    {
+        crow::json::wvalue response;
+        response["ingreso"] = Global::EValidador::balance.ingreso.load();
+        response["cambio"] = Global::EValidador::balance.cambio.load();
+        response["total"] = Global::EValidador::balance.total.load();
+        response["terminado"] = not is_busy;
+        response["status"] = is_busy ? "En proceso" : "Proceso terminado";
+        response["faltante"] = faltante;
+        conn.send_text(response.dump());
+    }
+    else if (json_data["action"] == "detener")
+    {
+        on_btn_cancel_click();
+        conn.send_text(R"({"status":"detenido"})");
+    }
+    
 }
 
 void Venta::on_btn_retry_click()

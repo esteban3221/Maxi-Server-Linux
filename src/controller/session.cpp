@@ -76,12 +76,14 @@ void Sesion::on_websocket_close(crow::websocket::connection& conn, const std::st
 void Sesion::on_websocket_message(crow::websocket::connection& conn, const std::string& data, bool is_binary)
 {
     CROW_LOG_INFO << "Received WebSocket message: ";
-    // se debe de recibir version del cliente, sistema operativo y responder si es compatible, si lo es se devolvera la version del servidor
+    
     auto json_data = crow::json::load(data);
     std::string client_version = json_data["version"].s();
     std::string plataform = json_data["plataform"].s();
-    // Aquí se puede agregar la lógica para verificar la compatibilidad de la versión
+    
     CROW_LOG_INFO << "Client version: " << client_version; 
+    CROW_LOG_INFO << "Client platform: " << plataform;
+    CROW_LOG_INFO << "IP Client: " << conn.get_remote_ip();
 
     Maxicajero::VersionUtils::CompatibilityChecker checker;
     Maxicajero::VersionUtils::Version clientVer = Maxicajero::VersionUtils::Version::fromString(client_version);

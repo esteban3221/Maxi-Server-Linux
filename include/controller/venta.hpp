@@ -27,6 +27,11 @@ private:
 
     crow::response inicia(const crow::request &req);
     crow::response deten(const crow::request &req);
+
+    // websocket
+    void on_wb_socket_open(crow::websocket::connection &conn);
+    void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
+    void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
 public:
     Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
     ~Venta();
