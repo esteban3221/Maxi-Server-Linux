@@ -1,8 +1,8 @@
 #include "model/log.hpp"
 
-Log::Log(/* args */) : tam_row{0}
+Log::Log(/* args */) // : tam_row{0}
 {
-    Glib::init();
+    // Glib::init();
 }
 
 Log::~Log()
@@ -39,14 +39,14 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const s
 {
     auto &database = Database::getInstance();
 
-    auto sql = "SELECT count(*) FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'");
-    auto contenedor_data = database.sqlite3->command(sql);
-    auto tam = contenedor_data->at("count(*)")[0];
-    tam_row = std::stoi(tam);
+    // auto sql = "SELECT count(*) FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'");
+    // auto contenedor_data = database.sqlite3->command(sql);
+    // auto tam = contenedor_data->at("count(*)")[0];
+    // tam_row = std::stoi(tam);
 
     auto query = "SELECT * FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
                  " ORDER BY id DESC LIMIT 100 OFFSET ?";
-    contenedor_data = database.sqlite3->command(query, paginacion);
+    auto contenedor_data = database.sqlite3->command(query, paginacion);
     auto m_list = Gio::ListStore<MLog>::create();
 
     for (size_t i = 0; i < contenedor_data->at("Id").size(); i++)

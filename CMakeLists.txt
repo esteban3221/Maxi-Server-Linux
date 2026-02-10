@@ -50,6 +50,7 @@ set(SOURCES
     src/model/usuarios_roles.cpp
     src/model/usuarios.cpp
     src/model/configuracion.cpp
+    src/model/terminales.cpp
     #===================VIEW====================
     src/view/base.venta_pago.cpp
     src/view/base.nip.cpp
@@ -80,6 +81,7 @@ set(SOURCES
     src/controller/nip.cpp
     src/controller/nuevo_nip.cpp
     src/controller/log.cpp
+    src/controller/config/terminal.cpp
 
     src/controller/config/validador.cpp
 

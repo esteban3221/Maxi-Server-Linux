@@ -58,7 +58,7 @@ crow::response LogData::get_log(const crow::request &req)
 
     crow::json::wvalue json;
 
-    json["total_rows"] = log->tam_row;
+    json["total_rows"] = contenedor_log->get_n_items();
     json["log"] = crow::json::wvalue::list();
     for (size_t i = 0; i < contenedor_log->get_n_items(); i++)
     {

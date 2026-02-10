@@ -64,6 +64,6 @@ public:
     const std::shared_ptr<ResultMap> get_corte(int id_user = 0, const std::string &tipo = "", const std::string &f_ini = "", const std::string &f_fin = "");
     size_t insert_log(const Glib::RefPtr<MLog> &list);
     void update_log(const Glib::RefPtr<MLog> &list);
-    size_t tam_row;
+    // size_t tam_row;
     // void imprime_log();
 };

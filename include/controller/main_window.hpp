@@ -17,6 +17,7 @@
 #include "controller/configuracion.hpp"
 #include "controller/nip.hpp"
 #include "controller/nuevo_nip.hpp"
+#include "controller/config/terminal.hpp"
 
 class MainWindow : public VMainWindow
 {
@@ -24,6 +25,7 @@ private:
     Sesion sesion;
     LogData log_data;
     CConfiguracion configuracion;
+    Terminal terminales;
 
     sigc::connection conn;
 

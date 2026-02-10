@@ -34,6 +34,66 @@ private:
                                    "FOREIGN KEY (id_usuario) REFERENCES usuarios (id),\n"
                                    "FOREIGN KEY (id_rol) REFERENCES roles (id)\n"
                                    ")");
+            
+            this->sqlite3->command(R"(
+                CREATE table terminales_pago(
+            	id text not null PRIMARY KEY ,
+            	tipo text not null,
+                alias text,
+            	modo text,
+                predeterminado integer not null DEFAULT 0,
+            	descripcion text,
+            	fecha_creado text NOT NULL 
+            );)");
+
+            this->sqlite3->command(R"(
+                CREATE TABLE pago_tarjeta (
+                id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_terminal                 TEXT NOT NULL,                      -- REFERENCES terminales_pago(id)
+                id_order                    TEXT NOT NULL UNIQUE,               -- Tu ID interno (external_reference que envías)
+                        
+                mp_order_id                 TEXT NOT NULL UNIQUE,               -- "ORD01JSYD7XEZ2371TTHHMT5BWWTG" (el ID principal de la orden)
+                mp_payment_id               TEXT,                               -- "PAY01JSYD7XEZ2371TTHHMVWYJYG6" (dentro de transactions.payments[0].id)
+                        
+                id_log                      INTEGER NOT NULL,                   -- enlace a tu log de validador/operación
+                        
+                monto                       REAL NOT NULL CHECK(monto > 0),     -- amount del payment
+                tipo                        TEXT NOT NULL,                      -- ej: 'credit_card', 'debit_card' (de config.payment_method.default_type o posterior)
+                estado                      TEXT NOT NULL DEFAULT 'created',    -- order.status: created, processed, paid, canceled...
+                estado_detalle              TEXT DEFAULT 'created',             -- order.status_detail o payment.status_detail
+                        
+                mp_reference_id             TEXT,                               -- reference_id si aparece en payments
+                mp_transaction_id           TEXT,                               -- transaction_id si llega (raro en Point, pero posible)
+                last_four_digits            TEXT,                               -- si se llena en pagos con tarjeta
+                issuer_name                 TEXT,                               -- nombre del banco emisor si disponible
+                        
+                fecha_creado                TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+                fecha_aprobacion            TEXT,                               -- date_approved o cuando status pasa a approved/paid
+                fecha_ult_actualizacion     TEXT DEFAULT (datetime('now','localtime')),
+                        
+                descripcion                 TEXT,                               -- order.description o tu propia nota
+                ultimo_error                TEXT,                               -- si status = rejected o error en detalle
+                        
+                mp_json_response            TEXT,                               -- opcional: guarda el JSON completo de la respuesta GET /orders para auditoría/debug
+                        
+                FOREIGN KEY (id_terminal) REFERENCES terminales_pago(id),
+                FOREIGN KEY (id_log)      REFERENCES log(id)
+            );)");
+
+            this->sqlite3->command(R"(
+                CREATE TABLE detalle_movimientos_dinero (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_log            INTEGER NOT NULL,
+                tipo_movimiento   TEXT NOT NULL CHECK(tipo_movimiento IN ('entrada', 'salida')),
+                denominacion      INTEGER NOT NULL,
+                cantidad          INTEGER NOT NULL DEFAULT 0,
+                creado_en         DATETIME DEFAULT (datetime('now','localtime')),
+
+                FOREIGN KEY (id_log) REFERENCES log(id),
+
+                CHECK (cantidad >= 0)
+            );)");
+
             this->sqlite3->command("insert into roles values \n"
                                    "(NULL,'Venta'),\n"
                                    "(NULL,'Pago'),\n"
@@ -56,7 +116,7 @@ private:
                                    "(NULL,'Apagar equipo');");
             this->sqlite3->command("insert into usuarios values (null,'admin','admin');");
 
-            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
+            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Descripcion text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
             this->sqlite3->command("CREATE TABLE pagoPendiente (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdLog int, Remanente real, Estatus text, FOREIGN KEY (IdLog) REFERENCES log (Id))");
 
             this->sqlite3->command("CREATE TABLE IF NOT EXISTS usuarios_historial (\n"
