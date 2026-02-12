@@ -6,7 +6,7 @@ Terminal::Terminal(/* args */)
     CROW_ROUTE(RestApp::app, "/terminales/<string>").methods("GET"_method)(sigc::mem_fun(*this, &Terminal::get_by_id));
     CROW_ROUTE(RestApp::app, "/terminales/nueva").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::nueva));
     CROW_ROUTE(RestApp::app, "/terminales/editar").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::editar));
-    CROW_ROUTE(RestApp::app, "/terminales/eliminar").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::eliminar));
+    CROW_ROUTE(RestApp::app, "/terminales/eliminar").methods("DELETE"_method)(sigc::mem_fun(*this, &Terminal::eliminar));
 }
 
 Terminal::~Terminal()
@@ -63,10 +63,11 @@ crow::response Terminal::nueva(const crow::request &req)
     std::string tipo = bodyParams["tipo"].s();
     std::string alias = bodyParams["alias"].s();
     std::string modo = bodyParams["modo"].s();
+    std::string access_token = bodyParams["access_token"].s();
     // auto predeterminado = bodyParams["predeterminado"].b();
     std::string descripcion = bodyParams["descripcion"].s();
 
-    auto terminal = MTerminales::create(id, tipo, alias, modo, false, descripcion, Glib::DateTime::create_now_local());
+    auto terminal = MTerminales::create(id, tipo, alias, modo, access_token, false, descripcion, Glib::DateTime::create_now_local());
     auto terminales = std::make_unique<OTerminales>();
     terminales->inserta(terminal);
 
@@ -90,6 +91,8 @@ crow::response Terminal::editar(const crow::request &req)
     terminal->m_descripcion = bodyParams.has("descripcion") ? (Glib::ustring)bodyParams["descripcion"].s() : terminal->m_descripcion;
 
     terminales->edita(terminal);
+    if (terminal->m_predeterminado)
+        terminales->predetermina(terminal->m_id);
 
     return crow::response(200);
 }

@@ -41,6 +41,7 @@ private:
             	tipo text not null,
                 alias text,
             	modo text,
+                acces_token text,
                 predeterminado integer not null DEFAULT 0,
             	descripcion text,
             	fecha_creado text NOT NULL 

@@ -12,6 +12,7 @@ public:
     Glib::ustring m_tipo;
     Glib::ustring m_alias;
     Glib::ustring m_modo;
+    Glib::ustring m_access_token;
     bool m_predeterminado;
     Glib::ustring m_descripcion;
     Glib::DateTime m_fecha_creado;
@@ -20,11 +21,12 @@ public:
                                             const Glib::ustring &tipo,
                                             const Glib::ustring &alias,
                                             const Glib::ustring &modo,
+                                            const Glib::ustring &access_token,
                                             bool predeterminado,
                                             const Glib::ustring &descripcion,
                                             const Glib::DateTime &fecha_creado)
     {
-        return Glib::make_refptr_for_instance<MTerminales>(new MTerminales(id, tipo, alias, modo, predeterminado, descripcion, fecha_creado));
+        return Glib::make_refptr_for_instance<MTerminales>(new MTerminales(id, tipo, alias, access_token, modo, predeterminado, descripcion, fecha_creado));
     }
 
 protected:
@@ -32,6 +34,7 @@ protected:
                 const Glib::ustring &tipo,
                 const Glib::ustring &alias,
                 const Glib::ustring &modo,
+                const Glib::ustring &access_token,
                 bool predeterminado,
                 const Glib::ustring &descripcion,
                 const Glib::DateTime &fecha_creado)
@@ -39,6 +42,7 @@ protected:
           m_tipo(tipo),
           m_alias(alias),
           m_modo(modo),
+          m_access_token(access_token),
           m_predeterminado(predeterminado),
           m_descripcion(descripcion),
           m_fecha_creado(fecha_creado)
@@ -57,6 +61,7 @@ public:
     void inserta(const Glib::RefPtr<MTerminales> &terminal);
     void edita(const Glib::RefPtr<MTerminales> &terminal);
     void elimina(const Glib::ustring &id);
+    void predetermina(const Glib::ustring &id);
 
     Glib::RefPtr<MTerminales> get_by_id(const Glib::ustring &id);
     std::shared_ptr<ResultMap> get_all();

@@ -4,7 +4,7 @@
 MainWindow::MainWindow(/* args */) : contador_click(0)
 {
     // inicializacion de servidor
-    Global::Rest::future = Global::Rest::app.port(44333).loglevel(crow::LogLevel::Info).multithreaded().run_async();
+    Global::Rest::future = Global::Rest::app.port(44333).loglevel(crow::LogLevel::Info)/*.multithreaded()*/.run_async();
     // por el momento es mejor que las peticiones sean en un solo hilo para evitar 
     // problemas de concurrencia con la base de datos y proceso con validadores
     v_btn_pill->set_opacity(1);
