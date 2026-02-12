@@ -26,7 +26,7 @@ public:
                                             const Glib::ustring &descripcion,
                                             const Glib::DateTime &fecha_creado)
     {
-        return Glib::make_refptr_for_instance<MTerminales>(new MTerminales(id, tipo, alias, access_token, modo, predeterminado, descripcion, fecha_creado));
+        return Glib::make_refptr_for_instance<MTerminales>(new MTerminales(id, tipo, alias, modo , access_token, predeterminado, descripcion, fecha_creado));
     }
 
 protected:

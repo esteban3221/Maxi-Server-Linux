@@ -45,7 +45,7 @@ Glib::RefPtr<MTerminales> OTerminales::get_by_id(const Glib::ustring &id)
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("SELECT * FROM terminales_pago WHERE Id = ?", id);
 
-    if (contenedor_data->at("Id").empty())
+    if (contenedor_data->at("id").empty())
         return nullptr;
 
     return MTerminales::create(
