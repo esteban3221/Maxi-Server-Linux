@@ -35,7 +35,7 @@ const std::shared_ptr<ResultMap> Log::get_corte(int id_user, const std::string &
     return result;
 }
 
-Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int paginacion)
+const std::shared_ptr<ResultMap>  Log::get_log(const std::string &tipo, const std::string &f_ini, const std::string &f_fin, int paginacion)
 {
     auto &database = Database::getInstance();
 
@@ -46,36 +46,36 @@ Glib::RefPtr<Gio::ListStore<MLog>> Log::get_log(const std::string &tipo, const s
 
     auto query = "SELECT * FROM log WHERE " + (tipo == "Todo" ? "1=1" : "Tipo = '" + tipo + "'") + (f_ini.empty() or f_fin.empty() ? "" : " and Fecha BETWEEN '" + f_ini + "' AND '" + f_fin + "'") +
                  " ORDER BY id DESC LIMIT 100 OFFSET ?";
-    auto contenedor_data = database.sqlite3->command(query, paginacion);
-    auto m_list = Gio::ListStore<MLog>::create();
+    return database.sqlite3->command(query, paginacion);
 
-    for (size_t i = 0; i < contenedor_data->at("Id").size(); i++)
-    {
-        m_list->append(MLog::create(
-            std::stoull(contenedor_data->at("Id")[i]),
-            std::stoull(contenedor_data->at("IdUser")[i]),
-            contenedor_data->at("Tipo")[i],
-            std::stoi(contenedor_data->at("Ingreso")[i]),
-            std::stoi(contenedor_data->at("Cambio")[i]),
-            std::stoi(contenedor_data->at("Total")[i]),
-            contenedor_data->at("Estatus")[i],
-            Glib::DateTime::create_from_iso8601(contenedor_data->at("Fecha")[i])));
-    }
+    // for (size_t i = 0; i < contenedor_data->at("Id").size(); i++)
+    // {
+    //     m_list->append(MLog::create(
+    //         std::stoull(contenedor_data->at("Id")[i]),
+    //         std::stoull(contenedor_data->at("IdUser")[i]),
+    //         contenedor_data->at("Tipo")[i],
+    //         std::stoi(contenedor_data->at("Ingreso")[i]),
+    //         std::stoi(contenedor_data->at("Cambio")[i]),
+    //         std::stoi(contenedor_data->at("Total")[i]),
+    //         contenedor_data->at("Estatus")[i],
+    //         Glib::DateTime::create_from_iso8601(contenedor_data->at("Fecha")[i])));
+    // }
 
-    return m_list;
+    // return m_list;
 }
 
 size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("INSERT INTO log VALUES(null,?,?,?,?,?,?,?)",
+    database.sqlite3->command("INSERT INTO log VALUES(null,?,?,?,?,?,?,?,?)",
                               list->m_id_user,
-                              list->m_tipo.c_str(),
+                              list->m_tipo,
+                              list->m_descripcion,
                               list->m_ingreso,
                               list->m_cambio,
                               list->m_total,
-                              list->m_estatus.c_str(),
-                              list->m_fecha.format_iso8601().c_str());
+                              list->m_estatus,
+                              list->m_fecha.format_iso8601());
 
     auto contenedor_data = database.sqlite3->command("SELECT Id FROM log ORDER BY Id DESC LIMIT 1");
     return std::stoull(contenedor_data->at("Id")[0]);
@@ -86,11 +86,11 @@ void Log::update_log(const Glib::RefPtr<MLog> &list)
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
                                                      list->m_id_user,
-                                                     list->m_tipo.c_str(),
+                                                     list->m_tipo,
                                                      list->m_ingreso,
                                                      list->m_cambio,
                                                      list->m_total,
-                                                     list->m_estatus.c_str(),
-                                                     list->m_fecha.format_iso8601().c_str(),
+                                                     list->m_estatus,
+                                                     list->m_fecha.format_iso8601(),
                                                      list->m_id);
 }

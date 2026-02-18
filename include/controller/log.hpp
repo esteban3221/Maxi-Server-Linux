@@ -2,6 +2,7 @@
 #include "global.hpp"
 #include "model/log.hpp"
 #include "model/usuarios.hpp"
+#include "model/detalle_movimiento.hpp"
 
 namespace RestApp = Global::Rest;
 class LogData

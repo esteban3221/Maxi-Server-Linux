@@ -118,7 +118,7 @@ crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request
 
 crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
+    //Global::Utility::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
 
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(10, 14);
@@ -156,7 +156,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
-        std::string command = "echo \"" + Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()), 0) + "\" | lp";
+        std::string command = "echo \"" + Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()), 0) + "\" | lp";
         std::system(command.c_str());
 
         Global::System::showNotify("Impresión", "Se imprimio hoja de prueba.", "dialog-information");

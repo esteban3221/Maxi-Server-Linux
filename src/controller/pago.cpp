@@ -121,6 +121,8 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const std::
     }
     else
     {
+        auto inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+        auto inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
         // Procesamiento para dv_bill
         if (bill != "[0,0,0,0,0,0]")
         {
@@ -156,6 +158,17 @@ void Pago::da_pago(const std::string &bill, const std::string &coin, const std::
             poll_pago(status_coin);
         }
 
+        std::this_thread::sleep_for(std::chrono::seconds(2)); // Esperar a que los dispositivos actualicen su estado
+
+        auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+        auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+        auto salidas_bill = DetalleMovimiento::calcular_diferencias_niveles(inicial_bill, final_bill);
+        auto salidas_coin = DetalleMovimiento::calcular_diferencias_niveles(inicial_coin, final_coin);
+
+        for (const auto& p : salidas_bill) salidas_totales[p.first] += p.second;
+        for (const auto& p : salidas_coin) salidas_totales[p.first] += p.second;
+
         if (status_bill.first != crow::status::OK || status_coin.first != crow::status::OK)
         {
             estatus = "Error al procesar el pago";
@@ -174,9 +187,8 @@ crow::response Pago::inicia(const crow::request &req)
     Pago::faltante = 0;
 
     int cambio = balance.cambio = bodyParams["value"].i();
-    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
-    bodyParams["concepto"].operator std::string() : 
-    "*- Sin Concepto -*";
+    std::string concepto = bodyParams["concepto"].operator std::string();
+
     if (cambio <= 0)
         return crow::response("Nada que devolver");
 
@@ -184,10 +196,10 @@ crow::response Pago::inicia(const crow::request &req)
     is_running.store(true);
     balance.ingreso.store(0);
     
-
     async_gui.dispatch_to_gui([this, cambio]()
     { 
-        auto s_total = std::to_string(cambio);
+        auto s_total = Glib::ustring::compose("%1",cambio);
+        
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
@@ -202,6 +214,7 @@ crow::response Pago::inicia(const crow::request &req)
         0,
         Global::User::id,
         "Pago",
+        concepto.empty() ? "Sin Concepto" : concepto,
         0,
         balance.cambio.load(),
         0,
@@ -209,6 +222,7 @@ crow::response Pago::inicia(const crow::request &req)
         Glib::DateTime::create_now_local());
 
     t_log->m_id = log.insert_log(t_log);
+
     Global::Utility::is_ok = true;
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
@@ -237,11 +251,33 @@ crow::response Pago::inicia_manual(const crow::request &req) {
     auto bodyParams = crow::json::load(req.body);
     auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
 
+    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
     validar_inventario_disponible(bill_values, coin_values);
     configurar_estado_pago(cambio);
     mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
 
     auto t_log = registrar_pago_y_log(bill_values, coin_values, "Pago Manual");
+
+    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+
+    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+
+        for (const auto& [denom, qty] : Pago::salidas_totales)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    Pago::salidas_totales.clear();
+
+    auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
 
     imprimir_ticket_si_corresponde(t_log);
 
@@ -253,9 +289,7 @@ crow::response Pago::inicia_manual(const crow::request &req) {
 std::tuple<int, std::vector<int>, std::vector<int>> Pago::procesar_parametros_iniciales(const crow::json::rvalue& bodyParams) {
     using namespace Global::EValidador;
     int cambio = balance.cambio = bodyParams["total"].i();
-    concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
-    bodyParams["concepto"].operator std::string() : 
-    "*- Sin Concepto -*";
+    concepto = bodyParams["concepto"].operator std::string();
     Global::Utility::is_ok = true;
     Pago::faltante = 0;
     balance.total = cambio;
@@ -331,10 +365,11 @@ Glib::RefPtr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_value
         0,
         Global::User::id,
         tipo_pago,
+        concepto,
         0,
         calcular_total_pago(bill_values, coin_values),
         0,
-        "- " + concepto + " | " + (not Global::Utility::is_ok ? estatus : "Exito."),
+        not Global::Utility::is_ok ? estatus : "Exito.",
         Glib::DateTime::create_now_local());
     
     Global::Utility::is_ok = true;
@@ -351,7 +386,7 @@ void Pago::imprimir_ticket_si_corresponde(const Glib::RefPtr<MLog>& t_log) {
 }
 
 crow::response Pago::finalizar_proceso_pago(const Glib::RefPtr<MLog>& t_log) {
-    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok ? estatus : "Exito.");
+    t_log->m_estatus = (not Global::Utility::is_ok ? estatus : "Exito.");
     crow::json::wvalue data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
@@ -397,6 +432,9 @@ crow::response Pago::inicia_cambio(const crow::request &req)
             Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
     }
 
+    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
     auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
     auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
 
@@ -405,13 +443,10 @@ crow::response Pago::inicia_cambio(const crow::request &req)
 
     int cambio = balance.ingreso.load();
 
-    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
-    bodyParams["concepto"].operator std::string() : 
-    "*- Sin Concepto -*";
+    std::string concepto = bodyParams["concepto"].operator std::string();
+    
     if (cambio <= 0)
         return crow::response("Nada que devolver");
-
-    balance.cambio.store(cambio);
     
     balance.ingreso.store(0);
     
@@ -427,12 +462,18 @@ crow::response Pago::inicia_cambio(const crow::request &req)
 
     Pago::da_pago(balance.cambio.load(), "Cambio Automatico", estatus, true);
 
+    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+
     Log log;
     crow::json::wvalue data;
     auto t_log = MLog::create(
         0,
         Global::User::id,
         "Cambio Automatico",
+        concepto,
         0,
         balance.cambio.load(),
         0,
@@ -447,6 +488,17 @@ crow::response Pago::inicia_cambio(const crow::request &req)
         std::string command = "echo \"" + Global::System::imprime_ticket(t_log, faltante) + "\" | lp";
         std::system(command.c_str());
     }
+
+    for (const auto& [denom, qty] : Pago::salidas_totales)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    Pago::salidas_totales.clear();
+
+    auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
 
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
@@ -512,11 +564,46 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     auto bodyParams = crow::json::load(req.body);
     auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
 
+    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+
     validar_inventario_disponible(bill_values, coin_values);
     configurar_estado_pago(cambio);
     mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
 
     auto t_log = registrar_pago_y_log(bill_values, coin_values, "Cambio Manual");
+
+    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+
+    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+
+    for (const auto& [denom, qty] : diff_bill)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+    for (const auto& [denom, qty] : diff_coin)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    for (const auto& [denom, qty] : Pago::salidas_totales)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    Pago::salidas_totales.clear();
+
+    auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
+
 
     imprimir_ticket_si_corresponde(t_log);
 
@@ -527,9 +614,7 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
 {
     auto bodyParams = crow::json::load(req.body);
     int cambio = Global::EValidador::balance.cambio = bodyParams["value"].i();
-    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? 
-    bodyParams["concepto"].operator std::string() : 
-    "*- Sin Concepto -*";
+    std::string concepto = bodyParams["concepto"].operator std::string();
     if (cambio <= 0)
         return crow::response("Nada que devolver");
 
@@ -541,6 +626,7 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
         0,
         Global::User::id,
         "Cambio Manual",
+        concepto.empty() ? "Sin Concepto" : concepto,
         0,
         cambio,
         0,

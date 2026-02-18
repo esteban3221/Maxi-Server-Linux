@@ -14,6 +14,7 @@ public:
     size_t m_id;
     size_t m_id_user;
     Glib::ustring m_tipo;
+    Glib::ustring m_descripcion;
     int m_ingreso;
     int m_cambio;
     int m_total;
@@ -23,19 +24,21 @@ public:
     static Glib::RefPtr<MLog> create(size_t id,
                                      size_t id_user,
                                      const Glib::ustring &tipo,
+                                     const Glib::ustring &descripcion,
                                      int ingreso,
                                      int cambio,
                                      int total,
                                      const Glib::ustring &estatus,
                                      Glib::DateTime fecha)
     {
-        return Glib::make_refptr_for_instance<MLog>(new MLog(id, id_user, tipo, ingreso, cambio, total, estatus, fecha));
+        return Glib::make_refptr_for_instance<MLog>(new MLog(id, id_user, tipo, descripcion, ingreso, cambio, total, estatus, fecha));
     }
 
 protected:
     MLog(size_t id,
          size_t id_user,
          const Glib::ustring &tipo,
+         const Glib::ustring &descripcion,
          int ingreso,
          int cambio,
          int total,
@@ -44,6 +47,7 @@ protected:
         : m_id(id),
           m_id_user(id_user),
           m_tipo(tipo),
+          m_descripcion(descripcion),
           m_ingreso(ingreso),
           m_cambio(cambio),
           m_total(total),
@@ -60,7 +64,7 @@ public:
     Log(/* args */);
     ~Log();
 
-    Glib::RefPtr<Gio::ListStore<MLog>> get_log(const std::string &tipo = "", const std::string &f_ini = "", const std::string &f_fin = "", int paginacion = 0);
+    const std::shared_ptr<ResultMap> get_log(const std::string &tipo = "", const std::string &f_ini = "", const std::string &f_fin = "", int paginacion = 0);
     const std::shared_ptr<ResultMap> get_corte(int id_user = 0, const std::string &tipo = "", const std::string &f_ini = "", const std::string &f_fin = "");
     size_t insert_log(const Glib::RefPtr<MLog> &list);
     void update_log(const Glib::RefPtr<MLog> &list);

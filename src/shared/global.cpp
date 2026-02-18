@@ -7,6 +7,7 @@ namespace Global
     {
         crow::SimpleApp app;
         std::future<void> future;
+        crow::websocket::connection *ws_connection;
     } // namespace Rest
 
     namespace EValidador
@@ -61,6 +62,7 @@ namespace Global
             data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
             data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
             data["ticket"][0]["tipo"] = t_log->m_tipo;
+            data["ticket"][0]["descripcion"] = t_log->m_descripcion;
             data["ticket"][0]["total"] = t_log->m_total;
             data["ticket"][0]["cambio"] = t_log->m_cambio;
             data["ticket"][0]["ingreso"] = t_log->m_ingreso;

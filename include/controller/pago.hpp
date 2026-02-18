@@ -4,6 +4,7 @@
 #include "global.hpp"
 #include "log.hpp"
 #include "controller/config/impresora.hpp"
+#include "model/detalle_movimiento.hpp"
 #include "c_sharp_validator.hpp"
 
 namespace RestApp = Global::Rest;
@@ -48,6 +49,7 @@ public:
     static void da_pago(int cambio, const std::string &tipo, std::string &estatus, bool is_cambio);
     static void da_pago(const std::string &bill, const std::string &coin, const std::string &tipo, std::string &estatus);
     static inline std::atomic_int32_t faltante;
+    static inline std::map<int32_t, int32_t> salidas_totales;
 
     std::tuple<int, std::vector<int>, std::vector<int>> procesar_parametros_iniciales(const crow::json::rvalue &bodyParams);
     void validar_inventario_disponible(const std::vector<int> &bill_values, const std::vector<int> &coin_values);

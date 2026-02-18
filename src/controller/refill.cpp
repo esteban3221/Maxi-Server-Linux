@@ -250,6 +250,10 @@ crow::response Refill::inicia(const crow::request &req)
     Device::dv_coin.inicia_dispositivo_v6(false);
     Device::dv_bill.inicia_dispositivo_v6(false);
 
+    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+
     auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
     for (size_t i = 0; i < bill_selection->get_n_items(); i++)
     {
@@ -268,6 +272,13 @@ crow::response Refill::inicia(const crow::request &req)
     future1.wait();
     future2.wait();
 
+    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
+    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+
+
     Log log;
     crow::json::wvalue data;
     auto t_log = MLog::create
@@ -275,6 +286,7 @@ crow::response Refill::inicia(const crow::request &req)
         0,
         Global::User::id,
         "Refill",
+        "",
         balance.ingreso.load(),
         0,
         balance.ingreso.load(),
@@ -283,6 +295,21 @@ crow::response Refill::inicia(const crow::request &req)
     );
 
     t_log->m_id = log.insert_log(t_log);
+
+    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+    for (const auto& [denom, qty] : diff_bill)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+    for (const auto& [denom, qty] : diff_coin)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {
@@ -384,7 +411,7 @@ crow::response Refill::transpaso(const crow::request &req)
                                                              "}",
                                                intentos);
     
-    auto t_log = MLog::create(0, Global::User::id, "Transpaso", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
+    auto t_log = MLog::create(0, Global::User::id, "Transpaso","", 0, 0, 0, "Completado", Glib::DateTime::create_now_local());
     Log log;
 
     if (status.first == 200)
@@ -449,8 +476,8 @@ crow::response Refill::retirada(const crow::request &req)
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     Device::dv_bill.inicia_dispositivo_v6();
 
-    auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
     Log log;
+    auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
     t_log->m_id = log.insert_log(t_log);
     auto data = Global::Utility::json_ticket(t_log);
 

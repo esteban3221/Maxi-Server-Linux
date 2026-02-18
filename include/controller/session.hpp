@@ -24,6 +24,8 @@ private:
     crow::response get_all_users(const crow::request &req);
     crow::response get_all_roles_by_id(const crow::request &req);
 
+    crow::response maxicajero_version_check(const crow::request &req);
+
     // WebSocket
     void on_websocket_open(crow::websocket::connection& conn);
     void on_websocket_close(crow::websocket::connection& conn, const std::string& reason, uint16_t code);

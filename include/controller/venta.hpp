@@ -6,6 +6,7 @@
 #include "c_sharp_validator.hpp"
 #include "controller/pago.hpp"
 #include "controller/config/impresora.hpp"
+#include "model/detalle_movimiento.hpp"
 #include "global.hpp"
 
 namespace RestApp = Global::Rest;
@@ -23,12 +24,12 @@ private:
     int faltante;
     std::string estatus;
     void func_poll(const std::string &status, const crow::json::rvalue &data);
-    Glib::RefPtr<Gio::ListStore<MLevelCash>> s_level_ant;
 
     crow::response inicia(const crow::request &req);
     crow::response deten(const crow::request &req);
 
     // websocket
+    crow::websocket::connection *connection{nullptr};
     void on_wb_socket_open(crow::websocket::connection &conn);
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
     void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);

@@ -51,6 +51,7 @@ set(SOURCES
     src/model/usuarios.cpp
     src/model/configuracion.cpp
     src/model/terminales.cpp
+    src/model/detalle_movimiento.cpp
     #===================VIEW====================
     src/view/base.venta_pago.cpp
     src/view/base.nip.cpp

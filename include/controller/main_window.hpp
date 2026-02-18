@@ -28,8 +28,18 @@ private:
     Terminal terminales;
 
     sigc::connection conn;
-
     uint16_t contador_click;
+
+    struct EstadoWS {
+        int code = -1;
+        std::string status;
+        std::string label;
+        std::vector<Glib::ustring> css_classes;
+    };
+
+    EstadoWS ultimo_estado_enviado;
+
+    bool primer_envio_realizado = false;
 
     bool estado_validador();
     void on_btn_pill_clicked();

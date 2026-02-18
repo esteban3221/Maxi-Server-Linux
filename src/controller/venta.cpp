@@ -24,35 +24,34 @@ Venta::~Venta()
 void Venta::on_wb_socket_open(crow::websocket::connection &conn)
 {
     std::cout << "WebSocket connected: " << conn.get_remote_ip() << std::endl;
+    connection = &conn;
+
+    std::this_thread::sleep_for(std::chrono::seconds(1)); // Esperar a que el cliente esté listo para recibir mensajes
+    crow::json::wvalue response;
+    response["ingreso"] = Global::EValidador::balance.ingreso.load();
+    response["cambio"] = Global::EValidador::balance.cambio.load();
+    response["total"] = Global::EValidador::balance.total.load();
+    response["terminado"] = !Global::EValidador::is_running.load();
+    response["status"] = Global::EValidador::is_running.load() ? "En proceso" : "Proceso terminado";
+    response["faltante"] = faltante;
+    
+    conn.send_text(response.dump());
+
 }
 
 void Venta::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
 {
+    if (connection == &conn)
+        connection = nullptr; // Limpiamos la referencia a la conexión cerrada
     std::cout << "WebSocket disconnected: " << conn.get_remote_ip() << " Reason: " << reason << " Code: " << code << std::endl;
 }
 
 void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
 {
-    bool is_busy = Device::dv_bill.is_busy || Device::dv_coin.is_busy;
-    if (not is_busy)
-    {
-        conn.send_text(R"({"status":"idle"})");
-        return;
-    }
 
     auto json_data = crow::json::load(data);
-    if(json_data["action"] == "consulta")
-    {
-        crow::json::wvalue response;
-        response["ingreso"] = Global::EValidador::balance.ingreso.load();
-        response["cambio"] = Global::EValidador::balance.cambio.load();
-        response["total"] = Global::EValidador::balance.total.load();
-        response["terminado"] = not is_busy;
-        response["status"] = is_busy ? "En proceso" : "Proceso terminado";
-        response["faltante"] = faltante;
-        conn.send_text(response.dump());
-    }
-    else if (json_data["action"] == "detener")
+
+    if (json_data["action"] == "detener")
     {
         on_btn_cancel_click();
         conn.send_text(R"({"status":"detenido"})");
@@ -82,6 +81,19 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 {
     using namespace Global::EValidador;
 
+    if (connection)
+    {
+        crow::json::wvalue response;
+        response["ingreso"] = Global::EValidador::balance.ingreso.load();
+        response["cambio"] = Global::EValidador::balance.cambio.load();
+        response["total"] = Global::EValidador::balance.total.load();
+        response["terminado"] = !Global::EValidador::is_running.load();
+        response["status"] = Global::EValidador::is_running.load() ? "En proceso" : "Proceso terminado";
+        response["faltante"] = faltante;
+        
+        connection->send_text(response.dump());
+    }
+
     if (status == "ESCROW")
     {
         auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
@@ -100,18 +112,18 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         status == "VALUE_ADDED" ||
         status == "ESCROW")
     {
-        s_level_ant = Device::dv_coin.get_level_cash_actual(true);
 
         balance.ingreso.store(balance.ingreso.load() + (data["value"].i() / 100));
         async_gui.dispatch_to_gui([this]()
-                                  {
+        {
             v_lbl_recibido->set_text(std::to_string(balance.ingreso.load()));
 
             faltante = balance.ingreso.load() > balance.total.load() ? 0 : balance.total.load() - balance.ingreso.load();
             balance.cambio.store(balance.ingreso.load() > balance.total.load() ? balance.ingreso.load() - balance.total.load() : 0);
 
             v_lbl_cambio->set_text(std::to_string(balance.cambio.load()));
-            v_lbl_faltante->set_text(std::to_string(faltante)); });
+            v_lbl_faltante->set_text(std::to_string(faltante)); 
+        });
 
         if (balance.ingreso.load() >= balance.total.load())
         {
@@ -132,10 +144,13 @@ crow::response Venta::inicia(const crow::request &req)
     estatus.clear();
     faltante = bodyParams["value"].i();
 
+    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
     bool is_view_ingreso = bodyParams.has("is_view_ingreso") && bodyParams["is_view_ingreso"].b();
     is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
 
-    std::string concepto = bodyParams.has("concepto") && bodyParams["concepto"].s().size() > 0 ? bodyParams["concepto"].operator std::string() : "*- Sin Concepto -*";
+    std::string concepto = bodyParams["concepto"].operator std::string();
     balance.total.store(faltante);
     balance.ingreso.store(0);
     balance.cambio.store(0);
@@ -144,16 +159,17 @@ crow::response Venta::inicia(const crow::request &req)
     is_running.store(true);
 
     async_gui.dispatch_to_gui([this, bodyParams]()
-                              { 
+    { 
         auto s_total = std::to_string(bodyParams["value"].i());
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(s_total);
         v_lbl_faltante->set_text(s_total);
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); });
+        v_lbl_recibido->set_text("0"); 
+    });
 
-    Device::dv_coin.inicia_dispositivo_v6();
     Device::dv_bill.inicia_dispositivo_v6();
+    Device::dv_coin.inicia_dispositivo_v6();
 
     auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
     for (size_t i = 0; i < bill_selection->get_n_items(); i++)
@@ -173,6 +189,9 @@ crow::response Venta::inicia(const crow::request &req)
     future1.wait();
     future2.wait();
 
+    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
+    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+
     if (cancelado)
     {
         estatus = "Operación cancelada";
@@ -184,21 +203,49 @@ crow::response Venta::inicia(const crow::request &req)
     if (Pago::faltante > 0)
         estatus = "Cambio Incompleto, faltante: " + std::to_string(Pago::faltante);
 
+    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+
+    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+
     crow::json::wvalue data;
     Log log;
     auto t_log = MLog::create(
         0,
         Global::User::id,
         is_view_ingreso ? "Ingreso" : "Venta",
+        concepto.empty() ? "Sin Concepto" : concepto,
         balance.ingreso.load(),
         balance.cambio.load(),
         balance.total.load(),
-        "- " + concepto + " | " + (not Global::Utility::is_ok || cancelado ? estatus : "Exito."),
+        not Global::Utility::is_ok || cancelado ? estatus : "Exito.",
         Glib::DateTime::create_now_local());
 
     t_log->m_id = log.insert_log(t_log);
-    t_log->m_estatus = concepto + '\n' + (not Global::Utility::is_ok || cancelado ? estatus : "Exito.");
+    t_log->m_estatus = (not Global::Utility::is_ok || cancelado ? estatus : "Exito.");
     Global::Utility::is_ok = true;
+
+    for (const auto& [denom, qty] : diff_bill)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+    for (const auto& [denom, qty] : diff_coin)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    for (const auto& [denom, qty] : Pago::salidas_totales)
+    {
+        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
+        detalle_store->append(detalle);
+    }
+
+    Pago::salidas_totales.clear();
+
+    auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
 
     if (Global::Widget::Impresora::v_switch_impresion->get_active())
     {

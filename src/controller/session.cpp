@@ -16,6 +16,7 @@ Sesion::Sesion(/* args */)
 
     CROW_ROUTE(RestApp::app, "/sesion/get_all_users").methods("GET"_method)(sigc::mem_fun(*this, &Sesion::get_all_users));
     CROW_ROUTE(RestApp::app, "/sesion/get_all_roles_by_id").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::get_all_roles_by_id));
+    CROW_ROUTE(RestApp::app, "/api/compatibilidad").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::maxicajero_version_check));
 
     // WebSocket route
     CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/heartbeat")
@@ -66,44 +67,20 @@ crow::response Sesion::logout(const crow::request &req)
 void Sesion::on_websocket_open(crow::websocket::connection& conn)
 {
     CROW_LOG_INFO << "New WebSocket connection established";
+    Global::Rest::ws_connection = &conn; // Guardamos la conexión para usarla en otras partes del código
 }
 
 void Sesion::on_websocket_close(crow::websocket::connection& conn, const std::string& reason, uint16_t code)
 {
     CROW_LOG_INFO << "WebSocket connection closed: " << reason;
+    if (Global::Rest::ws_connection == &conn)
+        Global::Rest::ws_connection = nullptr; // Limpiamos la referencia a la conexión cerrada
 }
 
 void Sesion::on_websocket_message(crow::websocket::connection& conn, const std::string& data, bool is_binary)
 {
     CROW_LOG_INFO << "Received WebSocket message: ";
-    
-    auto json_data = crow::json::load(data);
-    std::string client_version = json_data["version"].s();
-    std::string plataform = json_data["plataform"].s();
-    
-    CROW_LOG_INFO << "Client version: " << client_version; 
-    CROW_LOG_INFO << "Client platform: " << plataform;
-    CROW_LOG_INFO << "IP Client: " << conn.get_remote_ip();
-
-    Maxicajero::VersionUtils::CompatibilityChecker checker;
-    Maxicajero::VersionUtils::Version clientVer = Maxicajero::VersionUtils::Version::fromString(client_version);
-    Maxicajero::VersionUtils::Version serverVer = Maxicajero::VersionUtils::Version::fromString(Maxicajero::Version::getVersion());
-
-    if (!checker.isCompatible(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::BACKWARD)) {
-        crow::json::wvalue response; 
-        response["status"] = "incompatible";
-        response["message"] = checker.getCompatibilityMessage(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::BACKWARD);
-        conn.send_text(response.dump());
-        return;
-    }
-    else 
-    {
-        CROW_LOG_INFO << "Versiones compatible: " << client_version << " <= " << Maxicajero::Version::getVersion();
-        crow::json::wvalue response; 
-        response["status"] = "compatible";
-        response["local_server_version"] = Maxicajero::Version::getVersion();
-        conn.send_text(response.dump());
-    }
+    conn.send_text("Foo");
 }
 
 crow::response Sesion::get_all_users(const crow::request &req)
@@ -222,4 +199,38 @@ crow::response Sesion::modifica_usuario_roles(const crow::request &req)
 
 
     return crow::response();
+}
+
+
+crow::response Sesion::maxicajero_version_check(const crow::request &req)
+{
+    auto json_data = crow::json::load(req.body);
+    std::string client_version = json_data["version"].s();
+    std::string plataform = json_data["plataform"].s();
+    
+    CROW_LOG_INFO << "Client version: " << client_version; 
+    CROW_LOG_INFO << "Client platform: " << plataform;
+    CROW_LOG_INFO << "IP Client: " << req.remote_ip_address;
+
+    Maxicajero::VersionUtils::CompatibilityChecker checker;
+    Maxicajero::VersionUtils::Version clientVer = Maxicajero::VersionUtils::Version::fromString(client_version);
+    Maxicajero::VersionUtils::Version serverVer = Maxicajero::VersionUtils::Version::fromString(Maxicajero::Version::getVersion());
+
+    crow::json::wvalue response; 
+    crow::status status_code;;
+
+    if (!checker.isCompatible(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::FORWARD)) {
+        response["status"] = "incompatible";
+        response["message"] = checker.getCompatibilityMessage(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::FORWARD);
+        status_code = crow::status::NOT_ACCEPTABLE;
+    }
+    else 
+    {
+        CROW_LOG_INFO << "Versiones compatible: " << client_version << " <= " << Maxicajero::Version::getVersion();
+        response["status"] = "compatible";
+        response["local_server_version"] = Maxicajero::Version::getVersion();
+        status_code = crow::status::OK;
+    }
+
+    return crow::response(status_code, response);
 }

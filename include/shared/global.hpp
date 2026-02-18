@@ -51,6 +51,8 @@ namespace Global
 
         // manejador asyncrono de app
         extern std::future<void> future;
+
+        extern crow::websocket::connection *ws_connection;
     } // namespace Rest
 
     namespace Widget

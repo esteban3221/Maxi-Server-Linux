@@ -91,8 +91,6 @@ private:
                 creado_en         DATETIME DEFAULT (datetime('now','localtime')),
 
                 FOREIGN KEY (id_log) REFERENCES log(id),
-
-                CHECK (cantidad >= 0)
             );)");
 
             this->sqlite3->command("insert into roles values \n"
