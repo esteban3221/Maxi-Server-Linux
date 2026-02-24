@@ -94,9 +94,15 @@ set(SOURCES
     src/controller/config/wifi.cpp
     #================GLOBAL=================
     src/shared/global.cpp
+    #================STATE MACHINE=================
+    src/core/context/validador.cpp
 )
 
 include_directories(include 
+                    include/core
+                    include/core/context
+                    include/core/interfaces
+                    include/core/states
                     include/controller
                     include/controller/accion
                     include/view

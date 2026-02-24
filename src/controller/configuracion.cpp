@@ -4,10 +4,13 @@ CConfiguracion::CConfiguracion(/* args */)
 {
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_informacion_empresa").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_informacion_empresa));
+    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_operaciones").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_operaciones));
 
     CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_empresa").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_empresa));
     CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_sistema").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_sistema));
     CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_impresora").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_impresora));
+    CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_operaciones").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_operaciones));
+
     CROW_ROUTE(RestApp::app, "/configuracion/test_impresion").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::test_impresion));
     CROW_ROUTE(RestApp::app, "/configuracion/reiniciar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::reiniciar));
     CROW_ROUTE(RestApp::app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
@@ -80,6 +83,43 @@ crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
     {
         return crow::response(crow::CONFLICT, e.what());
     }
+}
+
+crow::response CConfiguracion::actualiza_operaciones(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    try
+    {
+        auto db = std::make_unique<Configuracion>();
+
+        auto bodyParams = crow::json::load(req.body);
+
+        db->update_conf(MConfiguracion::create(22, "Redondea cambio", std::to_string(bodyParams["redondea_cambio"].b())));
+        db->update_conf(MConfiguracion::create(23, "Terminar Operaciones", std::to_string(bodyParams["terminar_operaciones"].b())));
+        db->update_conf(MConfiguracion::create(24, "Iniciar Proceso en", std::to_string(bodyParams["iniciar_proceso_en"].i())));
+        db->update_conf(MConfiguracion::create(25, "Permite diferir", std::to_string(bodyParams["permite_diferir"].b())));
+
+        return crow::response();
+    }
+    catch (const std::exception &e)
+    {
+        return crow::response(crow::CONFLICT, e.what());
+    }
+}
+
+crow::response CConfiguracion::get_informacion_operaciones(const crow::request &req)
+{
+    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    auto db = std::make_unique<Configuracion>();
+    auto list = db->get_conf_data(22, 25);
+
+    crow::json::wvalue response_json;
+    response_json["redondea_cambio"] = list->get_item(0)->m_valor == "1";
+    response_json["terminar_operaciones"] = list->get_item(1)->m_valor == "1";
+    response_json["iniciar_proceso_en"] = std::stoi(list->get_item(2)->m_valor);
+    response_json["permite_diferir"] = list->get_item(3)->m_valor == "1";
+
+    return crow::response(response_json);
 }
 
 crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request &req)

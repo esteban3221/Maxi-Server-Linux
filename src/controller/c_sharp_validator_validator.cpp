@@ -46,9 +46,9 @@ void Validator::imprime_debug(const cpr::Response &r, const std::string &comando
               << RESET;
 }
 
-std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug)
+std::pair<int, std::string> Validator::command_post(const std::string &command, const std::string &json, bool debug) const
 {
-    r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL, "/", command, "?deviceID=", validator},
+    auto r_ = cpr::Post(cpr::Url{Global::ApiConsume::BASE_URL, "/", command, "?deviceID=", validator},
                    cpr::Header{{"Content-Type", "application/json"},
                                {"Authorization", "Bearer " + Global::ApiConsume::token}},
                    cpr::Body{json});

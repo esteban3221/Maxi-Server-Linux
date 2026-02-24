@@ -90,7 +90,7 @@ private:
                 cantidad          INTEGER NOT NULL DEFAULT 0,
                 creado_en         DATETIME DEFAULT (datetime('now','localtime')),
 
-                FOREIGN KEY (id_log) REFERENCES log(id),
+                FOREIGN KEY (id_log) REFERENCES log(id)
             );)");
 
             this->sqlite3->command("insert into roles values \n"
@@ -341,6 +341,7 @@ private:
                                    "descripcion TEXT NOT NULL,\n"
                                    "valor TEXT NOT NULL\n"
                                    ")");
+
             this->sqlite3->command("INSERT into configuracion values"
                                     //1 - 4
                                    "(null,'Puerto bill','/dev/ttyUSB0'),"
@@ -367,6 +368,11 @@ private:
                                    "(null,'Visualiza RFC','1'),"
                                    "(null,'Visualiza Vendedor','1'),"
                                    "(null,'Visualiza Contacto','1'),"
+                                   // 22 - 25
+                                   "(null,'Redondea cambio','1'),"
+                                   "(null,'Terminar Operaciones','1'),"
+                                   "(null,'Iniciar Proceso en','1'),"
+                                   "(null,'Permite diferir','1'),"
                                    // nip 100
                                     "(100,'Nip','123456')");
         }

@@ -30,16 +30,16 @@ public:
     Validator &operator=(const Validator &) = delete;
 
     std::pair<int, std::string> command_get(const std::string &command, bool debug = false) const;
-    std::pair<int, std::string> command_post(const std::string &command, const std::string &json = "", bool = false);
-    std::pair<int, std::string> reintenta_comando_post(const std::string& comando, const std::string& datos, int& intentos);
+    std::pair<int, std::string> command_post(const std::string &command, const std::string &json = "", bool = false) const;
+    std::pair<int, std::string> reintenta_comando_post(const std::string &comando, const std::string &datos, int &intentos);
 
     void poll(const std::function<void(const std::string &, const crow::json::rvalue &)> &func);
 
-    //version con net 6
+    // version con net 6
     void inicia_dispositivo_v6(bool auto_acepta_billetes = true);
     void deten_cobro_v6();
 
-    //version con net 8
+    // version con net 8
     crow::json::rvalue inicia_dispositivo_v8(const Global::EValidador::Conf &conf);
     void deten_cobro_v8();
 
@@ -57,10 +57,8 @@ public:
     ~Validator();
 };
 
-
-
-    namespace Device
-    {
-        extern Validator dv_coin ,dv_bill;
-        extern std::map<int, int> map_cantidad_recyclador(const Validator &val);
-    } // namespace Device
+namespace Device
+{
+    extern Validator dv_coin, dv_bill;
+    extern std::map<int, int> map_cantidad_recyclador(const Validator &val);
+} // namespace Device

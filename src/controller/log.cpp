@@ -77,7 +77,6 @@ crow::response LogData::get_log(const crow::request &req)
         log_entry["estatus"] = contenedor_log->at("Estatus")[i];
         log_entry["fecha"] = contenedor_log->at("Fecha")[i];
 
-        // Anidar detalle_movimiento
         auto bd_detalle = std::make_unique<DetalleMovimiento>();
         auto detalle_movimiento = bd_detalle->get_detalle_movimiento(std::stoull(contenedor_log->at("Id")[i]));
 
@@ -86,7 +85,6 @@ crow::response LogData::get_log(const crow::request &req)
             for (size_t j = 0; j < detalle_movimiento->at("id").size(); ++j)
             {
                 crow::json::wvalue det;
-                // det["id"] = std::stoull(detalle_movimiento->at("id")[j]);
                 det["id_log"] = std::stoull(detalle_movimiento->at("id_log")[j]);
                 det["tipo_movimiento"] = detalle_movimiento->at("tipo_movimiento")[j];
                 det["denominacion"] = std::stoi(detalle_movimiento->at("denominacion")[j]);
@@ -97,8 +95,6 @@ crow::response LogData::get_log(const crow::request &req)
             }
 
         log_entry["detalle_movimiento"] = std::move(detalle_list);
-
-        // Agregar al array de logs
         log_list.push_back(std::move(log_entry));
     }
 
