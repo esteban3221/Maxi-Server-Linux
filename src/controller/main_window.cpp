@@ -20,49 +20,49 @@ bool MainWindow::estado_validador()
 EstadoWS nuevo_estado;
 
     // Calcular el nuevo estado (igual que antes)
-    if (Device::dv_bill.is_busy.load() || Device::dv_coin.is_busy.load())
-    {
-        nuevo_estado.css_classes = {"pill", "warning"};
-        nuevo_estado.label = "Ejecutando tarea.";
-        nuevo_estado.status = "Ejecutando tarea.";
-        nuevo_estado.code = crow::status::CONTINUE;
-    }
-    else if (Global::EValidador::is_retry_connected.load())
-    {
-        nuevo_estado.css_classes = {"pill", "warning"};
-        nuevo_estado.label = "Detectando Validadores.";
-        nuevo_estado.status = "Detectando Validadores.";
-        nuevo_estado.code = crow::status::TEMPORARY_REDIRECT;
-    }
-    else if (Global::EValidador::is_connected.load() &&
-             Global::EValidador::is_running.load())
-    {
-        nuevo_estado.css_classes = {"pill", "suggested-action"};
-        nuevo_estado.label = "Validadores conectados y corriendo.";
-        nuevo_estado.status = "Validadores conectados y corriendo.";
-        nuevo_estado.code = crow::status::OK;
-    }
-    else if (Global::EValidador::is_wrong_port.load())
-    {
-        nuevo_estado.css_classes = {"pill", "destructive-action"};
-        nuevo_estado.label = "Uno o mas validadores no se iniciarion.\nPuerto incorrecto?";
-        nuevo_estado.status = "Uno o mas validadores no se iniciarion. Puerto incorrecto?";
-        nuevo_estado.code = crow::status::BAD_REQUEST;
-    }
-    else if (!Global::EValidador::is_driver_correct.load())
-    {
-        nuevo_estado.css_classes = {"pill", "error"};
-        nuevo_estado.label = "Driver no presente o en fallo.";
-        nuevo_estado.status = "Driver no presente o en fallo.";
-        nuevo_estado.code = crow::status::INTERNAL_SERVER_ERROR;
-    }
-    else
-    {
-        nuevo_estado.css_classes = {"pill", "info"};
-        nuevo_estado.label = "En Espera.";
-        nuevo_estado.status = "En Espera.";
-        nuevo_estado.code = crow::status::OK;
-    }
+    // if (// Device::dv_bill.is_busy.load() || // Device::dv_coin.is_busy.load())
+    // {
+    //     nuevo_estado.css_classes = {"pill", "warning"};
+    //     nuevo_estado.label = "Ejecutando tarea.";
+    //     nuevo_estado.status = "Ejecutando tarea.";
+    //     nuevo_estado.code = crow::status::CONTINUE;
+    // }
+    // else if (Global::EValidador::is_retry_connected.load())
+    // {
+    //     nuevo_estado.css_classes = {"pill", "warning"};
+    //     nuevo_estado.label = "Detectando Validadores.";
+    //     nuevo_estado.status = "Detectando Validadores.";
+    //     nuevo_estado.code = crow::status::TEMPORARY_REDIRECT;
+    // }
+    // if (Global::EValidador::is_connected.load() &&
+    //          Global::EValidador::is_running.load())
+    // {
+    //     nuevo_estado.css_classes = {"pill", "suggested-action"};
+    //     nuevo_estado.label = "Validadores conectados y corriendo.";
+    //     nuevo_estado.status = "Validadores conectados y corriendo.";
+    //     nuevo_estado.code = crow::status::OK;
+    // }
+    // else if (Global::EValidador::is_wrong_port.load())
+    // {
+    //     nuevo_estado.css_classes = {"pill", "destructive-action"};
+    //     nuevo_estado.label = "Uno o mas validadores no se iniciarion.\nPuerto incorrecto?";
+    //     nuevo_estado.status = "Uno o mas validadores no se iniciarion. Puerto incorrecto?";
+    //     nuevo_estado.code = crow::status::BAD_REQUEST;
+    // }
+    // else if (!Global::EValidador::is_driver_correct.load())
+    // {
+    //     nuevo_estado.css_classes = {"pill", "error"};
+    //     nuevo_estado.label = "Driver no presente o en fallo.";
+    //     nuevo_estado.status = "Driver no presente o en fallo.";
+    //     nuevo_estado.code = crow::status::INTERNAL_SERVER_ERROR;
+    // }
+    // else
+    // {
+    //     nuevo_estado.css_classes = {"pill", "info"};
+    //     nuevo_estado.label = "En Espera.";
+    //     nuevo_estado.status = "En Espera.";
+    //     nuevo_estado.code = crow::status::OK;
+    // }
 
     v_btn_pill->set_css_classes(nuevo_estado.css_classes);
     v_btn_pill->set_label(nuevo_estado.label);

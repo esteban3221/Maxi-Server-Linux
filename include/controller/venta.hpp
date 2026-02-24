@@ -3,7 +3,7 @@
 
 #include "view/base.venta_pago.hpp"
 #include "model/log.hpp"
-#include "c_sharp_validator.hpp"
+
 #include "controller/pago.hpp"
 #include "controller/config/impresora.hpp"
 #include "model/detalle_movimiento.hpp"

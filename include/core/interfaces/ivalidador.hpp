@@ -1,6 +1,5 @@
 //"interfaces/ivalidador.hpp"
 #pragma once
-#include "context/validador.hpp"
 #include <utility>
 #include <iostream>
 #include <crow.h>
@@ -10,6 +9,7 @@ Idle → Iniciando → Conectando → Activo → Pausado → Deteniendo → Idle
   └────────────────────────────────────────────────────┘
 */
 class ValidadorUnit;
+struct Conf;
 
 class IValidador {
 public:
@@ -20,7 +20,7 @@ public:
     virtual void on_exit(ValidadorUnit& v) {}       // Al salir del estado
     
     // Métodos específicos del validador
-    virtual void on_start_init(ValidadorUnit& v) {}
+    virtual void on_start_init(ValidadorUnit& v, const Conf &conf , const crow::json::rvalue &set_routes) {}
     virtual void on_stop_disconnect(ValidadorUnit& v) {}
     virtual void on_handle_event(ValidadorUnit& v, const std::string& event_type, const crow::json::rvalue& data) = 0;
     

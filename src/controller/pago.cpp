@@ -42,8 +42,8 @@ void Pago::poll_cambio(const std::string &status, const crow::json::rvalue &data
         Global::EValidador::balance.ingreso.store((data["value"].i() / 100));
 
         Global::EValidador::is_running.store(false);
-        Device::dv_coin.deten_cobro_v6();
-        Device::dv_bill.deten_cobro_v6();
+        // Device::dv_coin.deten_cobro_v6();
+        // Device::dv_bill.deten_cobro_v6();
     }
 
 }
@@ -73,30 +73,11 @@ void Pago::poll_pago(const std::pair<int, std::string> &status)
 void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus)
 {
     Pago::faltante = 0;
-    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
+    // auto s_level_mon{} // // Device::map_cantidad_recyclador(// Device::dv_coin);
+    // auto s_level_bill{} // // Device::map_cantidad_recyclador(// Device::dv_bill);
 
-    auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
-    auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
-
-    if (cambio > 0)
-    {
-        Pago::faltante = cambio;
-        Global::Utility::is_ok = false;
-        Global::System::showNotify(tipo.c_str(), "No se cuenta con suficiente efectivo", "dialog-error");
-    }
-    
-    da_pago(r_bill.dump(), r_coin.dump(), tipo, estatus);
-}
-
-void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus, bool is_cambio)
-{
-    Pago::faltante = 0;
-    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-
-    auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill, is_cambio);
-    auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon, is_cambio);
+    // auto r_bill = Global::Utility::obten_cambio(cambio, s_level_bill);
+    // auto r_coin = Global::Utility::obten_cambio(cambio, s_level_mon);
 
     if (cambio > 0)
     {
@@ -105,78 +86,9 @@ void Pago::da_pago(int cambio, const std::string &tipo, std::string &estatus, bo
         Global::System::showNotify(tipo.c_str(), "No se cuenta con suficiente efectivo", "dialog-error");
     }
     
-    da_pago(r_bill.dump(), r_coin.dump(), tipo, estatus);
+    // da_pago(r_bill.dump(), r_coin.dump(), tipo, estatus);
 }
 
-void Pago::da_pago(const std::string &bill, const std::string &coin, const std::string &tipo, std::string &estatus)
-{
-    std::pair<int, std::string> status_bill = {200,""}, status_coin = {200,""};
-    int max_intentos = 0;
-
-    if (bill == "[0,0,0,0,0,0]" && coin == "[0,0,0,0]")
-    {
-        Global::Utility::is_ok = false;
-        Global::System::showNotify(tipo.c_str(), "No se cuenta con suficiente efectivo", "dialog-error");
-        Pago::faltante = Global::EValidador::balance.cambio.load();
-    }
-    else
-    {
-        auto inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
-        auto inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
-        // Procesamiento para dv_bill
-        if (bill != "[0,0,0,0,0,0]")
-        {
-            Device::dv_bill.inicia_dispositivo_v6();
-
-            status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", bill, max_intentos);
-            if (max_intentos > 9)
-            {
-                Device::dv_bill.deten_cobro_v6();
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                Device::dv_bill.inicia_dispositivo_v6();
-                status_bill = Device::dv_bill.reintenta_comando_post("PayoutMultipleDenominations", bill, max_intentos);
-            }
-
-            poll_pago(status_bill);
-        }
-
-        max_intentos = 0;
-
-        // Procesamiento para dv_coin
-        if (coin != "[0,0,0,0]")
-        {
-            Device::dv_coin.inicia_dispositivo_v6();
-
-            status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", coin , max_intentos);
-            if (max_intentos > 9)
-            {
-                Device::dv_coin.deten_cobro_v6();
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                Device::dv_coin.inicia_dispositivo_v6();
-                status_coin = Device::dv_coin.reintenta_comando_post("PayoutMultipleDenominations", coin , max_intentos);
-            }
-            poll_pago(status_coin);
-        }
-
-        std::this_thread::sleep_for(std::chrono::seconds(2)); // Esperar a que los dispositivos actualicen su estado
-
-        auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
-        auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
-
-        auto salidas_bill = DetalleMovimiento::calcular_diferencias_niveles(inicial_bill, final_bill);
-        auto salidas_coin = DetalleMovimiento::calcular_diferencias_niveles(inicial_coin, final_coin);
-
-        for (const auto& p : salidas_bill) salidas_totales[p.first] += p.second;
-        for (const auto& p : salidas_coin) salidas_totales[p.first] += p.second;
-
-        if (status_bill.first != crow::status::OK || status_coin.first != crow::status::OK)
-        {
-            estatus = "Error al procesar el pago";
-            Global::System::showNotify(tipo.c_str(), estatus.c_str(), "dialog-error");
-        }
-    }
-    
-}
 
 crow::response Pago::inicia(const crow::request &req)
 {
@@ -206,7 +118,7 @@ crow::response Pago::inicia(const crow::request &req)
         v_lbl_recibido->set_text("0"); 
     });
 
-    Pago::da_pago(balance.cambio.load(), "Pago", estatus);
+    // Pago::da_pago(balance.cambio.load(), "Pago", estatus);
 
     Log log;
     crow::json::wvalue data;
@@ -234,8 +146,8 @@ crow::response Pago::inicia(const crow::request &req)
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
@@ -251,20 +163,20 @@ crow::response Pago::inicia_manual(const crow::request &req) {
     auto bodyParams = crow::json::load(req.body);
     auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
 
-    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
-    validar_inventario_disponible(bill_values, coin_values);
-    configurar_estado_pago(cambio);
-    mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
+    // validar_inventario_disponible(bill_values, coin_values);
+    // configurar_estado_pago(cambio);
+    // mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
 
     auto t_log = registrar_pago_y_log(bill_values, coin_values, "Pago Manual");
 
-    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto final_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto final_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
-    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
-    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+    // auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    // auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
 
     auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
 
@@ -306,18 +218,18 @@ std::tuple<int, std::vector<int>, std::vector<int>> Pago::procesar_parametros_in
 }
 
 void Pago::validar_inventario_disponible(const std::vector<int>& bill_values, const std::vector<int>& coin_values) {
-    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
+    // auto s_level_mon{} // // Device::map_cantidad_recyclador(// Device::dv_coin);
+    // auto s_level_bill{} // // Device::map_cantidad_recyclador(// Device::dv_bill);
 
-    for (size_t i = 0; i < s_level_mon.size(); i++) {
-        if (coin_values[i] > s_level_mon.at(map_coin.at(i)))
-            throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_coin.at(i)) + " de monedas");
-    }
+    // for (size_t i = 0; i < s_level_mon.size(); i++) {
+    //     if (coin_values[i] > s_level_mon.at(map_coin.at(i)))
+    //         throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_coin.at(i)) + " de monedas");
+    // }
 
-    for (size_t i = 0; i < s_level_bill.size(); i++) {
-        if (bill_values[i] > s_level_bill.at(map_bill.at(i)))
-            throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
-    }
+    // for (size_t i = 0; i < s_level_bill.size(); i++) {
+    //     if (bill_values[i] > s_level_bill.at(map_bill.at(i)))
+    //         throw std::runtime_error("No hay suficiente cambio en la denominacion: " + std::to_string(map_bill.at(i)) + " de billetes");
+    // }
 }
 
 void Pago::configurar_estado_pago(int cambio) {
@@ -353,12 +265,12 @@ Glib::RefPtr<MLog> Pago::registrar_pago_y_log(const std::vector<int>& bill_value
     std::string bill_str = vector_to_json_array(bill_values);
     std::string coin_str = vector_to_json_array(coin_values);
 
-    auto s_level_mon = Device::map_cantidad_recyclador(Device::dv_coin);
-    auto s_level_bill = Device::map_cantidad_recyclador(Device::dv_bill);
-    const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
-    const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
+    // auto s_level_mon{} // // Device::map_cantidad_recyclador(// Device::dv_coin);
+    // auto s_level_bill{} // // Device::map_cantidad_recyclador(// Device::dv_bill);
+    // const auto total_ant_coin = Global::Utility::total_anterior(s_level_mon);
+    // const auto total_ant_bill = Global::Utility::total_anterior(s_level_bill);
 
-    Pago::da_pago(bill_str, coin_str, tipo_pago, estatus);
+    // Pago::da_pago(bill_str, coin_str, tipo_pago, estatus);
 
     Log log;
     auto t_log = MLog::create(
@@ -390,8 +302,8 @@ crow::response Pago::finalizar_proceso_pago(const Glib::RefPtr<MLog>& t_log) {
     crow::json::wvalue data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     async_gui.dispatch_to_gui([](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
@@ -417,26 +329,26 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     Pago::faltante = 0;
     is_running.store(true);
 
-    Device::dv_coin.inicia_dispositivo_v6();
-    Device::dv_bill.inicia_dispositivo_v6();
+    // Device::dv_coin.inicia_dispositivo_v6();
+    // Device::dv_bill.inicia_dispositivo_v6();
 
-    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
-    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
-    {
-        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+    // auto bill_selection{} // // Device::dv_bill.get_level_cash_actual(true);
+    // for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    // {
+    //     auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
 
-        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-        else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-    }
+    //     if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+    //     else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    // }
 
-    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
-    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
-    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+    auto future1 = std::async(std::launch::async, [this](){  });
+    auto future2 = std::async(std::launch::async, [this](){ });
 
     future1.wait();
     future2.wait();
@@ -460,10 +372,10 @@ crow::response Pago::inicia_cambio(const crow::request &req)
         v_lbl_recibido->set_text("0"); 
     });
 
-    Pago::da_pago(balance.cambio.load(), "Cambio Automatico", estatus, true);
+    // Pago::da_pago(balance.cambio.load(), "Cambio Automatico", estatus, true);
 
-    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto final_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto final_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
     auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
 
@@ -503,8 +415,8 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
@@ -523,29 +435,29 @@ crow::response Pago::inicia_cambio_manual(const crow::request &req)
     Pago::faltante = 0;
     is_running.store(true);
 
-    Device::dv_coin.inicia_dispositivo_v6();
-    Device::dv_bill.inicia_dispositivo_v6();
+    // Device::dv_coin.inicia_dispositivo_v6();
+    // Device::dv_bill.inicia_dispositivo_v6();
 
-    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
-    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
-    {
-        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+    // auto bill_selection{} // // Device::dv_bill.get_level_cash_actual(true);
+    // for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    // {
+    //     auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
 
-        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-        else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-    }
+    //     if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+    //     else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    // }
 
-    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
-    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Pago::poll_cambio)); });
+    auto future1 = std::async(std::launch::async, [this](){ });
+    auto future2 = std::async(std::launch::async, [this](){ });
 
     future1.wait();
     future2.wait();
 
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     int cambio = balance.ingreso.load();
     crow::json::wvalue data;
@@ -564,45 +476,45 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     auto bodyParams = crow::json::load(req.body);
     auto [cambio, bill_values, coin_values] = procesar_parametros_iniciales(bodyParams);
 
-    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
 
-    validar_inventario_disponible(bill_values, coin_values);
-    configurar_estado_pago(cambio);
-    mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
+    // validar_inventario_disponible(bill_values, coin_values);
+    // configurar_estado_pago(cambio);
+    // mostrar_interfaz_pago_manual(calcular_total_pago(bill_values, coin_values));
 
-    auto t_log = registrar_pago_y_log(bill_values, coin_values, "Cambio Manual");
+    auto t_log = MLog::create(0,0,"","",0,0,0,"",Glib::DateTime::create_now_local()); // registrar_pago_y_log(bill_values, coin_values, "Cambio Manual"); --- IGNORE ---
 
-    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto final_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto final_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
-    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
-    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+    // auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
+    // auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
 
-    auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
+    //auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
 
-    for (const auto& [denom, qty] : diff_bill)
-    {
-        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
-        detalle_store->append(detalle);
-    }
-    for (const auto& [denom, qty] : diff_coin)
-    {
-        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
-        detalle_store->append(detalle);
-    }
+    // for (const auto& [denom, qty] : diff_bill)
+    // {
+    //     auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+    //     detalle_store->append(detalle);
+    // }
+    // for (const auto& [denom, qty] : diff_coin)
+    // {
+    //     auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "entrada", denom, qty);
+    //     detalle_store->append(detalle);
+    // }
 
-    for (const auto& [denom, qty] : Pago::salidas_totales)
-    {
-        auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
-        detalle_store->append(detalle);
-    }
+    // for (const auto& [denom, qty] : Pago::salidas_totales)
+    // {
+    //     auto detalle = MDetalleMovimiento::create(0, t_log->m_id, "salida", denom, qty);
+    //     detalle_store->append(detalle);
+    // }
 
-    Pago::salidas_totales.clear();
+    // Pago::salidas_totales.clear();
 
-    auto bd_detalle = std::make_unique<DetalleMovimiento>();
-    bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
+    // auto bd_detalle = std::make_unique<DetalleMovimiento>();
+    // bd_detalle->insertar_detalle_movimiento(t_log->m_id, detalle_store);
 
 
     imprimir_ticket_si_corresponde(t_log);
@@ -618,7 +530,7 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
     if (cambio <= 0)
         return crow::response("Nada que devolver");
 
-    Pago::da_pago(cambio, "Cambio Manual", estatus);
+    // Pago::da_pago(cambio, "Cambio Manual", estatus);
 
     Log log;
     crow::json::wvalue data;
@@ -645,8 +557,8 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
 
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     return crow::response(data);
 }

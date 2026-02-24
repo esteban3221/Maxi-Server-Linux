@@ -247,11 +247,11 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
     response_json["ram"] = Global::System::exec("grep MemTotal /proc/meminfo | awk '{print $2/1024/1024 \" GB\"}' ");
     response_json["memory"] = Global::System::exec("lsblk -o SIZE -b | head -2 | tail -1 | awk '{print $1/1024/1024/1024 \" GB\"}'");
 
-    auto json_bill = Device::dv_bill.get_status_coneccion();
-    auto json_coin = Device::dv_coin.get_status_coneccion();
+    // auto json_bill{} // // Device::dv_bill.get_status_coneccion();
+    // auto json_coin{} // // Device::dv_coin.get_status_coneccion();
 
-    response_json["bill"] = json_bill;
-    response_json["coin"] = json_coin;
+    // response_json["bill"] = json_bill;
+    // response_json["coin"] = json_coin;
 
     return crow::response(response_json);
 }
@@ -362,16 +362,16 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
     {
         auto bill_command = bodyParams["bill"]["command"].s();
         auto bill_args = bodyParams["bill"]["args"].s();
-        Device::dv_bill.inicia_dispositivo_v6();
-        json_bill = crow::json::load(Device::dv_bill.command_post(bill_command, bill_args, true).second);
+        // Device::dv_bill.inicia_dispositivo_v6();
+        //json_bill = crow::json::load(// Device::dv_bill.command_post(bill_command, bill_args, true).second);
     }
 
     if (bodyParams.has("coin"))
     {
         auto coin_command = bodyParams["coin"]["command"].s();
         auto coin_args = bodyParams["coin"]["args"].s();
-        Device::dv_coin.inicia_dispositivo_v6();
-        json_coin = crow::json::load(Device::dv_coin.command_post(coin_command, coin_args, true).second);
+        // Device::dv_coin.inicia_dispositivo_v6();
+        //json_coin = crow::json::load(// Device::dv_coin.command_post(coin_command, coin_args, true).second);
     }
 
     if (not json_bill.error())

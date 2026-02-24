@@ -1,8 +1,7 @@
 #pragma once
 #include "global.hpp"
 #include "controller/config/impresora.hpp"
-#include "controller/c_sharp_validator.hpp"
-#include "c_sharp_validator.hpp"
+
 #include "model/configuracion.hpp"
 #include "model/log.hpp"
 #include "carrousel.hpp"

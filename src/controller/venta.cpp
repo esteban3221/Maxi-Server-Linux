@@ -96,16 +96,16 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
 
     if (status == "ESCROW")
     {
-        auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
-        for (size_t i = 0; i < bill_selection->get_n_items(); i++)
-        {
-            auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
-            if (m_list->m_denominacion == (data["value"].i() / 100))
-                if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
-                    Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-                else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
-                    Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-        }
+        // auto bill_selection{} // // Device::dv_bill.get_level_cash_actual(true);
+        // for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+        // {
+        //     auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+        //     if (m_list->m_denominacion == (data["value"].i() / 100))
+        //         if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+        //             // Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+        //         else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+        //             // Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+        // }
     }
 
     if (status == "COIN_CREDIT" ||
@@ -128,8 +128,8 @@ void Venta::func_poll(const std::string &status, const crow::json::rvalue &data)
         if (balance.ingreso.load() >= balance.total.load())
         {
             Global::EValidador::is_running.store(false);
-            Device::dv_coin.deten_cobro_v6();
-            Device::dv_bill.deten_cobro_v6();
+            // Device::dv_coin.deten_cobro_v6();
+            // Device::dv_bill.deten_cobro_v6();
         }
     }
 }
@@ -144,8 +144,8 @@ crow::response Venta::inicia(const crow::request &req)
     estatus.clear();
     faltante = bodyParams["value"].i();
 
-    auto snapshot_inicial_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto snapshot_inicial_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto snapshot_inicial_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
     bool is_view_ingreso = bodyParams.has("is_view_ingreso") && bodyParams["is_view_ingreso"].b();
     is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
@@ -168,43 +168,43 @@ crow::response Venta::inicia(const crow::request &req)
         v_lbl_recibido->set_text("0"); 
     });
 
-    Device::dv_bill.inicia_dispositivo_v6();
-    Device::dv_coin.inicia_dispositivo_v6();
+    // Device::dv_bill.inicia_dispositivo_v6();
+    // Device::dv_coin.inicia_dispositivo_v6();
 
-    auto bill_selection = Device::dv_bill.get_level_cash_actual(true);
-    for (size_t i = 0; i < bill_selection->get_n_items(); i++)
-    {
-        auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
+    // auto bill_selection{} // // Device::dv_bill.get_level_cash_actual(true);
+    // for (size_t i = 0; i < bill_selection->get_n_items(); i++)
+    // {
+    //     auto m_list = bill_selection->get_typed_object<MLevelCash>(i);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Simulate some delay for the device to be ready
 
-        if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
-        else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
-            Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
-    }
+    //     if (m_list->m_cant_recy < m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, true);
+    //     else // if (m_list->m_cant_recy > m_list->m_nivel_inmo_max)
+    //         // Device::dv_bill.acepta_dinero(m_list->m_denominacion, false);
+    // }
 
-    auto future1 = std::async(std::launch::async, [this](){ Device::dv_coin.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
-    auto future2 = std::async(std::launch::async, [this](){ Device::dv_bill.poll(sigc::mem_fun(*this, &Venta::func_poll)); });
+    auto future1 = std::async(std::launch::async, [this](){ });
+    auto future2 = std::async(std::launch::async, [this](){  });
 
     future1.wait();
     future2.wait();
 
-    auto final_bill = Device::dv_bill.get_level_cash_actual(true, false);
-    auto final_coin = Device::dv_coin.get_level_cash_actual(true, false);
+    // auto final_bill{} // // Device::dv_bill.get_level_cash_actual(true, false);
+    // auto final_coin{} // // Device::dv_coin.get_level_cash_actual(true, false);
 
     if (cancelado)
     {
         estatus = "Operación cancelada";
-        if (balance.ingreso.load() > 0)
-            Pago::da_pago(balance.ingreso.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
+        if (balance.ingreso.load() > 0){}
+            // Pago::da_pago(balance.ingreso.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
     }
     else if (balance.cambio.load() > 0)
-        Pago::da_pago(balance.cambio.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
+        // Pago::da_pago(balance.cambio.load(), is_view_ingreso ? "Ingreso" : "Venta", estatus);
     if (Pago::faltante > 0)
         estatus = "Cambio Incompleto, faltante: " + std::to_string(Pago::faltante);
 
-    auto diff_bill = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_bill, final_bill);
-    auto diff_coin = DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
+    auto diff_bill = std::map<uint32_t, int32_t>{};
+    auto diff_coin = std::map<uint32_t, int32_t>{}; // DetalleMovimiento::calcular_diferencias_niveles(snapshot_inicial_coin, final_coin);
 
     auto detalle_store = Gio::ListStore<MDetalleMovimiento>::create();
 
@@ -256,8 +256,8 @@ crow::response Venta::inicia(const crow::request &req)
     data = Global::Utility::json_ticket(t_log);
     data["Cambio_faltante"] = Pago::faltante;
     
-    Device::dv_coin.deten_cobro_v6();
-    Device::dv_bill.deten_cobro_v6();
+    // Device::dv_coin.deten_cobro_v6();
+    // Device::dv_bill.deten_cobro_v6();
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 

@@ -1,5 +1,4 @@
 #include "controller/config/validador.hpp"
-#include "carrousel.hpp"
 
 DetallesValidador::DetallesValidador(/* args */)
 {
@@ -43,17 +42,17 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
         Global::ApiConsume::autentica();
         is_retry_connected.store(true);
 
-        async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+        //async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
-        auto json_bill = Device::dv_bill.inicia_dispositivo_v8(bill);
-        crow::json::wvalue json_bill_copy(json_bill);
-        std::string device_bill = json_bill["deviceModel"].s();
+        // auto json_bill{} // // Device::dv_bill.inicia_dispositivo_v8(bill);
+        // crow::json::wvalue json_bill_copy(json_bill);
+        // std::string device_bill = json_bill["deviceModel"].s();
 
-        auto json_coin = Device::dv_coin.inicia_dispositivo_v8(coin);
-        crow::json::wvalue json_coin_copy(json_coin);
-        std::string device_coin = json_coin["deviceModel"].s();
+        // auto json_coin{} // // Device::dv_coin.inicia_dispositivo_v8(coin);
+        // crow::json::wvalue json_coin_copy(json_coin);
+        // std::string device_coin = json_coin["deviceModel"].s();
 
-        if (device_bill != "UNKNOWN" && device_coin != "UNKNOWN")
+        if (nullptr)
         {
             
             is_connected.store(true);
@@ -63,15 +62,15 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
 
             is_retry_connected.store(false);
 
-            Device::dv_bill.command_post("ResetDevice");
-            Device::dv_coin.command_post("ResetDevice");
+            // Device::dv_bill.command_post("ResetDevice");
+            // Device::dv_coin.command_post("ResetDevice");
             Global::ApiConsume::token.clear();
 
-            async_gui.dispatch_to_gui([this, json_bill_copy, json_coin_copy]()
-            {
-                    v_box_coin->set_data_lbl(json_coin_copy.dump());
-                    v_box_bill->set_data_lbl(json_bill_copy.dump()); 
-            });
+            // async_gui.dispatch_to_gui([this, json_bill_copy, json_coin_copy]()
+            // {
+            //         v_box_coin->set_data_lbl(json_coin_copy.dump());
+            //         v_box_bill->set_data_lbl(json_bill_copy.dump()); 
+            // });
         }
         else
         {
@@ -84,8 +83,8 @@ void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill
             is_retry_connected.store(false);
         }
 
-        Device::dv_bill.is_busy.store(false);
-        Device::dv_coin.is_busy.store(false);
+        // Device::dv_bill.is_busy.store(false);
+        // Device::dv_coin.is_busy.store(false);
     }
     catch (const std::exception &e)
     {

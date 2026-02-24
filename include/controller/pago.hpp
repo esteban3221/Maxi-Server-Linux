@@ -5,7 +5,7 @@
 #include "log.hpp"
 #include "controller/config/impresora.hpp"
 #include "model/detalle_movimiento.hpp"
-#include "c_sharp_validator.hpp"
+
 
 namespace RestApp = Global::Rest;
 class Pago final : public BVentaPago
