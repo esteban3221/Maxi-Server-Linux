@@ -2,7 +2,7 @@
 #include "states/svalidador.hpp"
 
 // --- Implementación IDLE ---
-void EstadoIdle::on_entry(ValidadorUnit &v) { CROW_LOG_INFO << "Entrando a Idle"; }
+void EstadoIdle::on_entry(ValidadorUnit &v) { CROW_LOG_INFO << "Entrando a Idle" << v.property_device_model(); }
 void EstadoIdle::on_start_init(ValidadorUnit &v, const Conf &c, const crow::json::rvalue &r) {
     v.transiciona_estado(std::make_unique<EstadoIniciando>());
 }
@@ -11,7 +11,7 @@ void EstadoIdle::on_handle_event(ValidadorUnit &v, const std::string &e, const c
 // --- Implementación INICIANDO ---
 void EstadoIniciando::on_entry(ValidadorUnit &v) { CROW_LOG_INFO << "Iniciando hardware..."; }
 void EstadoIniciando::on_start_init(ValidadorUnit &v, const Conf &conf, const crow::json::rvalue &set_routes) {
-    v.inicia_conecta(conf, set_routes);
+    v.inicia_conecta(set_routes);
     // Si inicia_conecta no falló (no mandó a Error), pasamos a Activo
     if (v.get_nombre_estado() == "Iniciando") {
         v.transiciona_estado(std::make_unique<EstadoActivo>());
@@ -53,7 +53,7 @@ void EstadoActivo::on_handle_event(ValidadorUnit &v, const std::string &event_ty
 
 // --- Implementación DETENIENDO ---
 void EstadoDeteniendo::on_entry(ValidadorUnit &v) {
-    v.detiene_desconecta();
+    //v.detiene_desconecta();
     v.transiciona_estado(std::make_unique<EstadoIdle>());
 }
 void EstadoDeteniendo::on_handle_event(ValidadorUnit &v, const std::string &e, const crow::json::rvalue &d) {}

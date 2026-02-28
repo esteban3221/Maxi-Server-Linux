@@ -2,122 +2,34 @@
 
 DetallesValidador::DetallesValidador(/* args */)
 {
+    crow::logger::setLogLevel(crow::LogLevel::Debug);
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
-    v_btn_test_coneccion.signal_clicked().connect(sigc::mem_fun(*this, &DetallesValidador::on_btn_reconnectd));
-    init_detalles();
+    v_btn_test_coneccion.signal_clicked().connect(sigc::mem_fun(*this, &DetallesValidador::init_validadores));
+    init_validadores();
 }
 
 DetallesValidador::~DetallesValidador()
 {
 }
 
-void DetallesValidador::init_detalles()
+void DetallesValidador::init_validadores(void)
 {
-    auto db_conf = std::make_unique<Configuracion>();
+    auto &hub = CashHub::instance();
+    hub.inicializar_hardware();
 
-    auto data_bill = db_conf->get_conf_data(1, 2);
-    auto data_coin = db_conf->get_conf_data(3, 4);
-
-    Global::EValidador::Conf conf_bill, conf_coin;
-    conf_bill.puerto = data_bill->get_item(0)->m_valor;
-    conf_bill.ssp = std::stoi(data_bill->get_item(1)->m_valor);
-
-    conf_coin.puerto = data_coin->get_item(0)->m_valor;
-    conf_coin.ssp = std::stoi(data_coin->get_item(1)->m_valor);
-
-    conf_bill.auto_acepta_billetes = conf_coin.auto_acepta_billetes = false;
-    conf_bill.habilita_recolector = conf_coin.habilita_recolector = false;
-    conf_bill.dispositivo = conf_coin.dispositivo = "";
-    conf_bill.log_ruta = conf_coin.log_ruta = "";
-
-    std::thread(&DetallesValidador::conecta_validadores, this, conf_bill, conf_coin).detach();
-}
-
-void DetallesValidador::conecta_validadores(const Global::EValidador::Conf &bill, const Global::EValidador::Conf &coin)
-{
-    using namespace Global::EValidador;
-
-    try
-    {
-        Global::ApiConsume::autentica();
-        is_retry_connected.store(true);
-
-        //async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
-
-        // auto json_bill{} // // Device::dv_bill.inicia_dispositivo_v8(bill);
-        // crow::json::wvalue json_bill_copy(json_bill);
-        // std::string device_bill = json_bill["deviceModel"].s();
-
-        // auto json_coin{} // // Device::dv_coin.inicia_dispositivo_v8(coin);
-        // crow::json::wvalue json_coin_copy(json_coin);
-        // std::string device_coin = json_coin["deviceModel"].s();
-
-        if (nullptr)
-        {
-            
-            is_connected.store(true);
-            
-            is_driver_correct.store(true);
-            is_wrong_port.store(false);
-
-            is_retry_connected.store(false);
-
-            // Device::dv_bill.command_post("ResetDevice");
-            // Device::dv_coin.command_post("ResetDevice");
-            Global::ApiConsume::token.clear();
-
-            // async_gui.dispatch_to_gui([this, json_bill_copy, json_coin_copy]()
-            // {
-            //         v_box_coin->set_data_lbl(json_coin_copy.dump());
-            //         v_box_bill->set_data_lbl(json_bill_copy.dump()); 
-            // });
-        }
-        else
-        {
-            
-            is_connected.store(false);
-            
-            is_wrong_port.store(true);
-            is_driver_correct.store(true);
-
-            is_retry_connected.store(false);
-        }
-
-        // Device::dv_bill.is_busy.store(false);
-        // Device::dv_coin.is_busy.store(false);
-    }
-    catch (const std::exception &e)
-    {
-        is_retry_connected.store(false);
-        is_driver_correct.store(false);
-        std::cerr << RED << "Error Fatal: " RESET << e.what() << '\n';
-    }
-}
-
-void DetallesValidador::on_btn_reconnectd()
-{
-    std::this_thread::sleep_for(std::chrono::seconds(8));
-    using namespace Global::EValidador;
-    Global::EValidador::Conf conf_bill, conf_coin;
-    conf_bill.puerto = v_box_bill->get_puerto_seleccionado();
-    conf_bill.ssp = 0;
-
-    conf_coin.puerto = v_box_coin->get_puerto_seleccionado();
-    conf_coin.ssp = 16;
-
-    conf_bill.auto_acepta_billetes = conf_coin.auto_acepta_billetes = false;
-    conf_bill.habilita_recolector = conf_coin.habilita_recolector = false;
-    conf_bill.dispositivo = conf_coin.dispositivo = "";
-    conf_bill.log_ruta = conf_coin.log_ruta = "~/Documentos";
-
-    auto db_conf = std::make_unique<Configuracion>();
-
-    auto conf_bill_puerto = MConfiguracion::create(1, "Se actualizo el " + Glib::DateTime::create_now_local().format_iso8601(), conf_bill.puerto);
-    auto conf_coin_puerto = MConfiguracion::create(3, "Se actualizo el " + Glib::DateTime::create_now_local().format_iso8601(), conf_coin.puerto);
-
-    db_conf->update_conf(conf_coin_puerto);
-    db_conf->update_conf(conf_bill_puerto);
+    // Solo para pruebas
     
+    Conf conf;
+    conf.habilita_recolector = true;
+    conf.auto_acepta_credito = true;
+    conf.habilita_salida_credito = true;
 
-    std::thread(&DetallesValidador::conecta_validadores, this, conf_bill, conf_coin).detach();
+    hub.inicia_for_all(conf,{});
+    
+    hub.command_for_all(HttpMethod::POST, "SmartEmpty", R"({
+"ModuleNumber": 0,
+"IsNV4000": false
+})", true);
+
+    hub.detiene_for_all();
 }

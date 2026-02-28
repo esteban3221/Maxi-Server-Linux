@@ -1,5 +1,7 @@
 #pragma once
 #include <iostream>
+#include <condition_variable>
+#include <mutex>
 
 #include "view/base.venta_pago.hpp"
 #include "model/log.hpp"
@@ -7,26 +9,38 @@
 #include "controller/pago.hpp"
 #include "controller/config/impresora.hpp"
 #include "model/detalle_movimiento.hpp"
+
 #include "global.hpp"
+#include "core/hub_cash.hpp"
 
 namespace RestApp = Global::Rest;
 class Venta final: public BVentaPago
 {
 private:
     Global::Async async_gui;
+    CashHub &hub = CashHub::instance();
 
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
-    bool pago_poll(int ant_coin, int ant_bill);
     bool cancelado;
-
-    int faltante;
     std::string estatus;
-    void func_poll(const std::string &status, const crow::json::rvalue &data);
+    std::condition_variable cv_finalizado;
+    std::mutex mtx_espera;
+    bool transaccion_terminada = false;
 
     crow::response inicia(const crow::request &req);
     crow::response deten(const crow::request &req);
+
+    void on_event_credit(const crow::json::rvalue &, size_t);
+    Glib::RefPtr<MLog> create_log(Log log);
+
+    size_t ingreso = 0;
+    size_t total = 0;
+    size_t cambio = 0;
+    int faltante;
+    bool is_view_ingreso;
+    std::string concepto;
 
     // websocket
     crow::websocket::connection *connection{nullptr};
