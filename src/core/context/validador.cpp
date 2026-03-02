@@ -9,6 +9,7 @@ ValidadorUnit::ValidadorUnit(/* args */) : handler_state(std::make_unique<Estado
                                            poll(false)
 {
     handler_state->on_entry(*this);
+    crow::logger::setLogLevel(crow::LogLevel::Debug);
 }
 
 ValidadorUnit::~ValidadorUnit()
@@ -22,9 +23,8 @@ void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
         return;
 
     if (handler_state)
-    {
         handler_state->on_exit(*this);
-    }
+
 
     auto estado_anterior = handler_state ? handler_state->get_nombre_estado() : "Ninguno";
     handler_state = std::move(nuevo_estado);
@@ -164,7 +164,7 @@ void ValidadorUnit::iniciar_polling()
                     else if (item.has("eventTypeAsString")) 
                         event_name = item["eventTypeAsString"].s();
                     if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") {
-                        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name;
+                        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i();
                         signal_event_received.emit(event_name, item);
                     } 
                     else if (event_name == "FRAUD_ATTEMPT") {
@@ -173,6 +173,7 @@ void ValidadorUnit::iniciar_polling()
                     else if (event_name == "JAMMED") {
                         signal_error.emit("Dispositivo atascado");
                         // transicionar a un estado de Error automáticamente
+                        detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
                     }
                     else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") {
@@ -184,12 +185,14 @@ void ValidadorUnit::iniciar_polling()
                     {
                         signal_error.emit("Error genérico detectado" );
                         // transicionar a un estado de Error automáticamente
+                        detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "TIME_OUT")
                     {
                         signal_error.emit("Tiempo limite alcanzado" );
                         // transicionar a un estado de Error automáticamente
+                        detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "IN_PROGRESS")
@@ -200,7 +203,7 @@ void ValidadorUnit::iniciar_polling()
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
         } 
-        CROW_LOG_INFO << "Terminando Polleo para el dispositivo" << device_id; 
+        CROW_LOG_INFO << "Terminando Polleo para el dispositivo " << device_id; 
     }).detach();
 }
 
@@ -230,6 +233,23 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     auto response = command_post("PayoutMultipleDenominations", denom);
     if (response.status_code == cpr::status::HTTP_OK)
         iniciar_polling();
+    else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
+    {
+        CROW_LOG_ERROR << json["dispenseResult"].s() << " - " << json["reason"].s();
+        
+        if(json["reason"].s() == "BUSY")
+        {
+            CROW_LOG_INFO << "Reintentando pago.";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            iniciar_pago(denom);
+        }
+    }
+    else
+    {
+        CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
+        signal_error.emit(device_id + " → " + json["dispenseResult"].operator std::string()+ ", Razon: " + json["dispenseResult"].operator std::string());
+        detiene_desconecta();
+    }
 }
 
 crow::json::wvalue ValidadorUnit::obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio)

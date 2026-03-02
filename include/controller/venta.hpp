@@ -19,12 +19,12 @@ class Venta final: public BVentaPago
 private:
     Global::Async async_gui;
     CashHub &hub = CashHub::instance();
+    Log log;
 
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
     bool cancelado;
-    std::string estatus;
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
     bool transaccion_terminada = false;
@@ -33,11 +33,15 @@ private:
     crow::response deten(const crow::request &req);
 
     void on_event_credit(const crow::json::rvalue &, size_t);
-    Glib::RefPtr<MLog> create_log(Log log);
+    void on_error(const std::string &error);
+    Glib::RefPtr<MLog> t_log;
 
-    size_t ingreso = 0;
-    size_t total = 0;
-    size_t cambio = 0;
+    void reset_log(const crow::json::rvalue &param);
+
+    // se usaran las del t_log
+    // size_t ingreso = 0;
+    // size_t total = 0;
+    // size_t cambio = 0;
     int faltante;
     bool is_view_ingreso;
     std::string concepto;

@@ -8,6 +8,7 @@ Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuild
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
     hub.on_credito().connect(sigc::mem_fun(*this, &Venta::on_event_credit));
+    hub.on_error().connect(sigc::mem_fun(*this, &Venta::on_error));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
     CROW_ROUTE(RestApp::app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
@@ -26,18 +27,6 @@ void Venta::on_wb_socket_open(crow::websocket::connection &conn)
 {
     CROW_LOG_INFO << "WebSocket connected: " << conn.get_remote_ip();
     connection = &conn;
-
-    std::this_thread::sleep_for(std::chrono::seconds(1)); // Esperar a que el cliente esté listo para recibir mensajes
-
-    crow::json::wvalue response;
-    response["ingreso"] = ingreso;
-    response["cambio"] = cambio;
-    response["total"] = total;
-    // response["terminado"] = !is_running;
-    // response["status"] = is_running ? "En proceso" : "Proceso terminado";
-    response["faltante"] = faltante;
-
-    conn.send_text(response.dump());
 }
 
 void Venta::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
@@ -66,8 +55,8 @@ void Venta::on_btn_retry_click()
 
 void Venta::on_btn_cancel_click()
 {
-    //@@is_running.store(false);
     cancelado = true;
+    hub.detiene_for_all();
     async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 }
 
@@ -77,31 +66,31 @@ crow::response Venta::deten(const crow::request &req)
     return crow::response(200, "Venta detenida");
 }
 
+void Venta::on_error(const std::string &error)
+{
+    t_log->m_estatus = error;
+    log.update_log(t_log);
+}
+
+
 void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
 {
-    if (connection)
-    {
-        crow::json::wvalue response;
-        response["ingreso"] = ingreso;
-        response["cambio"] = cambio;
-        response["total"] = total;
-        response["terminado"] = !transaccion_terminada;
-        response["status"] = transaccion_terminada ? "En proceso" : "Proceso terminado";
-        response["faltante"] = faltante;
+    t_log->m_ingreso += credito;
+    t_log->m_cambio  = (t_log->m_ingreso > t_log->m_total) ? (t_log->m_ingreso - t_log->m_total) : 0;
+    t_log->m_estatus = "Cobrando...";
+    t_log->m_fecha = Glib::DateTime::create_now_local();
+    faltante = (t_log->m_ingreso > t_log->m_total) ? 0 : (t_log->m_total - t_log->m_ingreso);
 
-        connection->send_text(response.dump());
-    }
-
-    ingreso += credito;
-    faltante = (total > ingreso) ? (total - ingreso) : 0;
-
-    v_lbl_recibido->set_text(Glib::ustring::format(ingreso));
+    v_lbl_recibido->set_text(Glib::ustring::format(t_log->m_ingreso));
     v_lbl_faltante->set_text(Glib::ustring::format(faltante));
-    v_lbl_cambio->set_text(Glib::ustring::format(faltante));
+    v_lbl_cambio->set_text(Glib::ustring::format(t_log->m_cambio));
 
-    if (ingreso >= total || cancelado)
+    log.update_log(t_log);
+
+    if (t_log->m_ingreso >= t_log->m_total || cancelado)
     {
-        hub.detiene_for_all();
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        hub.detiene_poll_for_all();
         
         // NOTIFICACIÓN: Despertar al endpoint
         {
@@ -110,24 +99,26 @@ void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
         }
         cv_finalizado.notify_one(); 
     }
+
+    if (connection)
+    {
+        crow::json::wvalue response;
+        response["ingreso"] = t_log->m_ingreso;
+        response["cambio"] = t_log->m_cambio;
+        response["total"] = t_log->m_total;
+        response["terminado"] = !transaccion_terminada;
+        response["status"] = transaccion_terminada ? "En proceso" : "Proceso terminado";
+        response["faltante"] = faltante;
+
+        connection->send_text(response.dump());
+    }
 }
 
 crow::response Venta::inicia(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Venta);
-    Log log;
 
-    auto bodyParams = crow::json::load(req.body);
-    cancelado = false;
-    estatus.clear();
-    total = faltante = bodyParams["value"].i();
-    cambio = ingreso = 0;
-    concepto = bodyParams["concepto"].operator std::string();
-
-    auto t_log = create_log(log);
-
-    is_view_ingreso = bodyParams.has("is_view_ingreso") && bodyParams["is_view_ingreso"].b();
-    is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
+    reset_log(crow::json::load(req.body));
 
     Conf conf;
     conf.habilita_recolector = true;
@@ -140,8 +131,8 @@ crow::response Venta::inicia(const crow::request &req)
     async_gui.dispatch_to_gui([this]()
     { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_lbl_monto_total->set_text(Glib::ustring::format(total));
-        v_lbl_faltante->set_text(Glib::ustring::format(total));
+        v_lbl_monto_total->set_text(Glib::ustring::format(t_log->m_total));
+        v_lbl_faltante->set_text(Glib::ustring::format(t_log->m_total));
         v_lbl_cambio->set_text("0");
         v_lbl_recibido->set_text("0"); 
     });
@@ -150,44 +141,44 @@ crow::response Venta::inicia(const crow::request &req)
         std::unique_lock<std::mutex> lock(mtx_espera);
         cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
     }
-    
-    CROW_LOG_INFO << "Transacción finalizada. Procesando resultado...";
 
     if (cancelado)
         t_log->m_estatus = "Operación cancelada";
-
-    // if (cambio > 0)
-        // Pago::da_pago(cambio, is_view_ingreso ? "Ingreso" : "Venta", estatus);
-    if (Pago::faltante > 0)
-        t_log->m_estatus  = "Cambio Incompleto, faltante: " + std::to_string(Pago::faltante);
-
-    crow::json::wvalue data;
+    else
+        t_log->m_estatus = "Exito.";
+    if (t_log->m_cambio > 0 && !cancelado)
+        hub.inicia_pago(t_log->m_cambio);
     
+    CROW_LOG_INFO << "Transacción finalizada. Procesando resultado...";
 
-    data = Global::Utility::json_ticket(t_log);
-    data["Cambio_faltante"] = Pago::faltante;
+    log.update_log(t_log);    
+    hub.detiene_for_all();
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
-    return crow::response("Fin");
+    return crow::response(Global::Utility::json_ticket(t_log));
 }
 
 
-Glib::RefPtr<MLog> Venta::create_log(Log log)
+void Venta::reset_log(const crow::json::rvalue &param)
 {
-    auto t_log = MLog::create
+    transaccion_terminada = cancelado = false;
+
+    is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
+    is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
+
+    t_log = MLog::create
     (
         0,
         Global::User::id,
         is_view_ingreso ? "Ingreso" : "Venta",
-        concepto.empty() ? "--" : concepto,
+        param["concepto"].operator std::string(),
         0,
         0,
-        total,
+        param["value"].i(),
         "Creacion de evento",
         Glib::DateTime::create_now_local()
     );
 
     t_log->m_id = log.insert_log(t_log);
-    return t_log;
 }
