@@ -38,11 +38,6 @@ private:
 
     void reset_log(const crow::json::rvalue &param);
 
-    // se usaran las del t_log
-    // size_t ingreso = 0;
-    // size_t total = 0;
-    // size_t cambio = 0;
-    int faltante;
     bool is_view_ingreso;
     std::string concepto;
 

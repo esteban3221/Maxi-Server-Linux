@@ -73,15 +73,12 @@ void CashHub::inicializar_hardware()
                 intentar_registrar(path, 0);
                 intentar_registrar(path, 16);
             }
-
-            // std::this_thread::sleep_for(std::chrono::seconds(5));
         }
     }
 }
 
 bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 {
-    //CROW_LOG_INFO << "Puerto detectado: " << puerto << ". Probando perfil SSP " << ssp;
     auto v = std::make_unique<ValidadorUnit>();
 
     v->property_token() = autentica();
@@ -93,18 +90,17 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
     v->property_conf().habilita_salida_credito = true;
 
     // Intentar la conexión (OpenConnection)
-    auto response = v->inicia_conecta(crow::json::load("[]"));
-
-    if (response)
+    if (v->inicia_conecta(crow::json::load("[]")))
     {
         // ÉXITO: Conectar señales locales del objeto a las globales del HUB
         v->signal_event_received.connect([this](std::string tipo, const crow::json::rvalue &data)
-                                         {
+        {
             if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT") 
             {
                 int monto = data["value"].i() / 100;
                 signal_credito.emit(data, monto);
-            } });
+            } 
+        });
             
         std::this_thread::sleep_for(std::chrono::seconds(1));
         v->detiene_desconecta();
@@ -112,28 +108,29 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
         unidades.push_back(std::move(v));
         return true;
     }
+
     std::this_thread::sleep_for(std::chrono::seconds(1));
     v->detiene_desconecta();
 
     return false;
 }
 
-std::map<std::string, cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
+std::map<std::string , cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
 {
     if (command == "OpenConnection")
         throw "Usar la funcion 'inicia_for_all' en su lugar";
 
-    std::map<std::string, cpr::Response> respuestas;
+    std::map<std::string , cpr::Response> respuestas;
 
     for (auto &&i : unidades)
     {
         switch (method)
         {
         case HttpMethod::GET:
-            respuestas[i->property_device_model()] = i->command_get(command, debug);
+            respuestas[i->property_device_id()] = i->command_get(command, debug);
             break;
         case HttpMethod::POST:
-            respuestas[i->property_device_model()] = i->command_post(command, json, debug);
+            respuestas[i->property_device_id()] = i->command_post(command, json, debug);
             break;
         default:
             break;
@@ -152,7 +149,7 @@ void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow:
         i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
         i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
-        if (auto modelo = i->property_device_model(); set_routes.contains(modelo))
+        if (auto modelo = i->property_device_id(); set_routes.contains(modelo))
             i->inicia_conecta(set_routes[modelo]);
         else
         {
@@ -177,30 +174,36 @@ void CashHub::detiene_poll_for_all()
     for (auto &&i : unidades) i->property_poll().store(false);
 }
 
-void CashHub::inicia_pago(size_t monto)
+void CashHub::inicia_pago(size_t monto, bool is_cambio)
 {
     uint remanente = monto;
 
     // 1. Primero buscamos los validadores de billetes (SSP 0 por convención ITL)
     for (auto &&i : unidades)
-    {
         if (i->property_conf().ssp == 0) { 
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
-            remanente = i->iniciar_pago(remanente);
+            remanente = i->iniciar_pago(remanente, is_cambio);
         }
-    }
 
     // 2. Lo que sobre (remanente), intentamos pagarlo con monedas (SSP 16)
-    if (remanente > 0) {
+    if (remanente > 0)
         for (auto &&i : unidades)
         {
             if (i->property_conf().ssp == 16) { 
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
-                remanente = i->iniciar_pago(remanente);
+                remanente = i->iniciar_pago(remanente, is_cambio);
             }
         }
-    }
 
     if (remanente > 0) 
         signal_hub_error.emit("Cambio incompleto. Faltaron: " + std::to_string(remanente));
+}
+
+void CashHub::inicia_pago(std::map<std::string ,std::string> map)
+{
+    for (auto &&i : unidades)
+        if(map.contains(i->property_device_id()))
+            i->iniciar_pago(map.at(i->property_device_id()));
+        else
+            CROW_LOG_WARNING << "No se encontro el dispositivo" << i->property_device_id() << ", Para pago manual";
 }

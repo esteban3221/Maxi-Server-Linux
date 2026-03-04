@@ -41,10 +41,11 @@ public:
     auto &on_error() { return signal_hub_error; }
 
     //Pass-through
-    std::map<std::string, cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
+    std::map<std::string , cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
     void inicia_for_all(const Conf &conf,std::map<std::string, const crow::json::rvalue>);
     void inicia_poll_for_all();
-    void inicia_pago(size_t monto);
+    void inicia_pago(size_t monto, bool is_cambio = false);
+    void inicia_pago(std::map<std::string , std::string>);
     void detiene_poll_for_all();
     void detiene_for_all(void);
 };

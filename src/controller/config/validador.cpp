@@ -18,14 +18,14 @@ void DetallesValidador::init_validadores(void)
 
     // Solo para pruebas
     
-    Conf conf;
-    conf.habilita_recolector = false;
-    conf.auto_acepta_credito = false;
-    conf.habilita_salida_credito = true;
+    // Conf conf;
+    // conf.habilita_recolector = false;
+    // conf.auto_acepta_credito = false;
+    // conf.habilita_salida_credito = true;
 
-    hub.inicia_for_all(conf,{});
+    // hub.inicia_for_all(conf,{});
     
-    hub.inicia_pago(5);
+    // hub.inicia_pago(5);
 
-    hub.detiene_for_all();
+    // hub.detiene_for_all();
 }

@@ -66,13 +66,14 @@ public:
     Conf &property_conf(){return conf;}
     std::string &property_token() { return token; }
     const std::string &property_device_model() {return device_model;} //solo_lectura
+    const std::string &property_device_id() {return device_id;} //solo_lectura
 
     //devuelve los niveles actuales de ingreso y salida al conectar
     const crow::json::rvalue inicia_conecta (const crow::json::rvalue &set_routes);
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);
-    uint iniciar_pago(size_t);
+    uint iniciar_pago(size_t, bool is_cambio);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
 

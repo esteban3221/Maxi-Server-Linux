@@ -237,7 +237,6 @@ crow::response Refill::inicia(const crow::request &req)
 
     balance.ingreso.store(0);
     balance.cambio.store(0);
-    Pago::faltante = 0;
 
     async_gui.dispatch_to_gui([this]()
     { 
@@ -322,7 +321,6 @@ crow::response Refill::inicia(const crow::request &req)
     data["monedas"] = v_lbl_total_parcial_monedas->get_text();
     data["billetes"] = v_lbl_total_parcial_billetes->get_text();
 
-    data["Cambio_faltante"] = Pago::faltante;
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
     is_running.store(false);
@@ -472,7 +470,6 @@ size_t Refill::saca_cassette()
 crow::response Refill::retirada(const crow::request &req)
 {
     Global::Utility::valida_autorizacion(req, Global::User::Rol::Retirada);
-    Pago::faltante = 0;
     async_gui.dispatch_to_gui([this]()
     { Global::Widget::v_main_stack->set_visible_child(*this); });
     // Device::dv_bill.inicia_dispositivo_v6();

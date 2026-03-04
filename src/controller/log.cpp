@@ -4,6 +4,7 @@ LogData::LogData(/* args */)
 {
     CROW_ROUTE(RestApp::app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
     CROW_ROUTE(RestApp::app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
+    CROW_ROUTE(RestApp::app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
 }
 
 LogData::~LogData()
@@ -100,6 +101,21 @@ crow::response LogData::get_log(const crow::request &req)
 
     // Asignar el array completo
     json["log"] = std::move(log_list);
+
+    return crow::response(json);
+}
+
+crow::response LogData::get_levels(const crow::request &req)
+{
+    crow::json::wvalue json;
+    auto &hub = CashHub::instance();
+    hub.inicia_for_all({},{});
+    auto map = hub.command_for_all(HttpMethod::GET,"GetAllLevels");
+
+    for (auto const& [llave, valor] : map)
+        json[llave] = crow::json::load(valor.text);
+
+    hub.detiene_for_all();
 
     return crow::response(json);
 }

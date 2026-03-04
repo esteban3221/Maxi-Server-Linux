@@ -1,14 +1,11 @@
 #include "controller/venta.hpp"
 
-Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder),
-                                                                                      faltante(0)
+Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Venta");
     v_btn_timeout_retry->set_visible(false);
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
-    hub.on_credito().connect(sigc::mem_fun(*this, &Venta::on_event_credit));
-    hub.on_error().connect(sigc::mem_fun(*this, &Venta::on_error));
 
     CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
     CROW_ROUTE(RestApp::app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
@@ -38,7 +35,6 @@ void Venta::on_wb_socket_close(crow::websocket::connection &conn, const std::str
 
 void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
 {
-
     auto json_data = crow::json::load(data);
 
     if (json_data["action"] == "detener")
@@ -55,7 +51,11 @@ void Venta::on_btn_retry_click()
 
 void Venta::on_btn_cancel_click()
 {
-    cancelado = true;
+    {
+        std::lock_guard<std::mutex> lock(mtx_espera);
+        transaccion_terminada = cancelado = true;
+        cv_finalizado.notify_one(); 
+    }
     hub.detiene_for_all();
     async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 }
@@ -72,14 +72,13 @@ void Venta::on_error(const std::string &error)
     log.update_log(t_log);
 }
 
-
 void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
 {
     t_log->m_ingreso += credito;
     t_log->m_cambio  = (t_log->m_ingreso > t_log->m_total) ? (t_log->m_ingreso - t_log->m_total) : 0;
     t_log->m_estatus = "Cobrando...";
     t_log->m_fecha = Glib::DateTime::create_now_local();
-    faltante = (t_log->m_ingreso > t_log->m_total) ? 0 : (t_log->m_total - t_log->m_ingreso);
+    auto faltante = (t_log->m_ingreso > t_log->m_total) ? 0 : (t_log->m_total - t_log->m_ingreso);
 
     v_lbl_recibido->set_text(Glib::ustring::format(t_log->m_ingreso));
     v_lbl_faltante->set_text(Glib::ustring::format(faltante));
@@ -106,8 +105,8 @@ void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
         response["ingreso"] = t_log->m_ingreso;
         response["cambio"] = t_log->m_cambio;
         response["total"] = t_log->m_total;
-        response["terminado"] = !transaccion_terminada;
-        response["status"] = transaccion_terminada ? "En proceso" : "Proceso terminado";
+        response["terminado"] = transaccion_terminada;
+        response["status"] = !transaccion_terminada ? "En proceso" : "Proceso terminado";
         response["faltante"] = faltante;
 
         connection->send_text(response.dump());
@@ -143,16 +142,19 @@ crow::response Venta::inicia(const crow::request &req)
     }
 
     if (cancelado)
+    {
         t_log->m_estatus = "Operación cancelada";
+        hub.inicia_pago(t_log->m_ingreso);
+    }
     else
         t_log->m_estatus = "Exito.";
     if (t_log->m_cambio > 0 && !cancelado)
         hub.inicia_pago(t_log->m_cambio);
-    
-    CROW_LOG_INFO << "Transacción finalizada. Procesando resultado...";
 
     log.update_log(t_log);    
     hub.detiene_for_all();
+    hub.on_credito().clear();
+    hub.on_error().clear();
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
@@ -163,6 +165,8 @@ crow::response Venta::inicia(const crow::request &req)
 void Venta::reset_log(const crow::json::rvalue &param)
 {
     transaccion_terminada = cancelado = false;
+    hub.on_credito().connect(sigc::mem_fun(*this, &Venta::on_event_credit));
+    hub.on_error().connect(sigc::mem_fun(*this, &Venta::on_error));
 
     is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
     is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");

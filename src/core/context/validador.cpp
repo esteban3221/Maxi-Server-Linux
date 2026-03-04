@@ -56,6 +56,7 @@ const cpr::Response ValidadorUnit::command_get(const std::string &command, bool 
 
     return response;
 }
+
 const cpr::Response ValidadorUnit::command_post(const std::string &command, const std::string &json, bool debug) const
 {
     auto response = cpr::Post(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
@@ -207,7 +208,7 @@ void ValidadorUnit::iniciar_polling()
     }).detach();
 }
 
-uint ValidadorUnit::iniciar_pago(size_t monto)
+uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
 {   
     uint cambio = monto;
     auto response = command_get("GetAllLevels");
@@ -215,7 +216,7 @@ uint ValidadorUnit::iniciar_pago(size_t monto)
     std::map<int, int> levels;
 
     for (auto &&i : json) levels[i["value"].i() / 100] = i["storedInPayout"].i();
-    auto json_pago = obten_cambio(cambio, levels, false);
+    auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
     if (cambio > 0)
         signal_error.emit("No se cuenta con suficiente efectivo para dar cambio en el dispositivo: " + device_id);

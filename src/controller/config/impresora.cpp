@@ -170,11 +170,11 @@ namespace Global
                         << "--------------------------------\n";
             ticket_config << std::left << std::setw(20) << "Ingreso:" << log->m_ingreso <<"\n";
             ticket_config << std::left << std::setw(20) << "Cambio:" << log->m_cambio <<"\n";
-            ticket_config << std::left << std::setw(20) << "Faltante:" << faltante <<"\n";
-            ticket_config << std::left << std::setw(20) << "Faltante Cambio:"<< Pago::faltante << "\n"
-                        << "-------------STATUS------------\n"
-                        << log->m_estatus <<"\n"
-                        << "--------------------------------\n";
+            // ticket_config << std::left << std::setw(20) << "Faltante:" << faltante <<"\n";
+            // ticket_config << std::left << std::setw(20) << "Faltante Cambio:"<< Pago::faltante << "\n"
+                        // << "-------------STATUS------------\n"
+                        // << log->m_estatus <<"\n"
+                        // << "--------------------------------\n";
 
             if (Global::Widget::Impresora::state_vizualizacion[4])
                 ticket_config << "**" << db_empresa->get_item(3)->m_valor << "**\n"
