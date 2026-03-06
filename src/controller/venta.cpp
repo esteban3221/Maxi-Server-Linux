@@ -46,7 +46,7 @@ void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::s
 
 void Venta::on_btn_retry_click()
 {
-    std::cout << "Click otra vez desde Venta\n";
+    CROW_LOG_INFO << "Click otra vez desde Venta\n";
 }
 
 void Venta::on_btn_cancel_click()
@@ -72,7 +72,7 @@ void Venta::on_error(const std::string &error)
     log.update_log(t_log);
 }
 
-void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
+void Venta::on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
 {
     t_log->m_ingreso += credito;
     t_log->m_cambio  = (t_log->m_ingreso > t_log->m_total) ? (t_log->m_ingreso - t_log->m_total) : 0;
@@ -115,7 +115,7 @@ void Venta::on_event_credit(const crow::json::rvalue &data, size_t credito)
 
 crow::response Venta::inicia(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Venta);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
 
     reset_log(crow::json::load(req.body));
 
@@ -124,7 +124,7 @@ crow::response Venta::inicia(const crow::request &req)
     conf.auto_acepta_credito = true;
     conf.habilita_salida_credito = true;
 
-    hub.inicia_for_all(conf, {});
+    hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
 
     async_gui.dispatch_to_gui([this]()
@@ -158,7 +158,7 @@ crow::response Venta::inicia(const crow::request &req)
 
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
-    return crow::response(Global::Utility::json_ticket(t_log));
+    return crow::response(Log::json_ticket(t_log));
 }
 
 

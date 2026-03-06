@@ -7,7 +7,6 @@
 #include "model/detalle_movimiento.hpp"
 #include "core/hub_cash.hpp"
 
-
 namespace RestApp = Global::Rest;
 class Pago final : public BVentaPago
 {
@@ -16,7 +15,7 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
     void on_error(const std::string &error);
-    void on_credit(const crow::json::rvalue &data, size_t credito);
+    void on_credit(const std::string &, const std::string &, const crow::json::rvalue &data, size_t credito);
 
     crow::response inicia(const crow::request &req);
     crow::response inicia_manual(const crow::request &req);

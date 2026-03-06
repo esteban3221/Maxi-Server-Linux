@@ -1,5 +1,6 @@
 #include "session.hpp"
 
+std::string Sesion::token = "";
 Sesion::Sesion(/* args */)
 {
 
@@ -43,13 +44,11 @@ crow::response Sesion::login(const crow::request &req)
     if (auto username = usuarios->existe_usuario(password);
         not username.second.empty())
     {
-        Global::ApiConsume::autentica();
-
         crow::json::wvalue json;
         Global::User::id = username.first;
 
         json["usuario"] = Global::User::Current = username.second;
-        json["token"] = Global::ApiConsume::token;
+        json["token"] = token = CashHub::instance().autentica();
 
         return crow::response(json);
     }
@@ -59,25 +58,66 @@ crow::response Sesion::login(const crow::request &req)
 
 crow::response Sesion::logout(const crow::request &req)
 {
-    Global::ApiConsume::token.clear();
+    token.clear();
     return crow::response();
 }
 
+bool Sesion::valida_administrador(const crow::request &req)
+{
+    auto auth_header = req.get_header_value("Authorization");
+    if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
+        throw BadRequestError("Error en la peticion, no se recibieron datos / token");
+    std::string mycreds = auth_header.substr(7);
+    if (mycreds != token)
+        throw UnauthorizedError("token invalido");
+    size_t cont_admin = 0;
+    UsuariosRoles u_roles;
+    auto roles = u_roles.get_usuario_roles_by_id(Global::User::id);
+    return roles->get_n_items() >= 19;
+}
 
-void Sesion::on_websocket_open(crow::websocket::connection& conn)
+void Sesion::valida_autorizacion(const crow::request &req, Global::User::Rol rol)
+{
+    auto auth_header = req.get_header_value("Authorization");
+    if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
+        throw BadRequestError("Error en la peticion, no se recibieron datos / token");
+
+    std::string mycreds = auth_header.substr(7);
+
+    if (mycreds != token)
+        throw UnauthorizedError("token invalido");
+
+    UsuariosRoles u_roles;
+    auto roles = u_roles.get_usuario_roles_by_id(Global::User::id);
+
+    if (roles)
+    {
+        for (size_t i = 0; i < roles->get_n_items(); i++)
+        {
+            auto list = roles->get_item(i);
+            if (list->m_id_rol == static_cast<guint>(rol))
+                return;
+        }
+        throw UnauthorizedError("No autorizado para realizar esta operacion");
+    }
+    else
+        throw ServerError("Error al cargar roles");
+}
+
+void Sesion::on_websocket_open(crow::websocket::connection &conn)
 {
     CROW_LOG_INFO << "New WebSocket connection established";
-    Global::Rest::ws_connection = &conn; // Guardamos la conexión para usarla en otras partes del código
+    // Global::Rest::ws_connection = &conn; // Guardamos la conexión para usarla en otras partes del código
 }
 
-void Sesion::on_websocket_close(crow::websocket::connection& conn, const std::string& reason, uint16_t code)
+void Sesion::on_websocket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
 {
     CROW_LOG_INFO << "WebSocket connection closed: " << reason;
-    if (Global::Rest::ws_connection == &conn)
-        Global::Rest::ws_connection = nullptr; // Limpiamos la referencia a la conexión cerrada
+    // if (Global::Rest::ws_connection == &conn)
+    //     Global::Rest::ws_connection = nullptr; // Limpiamos la referencia a la conexión cerrada
 }
 
-void Sesion::on_websocket_message(crow::websocket::connection& conn, const std::string& data, bool is_binary)
+void Sesion::on_websocket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
 {
     CROW_LOG_INFO << "Received WebSocket message: ";
     conn.send_text("Foo");
@@ -85,7 +125,7 @@ void Sesion::on_websocket_message(crow::websocket::connection& conn, const std::
 
 crow::response Sesion::get_all_users(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto usuarios = std::make_unique<Usuarios>();
     auto m_list = usuarios->get_usuarios();
     crow::json::wvalue json;
@@ -103,13 +143,13 @@ crow::response Sesion::get_all_users(const crow::request &req)
 
 crow::response Sesion::get_all_roles_by_id(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id_usuario"].i();
 
     UsuariosRoles u_roles;
     auto roles = u_roles.get_usuario_roles_by_id(id_usuario);
-    if(roles)
+    if (roles)
     {
         crow::json::wvalue json;
 
@@ -122,13 +162,12 @@ crow::response Sesion::get_all_roles_by_id(const crow::request &req)
         }
         return crow::response(json);
     }
-        return crow::response(crow::status::NOT_FOUND);
-    
+    return crow::response(crow::status::NOT_FOUND);
 }
 
 crow::response Sesion::alta_usuario(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto bodyParams = crow::json::load(req.body);
 
     auto nuevo_usuario = MUsuarios::create((size_t)1, // de momento no se sabe que id tiene
@@ -138,13 +177,12 @@ crow::response Sesion::alta_usuario(const crow::request &req)
     auto usuarios = std::make_unique<Usuarios>();
     nuevo_usuario->m_id = usuarios->insert_usuario(nuevo_usuario);
 
-
     return crow::response();
 }
 
 crow::response Sesion::baja_usuario(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id"].i();
@@ -165,16 +203,14 @@ crow::response Sesion::baja_usuario(const crow::request &req)
 
 crow::response Sesion::modifica_usuario(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
     auto bodyParams = crow::json::load(req.body);
 
-    auto usuario = MUsuarios::create
-    (
-        bodyParams["id"].i(), 
+    auto usuario = MUsuarios::create(
+        bodyParams["id"].i(),
         Glib::ustring{bodyParams["username"].s()},
-        Glib::ustring{bodyParams["password"].s()}
-    );
+        Glib::ustring{bodyParams["password"].s()});
 
     auto usuarios = std::make_unique<Usuarios>();
     usuarios->update_usuario(usuario);
@@ -183,7 +219,7 @@ crow::response Sesion::modifica_usuario(const crow::request &req)
 
 crow::response Sesion::modifica_usuario_roles(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id_usuario"].i();
@@ -197,18 +233,16 @@ crow::response Sesion::modifica_usuario_roles(const crow::request &req)
         }
     roles->update_usuario_roles(id_usuario, list_roles);
 
-
     return crow::response();
 }
-
 
 crow::response Sesion::maxicajero_version_check(const crow::request &req)
 {
     auto json_data = crow::json::load(req.body);
     std::string client_version = json_data["version"].s();
     std::string plataform = json_data["plataform"].s();
-    
-    CROW_LOG_INFO << "Client version: " << client_version; 
+
+    CROW_LOG_INFO << "Client version: " << client_version;
     CROW_LOG_INFO << "Client platform: " << plataform;
     CROW_LOG_INFO << "IP Client: " << req.remote_ip_address;
 
@@ -216,15 +250,17 @@ crow::response Sesion::maxicajero_version_check(const crow::request &req)
     Maxicajero::VersionUtils::Version clientVer = Maxicajero::VersionUtils::Version::fromString(client_version);
     Maxicajero::VersionUtils::Version serverVer = Maxicajero::VersionUtils::Version::fromString(Maxicajero::Version::getVersion());
 
-    crow::json::wvalue response; 
-    crow::status status_code;;
+    crow::json::wvalue response;
+    crow::status status_code;
+    ;
 
-    if (!checker.isCompatible(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::FORWARD)) {
+    if (!checker.isCompatible(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::FORWARD))
+    {
         response["status"] = "incompatible";
         response["message"] = checker.getCompatibilityMessage(clientVer, serverVer, Maxicajero::VersionUtils::CompatibilityChecker::Policy::FORWARD);
         status_code = crow::status::NOT_ACCEPTABLE;
     }
-    else 
+    else
     {
         CROW_LOG_INFO << "Versiones compatible: " << client_version << " <= " << Maxicajero::Version::getVersion();
         response["status"] = "compatible";

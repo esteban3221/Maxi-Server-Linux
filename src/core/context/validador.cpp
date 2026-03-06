@@ -14,6 +14,7 @@ ValidadorUnit::ValidadorUnit(/* args */) : handler_state(std::make_unique<Estado
 
 ValidadorUnit::~ValidadorUnit()
 {
+    // detiene_desconecta();
 }
 
 // context/validador.cpp (implementación)
@@ -35,11 +36,12 @@ void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
     CROW_LOG_INFO << "Transición: " << estado_anterior << " -> " << handler_state->get_nombre_estado();
 }
 
-void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r) const
+void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body) const
 {
     std::puts("");
     CROW_LOG_DEBUG << "Validador:" << device_id << '\n'
                    << "\t\t\t\t Comando: " << command << '\n'
+                   << "\t\t\t\t Enviado: " << body << '\n'
                    << "\t\t\t\t Tiempo: " << r.elapsed << '\n'
                    << "\t\t\t\t Codigo: " << r.status_code << '\n'
                    << "\t\t\t\t Respuesta: " << r.text << '\n';
@@ -50,6 +52,8 @@ const cpr::Response ValidadorUnit::command_get(const std::string &command, bool 
     auto response = cpr::Get(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
                              cpr::Header{{"Content-Type", "application/json"},
                                          {"Authorization", "Bearer " + token}});
+
+    response.header["X-Device-Type"] = !conf.ssp ? "COIN":"BILL"; 
 
     if (debug)
         imprime_debug(command, response);
@@ -62,12 +66,12 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
     auto response = cpr::Post(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
                               cpr::Header{{"Content-Type", "application/json"},
                                           {"Authorization", "Bearer " + token}},
-                              cpr::Body{json} /*,
-                               cpr::Timeout{2000}*/
-    );
+                              cpr::Body{json});
+
+    response.header["X-Device-Type"] = !conf.ssp ? "COIN":"BILL"; 
 
     if (debug)
-        imprime_debug(command, response);
+        imprime_debug(command, response, json);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     return response;
 }
@@ -97,17 +101,19 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 
 const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
 {
-    auto json = crow::json::wvalue{
+    auto json = crow::json::wvalue
+    {
         {"ComPort", conf.puerto},
         {"SspAddress", conf.ssp},
         {"LogFilePath", conf.log_ruta},
         {"SetInhibits", crow::json::wvalue::list()}, // Hasta el momento no hay ninguna necesidad de inhibir denominaciones, pero se puede agregar fácilmente aquí
-        {"SetRoutes", set_routes},
+        {"SetRoutes", set_routes.has("SetRoutes") ? set_routes["SetRoutes"] : set_routes},
         {"EnableAcceptor", conf.habilita_recolector},
         {"EnableAutoAcceptEscrow", conf.auto_acepta_credito},
-        {"EnablePayout", conf.habilita_salida_credito}};
+        {"EnablePayout", conf.habilita_salida_credito}
+    };
 
-    auto response = command_post("OpenConnection", json.dump() /*, true*/);
+    auto response = command_post("OpenConnection", json.dump(), true);
     auto json_response = crow::json::load(response.text);
     if (response.status_code == 200)
     {
@@ -115,7 +121,6 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         device_model = json_response["deviceModel"].s();
 
         CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        // transiciona_estado(std::make_unique<EstadoActivo>());
         return json_response["allLevels"];
     }
     else
@@ -126,19 +131,19 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
 
 void ValidadorUnit::detiene_desconecta()
 {
-    // transiciona_estado(std::make_unique<EstadoDeteniendo>());
     if (poll.load())
     {
         poll = false;                                                             // Detiene el polling
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli + 100)); // Espera a que el hilo de polling termine
     }
 
+    ultimo_cash_level = crow::json::load(command_get("GetAllLevels").text);
+
     auto response = command_post("DisconnectDevice");
     if (response.status_code == 200)
     {
         CROW_LOG_INFO << response.text;
         device_id = "Desconocido";
-        // transiciona_estado(std::make_unique<EstadoIdle>());
     }
     else
         transiciona_estado(std::make_unique<EstadoError>("Error al desconectar del validador: " + response.text));
@@ -166,32 +171,32 @@ void ValidadorUnit::iniciar_polling()
                         event_name = item["eventTypeAsString"].s();
                     if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") {
                         CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i();
-                        signal_event_received.emit(event_name, item);
+                        signal_event_received.emit(device_id, conf.ssp == 0 ? "BILL" : "COIN", event_name, item);
                     } 
                     else if (event_name == "FRAUD_ATTEMPT") {
-                        signal_error.emit("Posible intento de fraude detectado");
+                        signal_error.emit(device_id, "Posible intento de fraude detectado");
                     }
                     else if (event_name == "JAMMED") {
-                        signal_error.emit("Dispositivo atascado");
+                        signal_error.emit(device_id,"Dispositivo atascado");
                         // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
                     }
                     else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") {
-                        signal_error.emit("Pago incompleto detectado");
+                        signal_error.emit(device_id,"Pago incompleto detectado");
                         // transicionar a un estado de Error automáticamente
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "ERROR")
                     {
-                        signal_error.emit("Error genérico detectado" );
+                        signal_error.emit(device_id, "Error genérico detectado");
                         // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "TIME_OUT")
                     {
-                        signal_error.emit("Tiempo limite alcanzado" );
+                        signal_error.emit(device_id, "Tiempo limite alcanzado" );
                         // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
@@ -219,7 +224,7 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
     if (cambio > 0)
-        signal_error.emit("No se cuenta con suficiente efectivo para dar cambio en el dispositivo: " + device_id);
+        signal_error.emit(device_id, "No se cuenta con suficiente efectivo para dar cambio en el dispositivo");
     else
         iniciar_pago(json_pago.dump());
 
@@ -248,7 +253,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     else
     {
         CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
-        signal_error.emit(device_id + " → " + json["dispenseResult"].operator std::string()+ ", Razon: " + json["dispenseResult"].operator std::string());
+        signal_error.emit(device_id, json["dispenseResult"].operator std::string()+ ", Razon: " + json["dispenseResult"].operator std::string());
         detiene_desconecta();
     }
 }

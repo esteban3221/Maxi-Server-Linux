@@ -1,8 +1,4 @@
 #pragma once
-#include <usuarios_roles.hpp>
-#include <model/log.hpp>
-// #include "carrousel.hpp"
-#include <usuarios.hpp>
 
 #include <crow.h>
 #include <libnotify/notify.h>
@@ -48,11 +44,8 @@ namespace Global
     {
         // manejador de entradas a la api rest
         extern crow::SimpleApp app;
-
         // manejador asyncrono de app
         extern std::future<void> future;
-
-        extern crow::websocket::connection *ws_connection;
     } // namespace Rest
 
     namespace Widget
@@ -104,39 +97,11 @@ namespace Global
     {
         extern crow::json::wvalue obten_cambio(int &cambio, std::map<int, int> &reciclador, bool is_cambio = false);
         extern bool is_ok;
-        extern crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log);
-        extern void valida_autorizacion(const crow::request &req, User::Rol rol);
-        extern bool valida_administrador(const crow::request &req);
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
     } // namespace Utility
 
-    namespace EValidador
-    {
-        extern std::atomic<bool> is_running;
-        extern std::atomic<bool> is_connected;
-        extern std::atomic<bool> is_retry_connected;
-        extern std::atomic<bool> is_wrong_port;
-        extern std::atomic<bool> is_driver_correct;
 
-        struct Balance
-        {
-            std::atomic<uint32_t> ingreso = 0;
-            std::atomic<uint32_t> ingreso_parcial = 0;
-            std::atomic<uint32_t> total = 0;
-            std::atomic<int32_t> cambio = 0;
-        } extern balance;
-
-        struct Conf
-        {
-            std::string puerto = "/dev/ttyUSB";
-            uint32_t ssp = 0;
-            std::string dispositivo;
-            std::string log_ruta;
-            bool habilita_recolector;
-            bool auto_acepta_billetes;
-        };
-    } // namespace EstadoValidador
 
     namespace ApiConsume
     {
@@ -197,15 +162,6 @@ namespace Global
         dispatcher.emit();
     }
 
-    // class AuthException : public std::runtime_error
-    // {
-    // public:
-    //     int http_code;
-    //     AuthException(int code, const std::string &message) : std::runtime_error(message), http_code(code) {}
-    //     const char *what() const noexcept override
-    //     {
-    //         return std::runtime_error::what();
-    //     }
-    // };
+
 
 } // namespace Helper

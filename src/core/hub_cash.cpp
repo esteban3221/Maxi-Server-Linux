@@ -93,12 +93,12 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
     if (v->inicia_conecta(crow::json::load("[]")))
     {
         // ÉXITO: Conectar señales locales del objeto a las globales del HUB
-        v->signal_event_received.connect([this](std::string tipo, const crow::json::rvalue &data)
+        v->signal_event_received.connect([this,&v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
         {
             if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT") 
             {
                 int monto = data["value"].i() / 100;
-                signal_credito.emit(data, monto);
+                signal_credito.emit(device_id, tipo, data, monto);
             } 
         });
             
@@ -113,6 +113,50 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
     v->detiene_desconecta();
 
     return false;
+}
+
+crow::json::rvalue CashHub::rutas_default(ValidadorUnit* val)
+{
+    crow::json::wvalue json_rutas;
+    json_rutas = crow::json::wvalue::list();
+
+    auto tipo = val->property_conf().ssp == 16 ? "Level_Coin" : "Level_Bill";
+    auto m_list = std::make_unique<LevelCash>(tipo)->get_level_cash();
+    auto snapshot_level = val->property_ultimo_cash_level();
+    int32_t indice = 0;
+
+    for (size_t i = 0; i < snapshot_level.size(); i++)
+    {
+        json_rutas["SetRoutes"][i]["Denomination"] = std::to_string(snapshot_level[i]["value"].i()) + " " + snapshot_level[i]["countryCode"].operator std::string();
+        json_rutas["SetRoutes"][i]["Route"] = (int)(snapshot_level[i]["storedInPayout"].i() <= m_list->get_item(i)->m_nivel_inmo_max);
+
+        CROW_LOG_DEBUG << "Cuadrando rutas Snapshot " << (snapshot_level[i]["value"].i() / 100) << " vs BD " << m_list->get_item(i)->m_denominacion;
+    }
+
+    return crow::json::load(json_rutas.dump());
+}
+
+cpr::Response CashHub::command_by_device_id(HttpMethod method, const std::string &device_id, const std::string &command, const std::string &json, bool debug)
+{
+    for (auto const& i : unidades)
+    {
+        if(i->property_device_id() == device_id)
+        {
+            switch (method)
+            {
+                case HttpMethod::GET:  return i->command_get(command, debug);
+                case HttpMethod::POST: return i->command_post(command, json, debug);
+                default:               return {}; 
+            }
+        }
+    }
+
+    // Si llegamos aquí, el ID no existe. 
+    // Creamos una respuesta con error 404 local o status 0 para indicar "No encontrado"
+    cpr::Response error_res;
+    error_res.status_code = 0; 
+    error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
+    return error_res;
 }
 
 std::map<std::string , cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
@@ -145,16 +189,17 @@ void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow:
     for (auto &&i : unidades)
     {
         // por ahora todos tiene la misma configuracion de arranque
+        i->property_token() = Sesion::token;
         i->property_conf().habilita_recolector = conf.habilita_recolector;
         i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
         i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
-        if (auto modelo = i->property_device_id(); set_routes.contains(modelo))
-            i->inicia_conecta(set_routes[modelo]);
+        if (auto device_id = i->property_device_id(); set_routes.contains(device_id))
+            i->inicia_conecta(set_routes[device_id]);
         else
         {
-            CROW_LOG_WARNING << "No se encontraron rutas para el modelo: " << modelo;
-            i->inicia_conecta(crow::json::load("[]"));
+            CROW_LOG_WARNING << "No se especificaron rutas para el dispositivo: " << device_id << " Usando las de default.";
+            i->inicia_conecta(rutas_default(i.get()));
         }
     }
 }

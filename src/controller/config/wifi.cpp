@@ -126,8 +126,6 @@ void Wifi::escanea_redes()
     {
         auto row = Gtk::make_managed<VWifi::VWifiRow>(i.ssid.empty() ? "[Red Oculta]" : i.ssid, i.security + " - " + i.signal + "%" + " " + i.bars);
         v_list_box_wifi->append(*row);
-
-        // std::cout << "SSID: " << i.ssid << ", Signal: " << i.signal << ", Security: " << i.security << ", Bars: " << i.bars << ", Connected: " << (i.is_connected ? "Yes" : "No") << std::endl;
     }
 }
 

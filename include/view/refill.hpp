@@ -14,6 +14,7 @@ protected:
                 *v_lbl_total_monedas;
     
     Gtk::Button *v_btn_deten = nullptr;
+    Gtk::ColumnView *v_tree_reciclador_monedas = nullptr, *v_tree_reciclador_billetes = nullptr;
 
     void on_setup_label(const Glib::RefPtr<Gtk::ListItem> &list_item);
     void on_bind_deno(const Glib::RefPtr<Gtk::ListItem> &list_item);

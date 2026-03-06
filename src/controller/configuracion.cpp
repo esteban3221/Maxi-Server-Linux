@@ -1,5 +1,5 @@
 #include "controller/configuracion.hpp"
-//@@@ Añadir ruta para quitar carrousel y para guardar carpeta de imagenes
+
 CConfiguracion::CConfiguracion(/* args */)
 {
     CROW_ROUTE(RestApp::app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
@@ -61,7 +61,7 @@ crow::response CConfiguracion::get_volcado_servicio(const crow::request &req)
 
 crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     try
     {
         auto db = std::make_unique<Configuracion>();
@@ -87,7 +87,7 @@ crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
 
 crow::response CConfiguracion::actualiza_operaciones(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     try
     {
         auto db = std::make_unique<Configuracion>();
@@ -109,7 +109,7 @@ crow::response CConfiguracion::actualiza_operaciones(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_operaciones(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(22, 25);
 
@@ -124,7 +124,7 @@ crow::response CConfiguracion::get_informacion_operaciones(const crow::request &
 
 crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     try
     {
 
@@ -158,7 +158,7 @@ crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request
 
 crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 {
-    //Global::Utility::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
+    //Sesion::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
 
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(10, 14);
@@ -175,7 +175,7 @@ crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_impresora(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(15, 21);
 
@@ -194,7 +194,7 @@ crow::response CConfiguracion::get_informacion_impresora(const crow::request &re
 
 crow::response CConfiguracion::test_impresion(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
         std::string command = "echo \"" + Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()), 0) + "\" | lp";
         std::system(command.c_str());
@@ -207,7 +207,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 
 crow::response CConfiguracion::reiniciar(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown -r +1 &");
         Global::Rest::app.stop();
@@ -220,7 +220,7 @@ crow::response CConfiguracion::reiniciar(const crow::request &req)
 
 crow::response CConfiguracion::apagar(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown +1 &");
         Global::Rest::app.stop();
@@ -233,7 +233,7 @@ crow::response CConfiguracion::apagar(const crow::request &req)
 
 crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
 
     const std::string &parent{"cat /sys/devices/virtual/dmi/id/"};
     const std::string &a{parent + "board_vendor"};
@@ -258,7 +258,7 @@ crow::response CConfiguracion::get_informacion_sistema(const crow::request &req)
 
 crow::response CConfiguracion::desactiva_carrousel(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     Global::Widget::v_main_stack->set_visible_child("0");
 
     return crow::response();
@@ -266,7 +266,7 @@ crow::response CConfiguracion::desactiva_carrousel(const crow::request &req)
 
 crow::response CConfiguracion::sube_carpeta_pos(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     crow::multipart::message msg(req);
 
     auto file_part = msg.get_part_by_name("file");
@@ -292,7 +292,7 @@ crow::response CConfiguracion::sube_carpeta_pos(const crow::request &req)
 
 crow::response CConfiguracion::sube_imagen_pos(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     crow::multipart::message msg(req);
 
     auto file_part = msg.get_part_by_name("file");
@@ -314,7 +314,7 @@ crow::response CConfiguracion::sube_imagen_pos(const crow::request &req)
 
 crow::response CConfiguracion::actualiza_pos(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
     crow::multipart::message msg(req);
 
     auto file_part = msg.get_part_by_name("file");
@@ -353,7 +353,7 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
     auto bodyParams = crow::json::load(req.body);
     auto rol = bodyParams["rol"].i();
 
-    Global::Utility::valida_autorizacion(req, (Global::User::Rol)rol);
+    Sesion::valida_autorizacion(req, (Global::User::Rol)rol);
 
     crow::json::wvalue response_json;
 

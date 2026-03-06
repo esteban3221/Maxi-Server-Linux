@@ -12,7 +12,6 @@ VCarrousel::VCarrousel(/* args */)
 
 void VCarrousel::on_img_clicked()
 {
-    std::cout << "Click en la imagen\n";
     count_click_image++;
     if (count_click_image > 5)
     {
@@ -65,7 +64,7 @@ std::vector<std::string> VCarrousel::listar_contenido(const std::string &ruta_ca
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        std::cerr << "Error al acceder al directorio: " << e.what() << std::endl;
+        CROW_LOG_ERROR << "Error al acceder al directorio: " << e.what();
     }
     return archivos;
 }
@@ -136,9 +135,7 @@ void VCarrousel::init_imgs(void)
             i->property_valign() = Gtk::Align::FILL;
             add(*overlay);
         }
-            
-        
-        // conn = Glib::signal_timeout().connect(sigc::mem_fun(*this, &VCarrousel::mueve_carrousel), vec_pages.size() * mili_seconds_move);
+
         std::thread([this]()
         {
             while (mili_seconds_move != 0)
@@ -148,7 +145,6 @@ void VCarrousel::init_imgs(void)
             }
         }).detach();
     }
-    //else std::cout << "No se encontro ningun elemento a mostrar\n";
     else
     {
         Gtk::Button* btn = Gtk::manage(new Gtk::Button());

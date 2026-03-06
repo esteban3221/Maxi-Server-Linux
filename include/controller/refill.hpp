@@ -11,10 +11,14 @@ class Refill final : public VRefill
 {
 protected:
     void on_show_map();
-    void func_poll(const std::string &status, const crow::json::rvalue &data);
+    void on_credit(const std::string &, const std::string &, const crow::json::rvalue &data, size_t credito);
+    void on_error(const std::string &error);
+
 
 private:
     Global::Async async_gui;
+    CashHub &hub = CashHub::instance();
+    Log log;
 
     crow::response inicia(const crow::request &req);
     crow::response deten_remoto(const crow::request &req);
@@ -26,27 +30,16 @@ private:
 
     size_t saca_cassette();
     void deten();
+    Glib::RefPtr<MLog> t_log;
+    
+    bool cancelado;
+    std::condition_variable cv_finalizado;
+    std::mutex mtx_espera;
+    bool transaccion_terminada = false;
+    void reset_log(const crow::json::rvalue &param);
 
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);
     void calcula_total(const std::shared_ptr<Gtk::SingleSelection> &select_bill, const std::shared_ptr<Gtk::SingleSelection> &select_coin);
-
-    int total, total_bill, total_coin, parcial_bill, parcial_coin;
-    uint64_t total_parcial_monedas[4]{0}, total_parcial_billetes[6]{0};
-
-    const std::unordered_map<int, int> map_bill = {
-        {0, 20},
-        {1, 50},
-        {2, 100},
-        {3, 200},
-        {4, 500},
-        {5, 1'000}};
-    const std::unordered_map<int, int> map_coin = {
-        {0, 1},
-        {1, 2},
-        {2, 5},
-        {3, 10}};
-
-    std::shared_ptr<Gtk::SingleSelection> single_bill_selection, single_coin_selection;
 
     // websocket
     void on_wb_socket_open(crow::websocket::connection &conn);

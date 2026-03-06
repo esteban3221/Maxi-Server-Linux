@@ -23,7 +23,7 @@ crow::response LogData::corte_caja(const crow::request &req)
     crow::json::wvalue json;
     json["log"] = crow::json::wvalue::list();
 
-    auto contenedor_log = Global::Utility::valida_administrador(req)
+    auto contenedor_log = Sesion::valida_administrador(req)
                               ? log->get_corte(0, tipo, f_ini, f_fin)
                               : log->get_corte(Global::User::id, tipo, f_ini, f_fin);
 
@@ -45,7 +45,7 @@ crow::response LogData::corte_caja(const crow::request &req)
 
 crow::response LogData::get_log(const crow::request &req)
 {
-    Global::Utility::valida_autorizacion(req, Global::User::Rol::Consulta_Movimientos);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Movimientos);
 
     auto bodyParams = crow::json::load(req.body);
     auto tipo = bodyParams["tipo"].s();
@@ -105,6 +105,7 @@ crow::response LogData::get_log(const crow::request &req)
     return crow::response(json);
 }
 
+//@@@ hay que devolver el ultimo get level
 crow::response LogData::get_levels(const crow::request &req)
 {
     crow::json::wvalue json;

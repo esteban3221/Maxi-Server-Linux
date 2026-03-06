@@ -9,6 +9,7 @@
 
 #include "config/version.hpp"
 #include "shared/version_comparator.hpp"
+#include "core/hub_cash.hpp"
 
 namespace RestApp = Global::Rest;
 class Sesion //: public sigc::trackable
@@ -23,8 +24,10 @@ private:
 
     crow::response get_all_users(const crow::request &req);
     crow::response get_all_roles_by_id(const crow::request &req);
-
     crow::response maxicajero_version_check(const crow::request &req);
+
+    friend class CashHub;
+    static std::string token;
 
     // WebSocket
     void on_websocket_open(crow::websocket::connection& conn);
@@ -34,4 +37,7 @@ private:
 public:
     Sesion(/* args */);
     ~Sesion();
+
+    static void valida_autorizacion(const crow::request &req, Global::User::Rol rol);
+    static bool valida_administrador(const crow::request &req);
 };

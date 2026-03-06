@@ -28,7 +28,7 @@ void VValidador::llena_puertos()
     }
     catch (const std::filesystem::filesystem_error &e)
     {
-        std::cerr << "Error: " << e.what() << std::endl;
+        CROW_LOG_ERROR << "Error: " << e.what();
     }
 }
 

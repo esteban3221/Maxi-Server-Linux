@@ -73,18 +73,18 @@ EstadoWS nuevo_estado;
                        nuevo_estado.label != ultimo_estado_enviado.label ||
                        nuevo_estado.css_classes != ultimo_estado_enviado.css_classes;
 
-    if (ha_cambiado && Global::Rest::ws_connection)
+    if (ha_cambiado /*&& Global::Rest::ws_connection*/)
     {
         auto json = crow::json::wvalue();
         json["status"] = nuevo_estado.status;
         json["code"]   = nuevo_estado.code;
 
-        Global::Rest::ws_connection->send_text(json.dump());
+        // Global::Rest::ws_connection->send_text(json.dump());
 
         ultimo_estado_enviado = nuevo_estado;
         primer_envio_realizado = true;
 
-        std::cout << "[WS] Estado enviado (cambio detectado): " << nuevo_estado.status << "\n";
+        CROW_LOG_INFO << "[WS] Estado enviado (cambio detectado): " << nuevo_estado.status << "\n";
     }
 
     return true;

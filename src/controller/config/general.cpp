@@ -240,7 +240,7 @@ std::vector<std::string> General::listar_contenido(const std::string &ruta_carpe
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        std::cerr << "Error al acceder al directorio: " << e.what() << std::endl;
+        CROW_LOG_ERROR << "Error al acceder al directorio: " << e.what();
     }
     return archivos;
 }
@@ -251,7 +251,7 @@ void General::on_file_dialog_response(int response_id, Gtk::FileChooserDialog *d
     {
         case Gtk::ResponseType::OK:
         {
-            std::cout << "Open clicked." << std::endl;
+            CROW_LOG_INFO << "Open clicked.";
             auto filename = dialog->get_file()->get_path();
 
             auto db = std::make_unique<Configuracion>();
@@ -272,12 +272,12 @@ void General::on_file_dialog_response(int response_id, Gtk::FileChooserDialog *d
         }
         case Gtk::ResponseType::CANCEL:
         {
-            std::cout << "Cancel clicked." << std::endl;
+            CROW_LOG_INFO << "Cancel clicked.";
             break;
         }
         default:
         {
-            std::cout << "Unexpected button clicked." << std::endl;
+            CROW_LOG_INFO << "Unexpected button clicked.";
             break;
         }
     }

@@ -6,7 +6,9 @@
 #include <glibmm.h>
 #include <giomm.h>
 #include <iostream>
+
 #include "coneccion.hpp"
+#include "controller/session.hpp"
 
 class MLog : public Glib::Object
 {
@@ -68,6 +70,5 @@ public:
     const std::shared_ptr<ResultMap> get_corte(int id_user = 0, const std::string &tipo = "", const std::string &f_ini = "", const std::string &f_fin = "");
     size_t insert_log(const Glib::RefPtr<MLog> &list);
     void update_log(const Glib::RefPtr<MLog> &list);
-    // size_t tam_row;
-    // void imprime_log();
+    static crow::json::wvalue json_ticket(Glib::RefPtr<MLog> t_log);
 };

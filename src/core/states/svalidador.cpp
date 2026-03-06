@@ -26,29 +26,29 @@ void EstadoActivo::on_stop_disconnect(ValidadorUnit &v) {
 }
 void EstadoActivo::on_handle_event(ValidadorUnit &v, const std::string &event_type, const crow::json::rvalue &data) {
     // El estado Activo sabe que estos eventos significan "Dinero entrante"
-    if (event_type == "ESCROW" || event_type == "STACKED" || event_type == "VALUE_ADDED") {
-        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_type;
-        v.signal_event_received.emit(event_type, data);
-    } 
-    else if (event_type == "FRAUD_ATTEMPT") {
-        v.signal_error.emit("Posible intento de fraude detectado");
-    }
-    else if (event_type == "JAMMED") {
-        v.signal_error.emit("Dispositivo atascado");
-        // transicionar a un estado de Error automáticamente
-        v.transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
-    }
-    else if (event_type == "INCOMPLETE_PAYOUT" || event_type == "ERROR_DURING_PAYOUT") {
-        v.signal_error.emit("Pago incompleto detectado");
-        // transicionar a un estado de Error automáticamente
-        v.transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type()));
-    }
-    else if (event_type == "ERROR")
-    {
-        v.signal_error.emit("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type());
-        // transicionar a un estado de Error automáticamente
-        v.transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type()));
-    }
+    // if (event_type == "ESCROW" || event_type == "STACKED" || event_type == "VALUE_ADDED") {
+    //     CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_type;
+    //     v.signal_event_received.emit(event_type, data);
+    // } 
+    // else if (event_type == "FRAUD_ATTEMPT") {
+    //     v.signal_error.emit("Posible intento de fraude detectado");
+    // }
+    // else if (event_type == "JAMMED") {
+    //     v.signal_error.emit("Dispositivo atascado");
+    //     // transicionar a un estado de Error automáticamente
+    //     v.transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
+    // }
+    // else if (event_type == "INCOMPLETE_PAYOUT" || event_type == "ERROR_DURING_PAYOUT") {
+    //     v.signal_error.emit("Pago incompleto detectado");
+    //     // transicionar a un estado de Error automáticamente
+    //     v.transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type()));
+    // }
+    // else if (event_type == "ERROR")
+    // {
+    //     v.signal_error.emit("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type());
+    //     // transicionar a un estado de Error automáticamente
+    //     v.transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " + data.operator std::filesystem::__cxx11::path::string_type()));
+    // }
 }
 
 // --- Implementación DETENIENDO ---
@@ -60,8 +60,8 @@ void EstadoDeteniendo::on_handle_event(ValidadorUnit &v, const std::string &e, c
 
 // --- Implementación ERROR ---
 void EstadoError::on_entry(ValidadorUnit &v) {
-    CROW_LOG_ERROR << "Estado Error: " << mensaje;
-    v.signal_error.emit(mensaje);
+    // CROW_LOG_ERROR << "Estado Error: " << mensaje;
+    // v.signal_error.emit(mensaje);
 }
 void EstadoError::on_handle_event(ValidadorUnit &v, const std::string &e, const crow::json::rvalue &d) {
     if (e == "RESET") v.transiciona_estado(std::make_unique<EstadoIdle>());

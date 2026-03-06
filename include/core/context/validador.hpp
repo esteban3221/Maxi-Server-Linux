@@ -48,15 +48,16 @@ private:
 
     // utilidades para consumir la api rest del validador
     const std::string BASE_URL = "http://localhost:5000/api/CashDevice/";
-    void imprime_debug(const std::string &,const cpr::Response &r) const;
+    void imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body = "") const;
+    crow::json::rvalue ultimo_cash_level;
 
 public:
     ValidadorUnit(/* args */);
     ~ValidadorUnit();
 
     sigc::signal<void(const std::string &)> signal_state_changed;                              // Emite nuevo estado
-    sigc::signal<void(const std::string &, const crow::json::rvalue &)> signal_event_received; // Eventos del poll
-    sigc::signal<void(const std::string &)> signal_error;                                      // Errores graves
+    sigc::signal<void(const std::string &, const std::string &, const std::string &, const crow::json::rvalue &)> signal_event_received; // Eventos del poll
+    sigc::signal<void(const std::string &, const std::string &)> signal_error;                                      // Errores graves
 
     //propertys
     size_t &property_poll_milli() { return poll_milli; }
@@ -65,6 +66,7 @@ public:
     size_t &property_salida_credito() { return salida_credito; }
     Conf &property_conf(){return conf;}
     std::string &property_token() { return token; }
+    crow::json::rvalue &property_ultimo_cash_level(){ return ultimo_cash_level; }
     const std::string &property_device_model() {return device_model;} //solo_lectura
     const std::string &property_device_id() {return device_id;} //solo_lectura
 
