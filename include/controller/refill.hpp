@@ -39,8 +39,7 @@ private:
     void reset_log(const crow::json::rvalue &param);
 
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);
-    void calcula_total(const std::shared_ptr<Gtk::SingleSelection> &select_bill, const std::shared_ptr<Gtk::SingleSelection> &select_coin);
-
+    size_t calcula_total(const std::string &type, const std::shared_ptr<Gio::ListStore<MLevelCash>> &list_store);
     // websocket
     void on_wb_socket_open(crow::websocket::connection &conn);
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);

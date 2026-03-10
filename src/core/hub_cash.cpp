@@ -85,9 +85,9 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
     v->property_conf().puerto = puerto;
     v->property_conf().ssp = ssp;
-    v->property_conf().habilita_recolector = true;
-    v->property_conf().auto_acepta_credito = true;
-    v->property_conf().habilita_salida_credito = true;
+    v->property_conf().habilita_recolector = false;
+    v->property_conf().auto_acepta_credito = false;
+    v->property_conf().habilita_salida_credito = false;
 
     // Intentar la conexión (OpenConnection)
     if (v->inicia_conecta(crow::json::load("[]")))
@@ -95,10 +95,10 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
         // ÉXITO: Conectar señales locales del objeto a las globales del HUB
         v->signal_event_received.connect([this,&v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
         {
-            if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT") 
+            if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT" || tipo == "ESCROW") 
             {
                 int monto = data["value"].i() / 100;
-                signal_credito.emit(device_id, tipo, data, monto);
+                signal_credito.emit(device_id, type_val, data, monto);
             } 
         });
             
@@ -157,6 +157,22 @@ cpr::Response CashHub::command_by_device_id(HttpMethod method, const std::string
     error_res.status_code = 0; 
     error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
     return error_res;
+}
+
+std::map<std::string , crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(void)
+{
+    std::map<std::string, crow::json::rvalue> respuestas;
+
+    for (auto &&i : unidades)
+    {
+        auto snapshot_original = i->property_ultimo_cash_level();
+        crow::json::wvalue envoltorio;
+        envoltorio["levels"] = snapshot_original;
+        envoltorio["type"] = (i->property_conf().ssp == 16 ? "COIN" : "BILL");
+        respuestas[i->property_device_id()] = crow::json::load(envoltorio.dump());
+    }
+
+    return respuestas;
 }
 
 std::map<std::string , cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
@@ -250,5 +266,5 @@ void CashHub::inicia_pago(std::map<std::string ,std::string> map)
         if(map.contains(i->property_device_id()))
             i->iniciar_pago(map.at(i->property_device_id()));
         else
-            CROW_LOG_WARNING << "No se encontro el dispositivo" << i->property_device_id() << ", Para pago manual";
+            CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";
 }

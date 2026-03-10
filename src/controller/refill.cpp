@@ -91,6 +91,7 @@ void Refill::on_show_map()
     Glib::signal_idle().connect_once([this]()
     {
         auto map = hub.command_for_all(HttpMethod::GET, "GetAllLevels");
+        size_t total = 0;
 
         for (auto const& [llave, valor] : map)
         {
@@ -113,29 +114,60 @@ void Refill::on_show_map()
             for (size_t i = 0; i < json.size(); i++)
             {
                 list_store->append(MLevelCash::create
-                    (
-                        json[i]["value"].i() / 100,
-                        json[i]["storedInPayout"].i(),
-                        json[i]["storedInCashbox"].i(),
-                        level->get_item(i)->m_nivel_inmo_min,
-                        level->get_item(i)->m_nivel_inmo,
-                        level->get_item(i)->m_nivel_inmo_max,
-                        0
-                    ));
+                (
+                    json[i]["value"].i() / 100,
+                    json[i]["storedInCashbox"].i(),
+                    json[i]["storedInPayout"].i(),
+                    level->get_item(i)->m_nivel_inmo_min,
+                    level->get_item(i)->m_nivel_inmo,
+                    level->get_item(i)->m_nivel_inmo_max,
+                    0
+                ));
             }
+
+            total += calcula_total(valor.header.at("X-Device-Type"), list_store);
         }
+
+        v_lbl_total->set_text(Glib::ustring::format(total));
     });
+}
+
+size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio::ListStore<MLevelCash>> &list_store)
+{
+    size_t total = 0;
+    size_t parcial = 0;
+
+    auto label_total = type == "COIN" ? v_lbl_total_monedas : v_lbl_total_billetes;
+    auto label_parcial = type == "COIN" ? v_lbl_total_parcial_monedas : v_lbl_total_parcial_billetes;
+
+    for (size_t i = 0; i < list_store->get_n_items(); i++)
+    {
+        auto m_list = list_store->get_typed_object<const MLevelCash>(i);
+
+        total += m_list->m_cant_alm * m_list->m_denominacion;
+        total += m_list->m_cant_recy * m_list->m_denominacion;
+
+        parcial += m_list->m_ingreso * m_list->m_denominacion;
+    }
+    
+    async_gui.dispatch_to_gui([this, total, parcial, label_total, label_parcial]()
+    {
+        label_total->set_text(Glib::ustring::format(total));
+        label_parcial->set_text(Glib::ustring::format(parcial));
+    });
+    
+    return total;
 }
 
 void Refill::on_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
 {
+    t_log->m_ingreso += credito;
+    log.update_log(t_log);
+
     auto selection = (type == "COIN") ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
     auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
-
-    // para este momento ya esta conectado y funcionando asi que confio en que siempre devuelvan datos :)
-    auto response = hub.command_by_device_id(HttpMethod::GET, device_id, "GetAllLevels");
-    auto json = crow::json::load(response.text);
+    size_t total = 0;
     
     crow::json::wvalue json_ws;
     json_ws[type] = crow::json::wvalue::list();
@@ -143,28 +175,41 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
     for (size_t i = 0; i < list_store->get_n_items(); i++)
     {
         auto item = list_store->get_item(i);
-        for (auto &&j : json)
+        
+        if (item->m_denominacion == credito)
         {
-            if (item->m_denominacion == j["value"].i())
+            if(item->m_cant_recy <= item->m_nivel_inmo)
             {
-                async_gui.dispatch_to_gui([this, &item, json]()
+                if (type == "BILL")
+                    hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
+                    
+                item->m_ingreso++;
+                item->m_cant_recy++;
+
+                async_gui.dispatch_to_gui([this, item, i, list_store, single]()
                 {
-                    item->m_ingreso = json["storedInPayout"].i() - item->m_cant_recy;
+                    list_store->remove(i);
+                    list_store->insert(i, item);
+                    single->select_item(i, true);
                 });
-                break;
+            
+                total += calcula_total(type, list_store);
+
+                // json_ws[type][i]["Denominacion"] = item->m_denominacion;
+                // json_ws[type][i]["Almacenado"] = item->m_cant_alm;
+                // json_ws[type][i]["Recyclador"] = item->m_cant_recy;
+                // json_ws[type][i]["Inmovilidad_Min"] = item->m_nivel_inmo_min;
+                // json_ws[type][i]["Inmovilidad"] = item->m_nivel_inmo;
+                // json_ws[type][i]["Inmovilidad_Max"] = item->m_nivel_inmo_max;
+                // json_ws[type][i]["Ingreso"] = item->m_ingreso;
+                
+                //conn.send_text(json.dump());
             }
+            else
+                hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
         }
-
-        json_ws[type][i]["Denominacion"] = item->m_denominacion;
-        json_ws[type][i]["Almacenado"] = item->m_cant_alm;
-        json_ws[type][i]["Recyclador"] = item->m_cant_recy;
-        json_ws[type][i]["Inmovilidad_Min"] = item->m_nivel_inmo_min;
-        json_ws[type][i]["Inmovilidad"] = item->m_nivel_inmo;
-        json_ws[type][i]["Inmovilidad_Max"] = item->m_nivel_inmo_max;
-        json_ws[type][i]["Ingreso"] = item->m_ingreso;
     }
-
-    //conn.send_text(json.dump());
+    v_lbl_total->set_text(Glib::ustring::format(total));
 }
 
 void Refill::on_error(const std::string &error)
@@ -214,10 +259,37 @@ crow::response Refill::inicia(const crow::request &req)
 crow::response Refill::get_dashboard(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
-    
 
+    crow::json::wvalue json_final;
+    auto &hub = CashHub::instance();
+    auto map = hub.obten_ultimo_snapshot_level();
 
-    return crow::response();
+    for (auto const& [device_id, valor] : map)
+    {
+        auto niveles_hw = valor["levels"];
+        auto tipo_db = (valor["type"].s() == "COIN" ? "Level_Coin" : "Level_Bill");
+        auto config_db = std::make_unique<LevelCash>(tipo_db)->get_level_cash();
+
+        crow::json::wvalue lista_hibrida = crow::json::wvalue::list();
+
+        for (size_t i = 0; i < niveles_hw.size(); i++)
+        {
+            crow::json::wvalue item = niveles_hw[i];
+
+            if (i < config_db->get_n_items()) 
+            {
+                auto db_item = config_db->get_item(i);
+                item["Inmovilidad_Min"] = db_item->m_nivel_inmo_min;
+                item["Inmovilidad"] = db_item->m_nivel_inmo;
+                item["Inmovilidad_Max"] = db_item->m_nivel_inmo_max;
+                // item["Ingreso"] = db_item->m_ingreso; 
+            }
+            lista_hibrida[i] = std::move(item);
+        }
+        json_final[device_id]["levels"] = std::move(lista_hibrida);
+        json_final[device_id]["type"] = valor["type"].s();
+    }
+    return crow::response(json_final);
 }
 
 crow::response Refill::update_imovilidad(const crow::request &req)
@@ -289,7 +361,7 @@ void Refill::reset_log(const crow::json::rvalue &param)
         0,
         Global::User::id,
         "Refill",
-        param["concepto"].operator std::string(),
+        "",
         0,
         0,
         0,

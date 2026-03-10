@@ -105,18 +105,14 @@ crow::response LogData::get_log(const crow::request &req)
     return crow::response(json);
 }
 
-//@@@ hay que devolver el ultimo get level
 crow::response LogData::get_levels(const crow::request &req)
 {
     crow::json::wvalue json;
     auto &hub = CashHub::instance();
-    hub.inicia_for_all({},{});
-    auto map = hub.command_for_all(HttpMethod::GET,"GetAllLevels");
+    auto map = hub.obten_ultimo_snapshot_level();
 
     for (auto const& [llave, valor] : map)
-        json[llave] = crow::json::load(valor.text);
-
-    hub.detiene_for_all();
+        json[llave] = valor["levels"];
 
     return crow::response(json);
 }

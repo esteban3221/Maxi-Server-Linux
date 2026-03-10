@@ -51,13 +51,11 @@ void Venta::on_btn_retry_click()
 
 void Venta::on_btn_cancel_click()
 {
-    {
-        std::lock_guard<std::mutex> lock(mtx_espera);
-        transaccion_terminada = cancelado = true;
-        cv_finalizado.notify_one(); 
-    }
-    hub.detiene_for_all();
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    std::lock_guard<std::mutex> lock(mtx_espera);
+    if (transaccion_terminada) return;
+
+    transaccion_terminada = cancelado = true;
+    cv_finalizado.notify_one(); 
 }
 
 crow::response Venta::deten(const crow::request &req)
@@ -145,6 +143,7 @@ crow::response Venta::inicia(const crow::request &req)
     {
         t_log->m_estatus = "Operación cancelada";
         hub.inicia_pago(t_log->m_ingreso);
+        t_log->m_cambio = t_log->m_ingreso;
     }
     else
         t_log->m_estatus = "Exito.";

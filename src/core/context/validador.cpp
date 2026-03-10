@@ -53,7 +53,7 @@ const cpr::Response ValidadorUnit::command_get(const std::string &command, bool 
                              cpr::Header{{"Content-Type", "application/json"},
                                          {"Authorization", "Bearer " + token}});
 
-    response.header["X-Device-Type"] = !conf.ssp ? "COIN":"BILL"; 
+    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN":"BILL"; 
 
     if (debug)
         imprime_debug(command, response);
@@ -68,7 +68,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
                                           {"Authorization", "Bearer " + token}},
                               cpr::Body{json});
 
-    response.header["X-Device-Type"] = !conf.ssp ? "COIN":"BILL"; 
+    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN":"BILL"; 
 
     if (debug)
         imprime_debug(command, response, json);
@@ -143,7 +143,7 @@ void ValidadorUnit::detiene_desconecta()
     if (response.status_code == 200)
     {
         CROW_LOG_INFO << response.text;
-        device_id = "Desconocido";
+        // device_id = "Desconocido";
     }
     else
         transiciona_estado(std::make_unique<EstadoError>("Error al desconectar del validador: " + response.text));
@@ -170,7 +170,7 @@ void ValidadorUnit::iniciar_polling()
                     else if (item.has("eventTypeAsString")) 
                         event_name = item["eventTypeAsString"].s();
                     if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") {
-                        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i();
+                        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i() / 100;
                         signal_event_received.emit(device_id, conf.ssp == 0 ? "BILL" : "COIN", event_name, item);
                     } 
                     else if (event_name == "FRAUD_ATTEMPT") {
@@ -241,7 +241,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         iniciar_polling();
     else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
     {
-        CROW_LOG_ERROR << json["dispenseResult"].s() << " - " << json["reason"].s();
+        CROW_LOG_ERROR << device_id << " → " << json["dispenseResult"].s() << " - " << json["reason"].s();
         
         if(json["reason"].s() == "BUSY")
         {

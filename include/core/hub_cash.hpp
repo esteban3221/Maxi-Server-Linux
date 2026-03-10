@@ -50,6 +50,7 @@ public:
 
     //Pass-through
     std::map<std::string , cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
+    std::map<std::string , crow::json::rvalue> obten_ultimo_snapshot_level(void);
     cpr::Response command_by_device_id(HttpMethod method,const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
     void inicia_for_all(const Conf &conf,std::map<std::string, const crow::json::rvalue> = {});
     void inicia_poll_for_all();
