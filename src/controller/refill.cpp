@@ -144,7 +144,7 @@ size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio:
     {
         auto m_list = list_store->get_typed_object<const MLevelCash>(i);
 
-        total += m_list->m_cant_alm * m_list->m_denominacion;
+        total += type == "COIN" ? 0 : m_list->m_cant_alm * m_list->m_denominacion;
         total += m_list->m_cant_recy * m_list->m_denominacion;
 
         parcial += m_list->m_ingreso * m_list->m_denominacion;
@@ -220,10 +220,32 @@ void Refill::envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLev
     conn_->send_text(json_ws.dump());
 }
 
-void Refill::on_error(const std::string &error)
+void Refill::on_error(const std::string &device, const std::string &error)
 {
-    t_log->m_estatus = error;
-    log.update_log(t_log);
+if (error == "CASHBOX_REMOVED")
+    {
+        hub.detiene_poll_for_all(-1); 
+
+        auto response_level = hub.command_by_device_id(HttpMethod::GET, device, "GetAllLevels");
+        auto json_level = crow::json::load(response_level.text);
+
+        cashbox_level = 0;
+        for (auto &&i : json_level)
+            cashbox_level += (i["value"].i() / 100) * i["storedInCashbox"].i();
+        hub.command_by_device_id(HttpMethod::POST, device, "ClearCashboxLevels");
+
+        {
+            std::lock_guard<std::mutex> lock(mtx_espera);
+            transaccion_terminada = true;
+        }
+
+        cv_finalizado.notify_one(); 
+    }
+    else
+    {
+        t_log->m_estatus = error;
+        log.update_log(t_log);
+    }
 }
 
 crow::response Refill::deten_remoto(const crow::request &req)
@@ -323,33 +345,44 @@ crow::response Refill::transpaso(const crow::request &req)
     return {};
 }
 
-size_t Refill::saca_cassette()
-{
-    size_t total_bill = 0;
-    
-
-
-    return total_bill;
-}
-
 crow::response Refill::retirada(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Retirada);
+    auto conn = hub.on_error().connect(sigc::mem_fun(*this, &Refill::on_error));
+    transaccion_terminada = false;
+    cashbox_level = 0;
+
+    hub.inicia_for_all({});
+    hub.inicia_poll_for_all();
+
     async_gui.dispatch_to_gui([this]()
-    { Global::Widget::v_main_stack->set_visible_child(*this); });
+    { 
+        Global::Widget::v_main_stack->set_visible_child(*this); 
+    });
 
-    Log log;
-    auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, saca_cassette(), "Completado", Glib::DateTime::create_now_local());
+    {
+        std::unique_lock<std::mutex> lock(mtx_espera);
+        if(!cv_finalizado.wait_for(lock, std::chrono::minutes(2), [this] { return transaccion_terminada; })) 
+        {
+             conn.disconnect();
+             return crow::response(408, "Timeout: No se retiró el cassette");
+        }
+    }
+
+    auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, cashbox_level, "Completado", Glib::DateTime::create_now_local());
     t_log->m_id = log.insert_log(t_log);
-    auto data = Log::json_ticket(t_log);
 
+    hub.detiene_for_all();
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    conn.disconnect();
     
-    return crow::response(200, data);
+    return crow::response(200, Log::json_ticket(t_log));
 }
 
 void Refill::deten()
 {
+    hub.detiene_poll_for_all(t_log->m_id);
+
     {
         std::lock_guard<std::mutex> lock(mtx_espera);
         transaccion_terminada = true;

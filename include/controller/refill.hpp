@@ -12,8 +12,7 @@ class Refill final : public VRefill
 protected:
     void on_show_map();
     void on_credit(const std::string &, const std::string &, const crow::json::rvalue &data, size_t credito);
-    void on_error(const std::string &error);
-
+    void on_error(const std::string &device, const std::string &error); // este es el canal para escuchar cuando se remueva el cashbox
 
 private:
     Global::Async async_gui;
@@ -28,11 +27,11 @@ private:
     crow::response transpaso(const crow::request &req);
     crow::response retirada(const crow::request &req);
 
-    size_t saca_cassette();
     void deten();
     Glib::RefPtr<MLog> t_log;
     
     bool cancelado;
+    size_t cashbox_level;
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
     bool transaccion_terminada = false;

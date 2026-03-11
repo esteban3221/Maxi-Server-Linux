@@ -107,20 +107,16 @@ void Sesion::valida_autorizacion(const crow::request &req, Global::User::Rol rol
 void Sesion::on_websocket_open(crow::websocket::connection &conn)
 {
     CROW_LOG_INFO << "New WebSocket connection established";
-    // Global::Rest::ws_connection = &conn; // Guardamos la conexión para usarla en otras partes del código
 }
 
 void Sesion::on_websocket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
 {
     CROW_LOG_INFO << "WebSocket connection closed: " << reason;
-    // if (Global::Rest::ws_connection == &conn)
-    //     Global::Rest::ws_connection = nullptr; // Limpiamos la referencia a la conexión cerrada
 }
 
 void Sesion::on_websocket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
 {
     CROW_LOG_INFO << "Received WebSocket message: ";
-    conn.send_text("Foo");
 }
 
 crow::response Sesion::get_all_users(const crow::request &req)

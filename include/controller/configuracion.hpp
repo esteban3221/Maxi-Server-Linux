@@ -1,6 +1,7 @@
 #pragma once
 #include "global.hpp"
 #include "controller/config/impresora.hpp"
+#include "core/hub_cash.hpp"
 
 #include "model/configuracion.hpp"
 #include "model/log.hpp"
@@ -30,6 +31,7 @@ crow::response sube_carpeta_pos(const crow::request &req);
 crow::response sube_imagen_pos(const crow::request &req);
 
 crow::response custom_command(const crow::request &req);
+crow::response reinicia_validadores(const crow::request &req);
 
 
 void descomprime_zip(const std::string &filename);

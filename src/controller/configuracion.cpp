@@ -22,12 +22,33 @@ CConfiguracion::CConfiguracion(/* args */)
     CROW_ROUTE(RestApp::app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
 
     CROW_ROUTE(RestApp::app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
+    CROW_ROUTE(RestApp::app, "/configuracion/reiniciar_validadores").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::reinicia_validadores));
 
 
 }
 
 CConfiguracion::~CConfiguracion()
 {
+}
+
+crow::response CConfiguracion::reinicia_validadores(const crow::request &req)
+{
+    auto bodyParams = crow::json::load(req.body);
+    auto rol = bodyParams["rol"].i();
+
+    Sesion::valida_autorizacion(req, (Global::User::Rol)rol);
+    auto &hub = CashHub::instance();
+    
+    hub.inicia_for_all({});
+    auto map = hub.command_for_all(HttpMethod::POST, "ResetDevice");
+    for (auto &&i : map)
+    {
+        if(i.second.status_code != cpr::status::HTTP_OK)
+            return(crow::status::CONFLICT, "Error al reiniciar el dispositivo: " + i.first);
+    }
+    hub.detiene_for_all();
+    
+    return(crow::response(200));
 }
 
 crow::response CConfiguracion::get_volcado_servicio(const crow::request &req)

@@ -51,7 +51,6 @@ const std::shared_ptr<ResultMap> DetalleMovimiento::get_detalle_movimiento(uint3
  */
 void DetalleMovimiento::registrar_diferencias_salida(size_t t_id, const crow::json::rvalue &inicial, const crow::json::rvalue &final_)
 {
-    // Mapa para indexar el estado inicial: [Denominación -> Cantidad en Payout]
     std::map<uint32_t, int32_t> niveles_inicial;
 
     for (auto &item : inicial)
@@ -63,19 +62,13 @@ void DetalleMovimiento::registrar_diferencias_salida(size_t t_id, const crow::js
         }
     }
 
-    // Comparar con el estado final
     for (auto &item : final_)
     {
         if (item.has("value") && item.has("storedInPayout"))
         {
             uint32_t denom = item["value"].u() / 100;
             int32_t cant_final = item["storedInPayout"].i();
-            
-            // Si la denominación no estaba en el snapshot inicial, asumimos 0
             int32_t cant_inicial = niveles_inicial.count(denom) ? niveles_inicial[denom] : 0;
-            
-            // Diferencia: Final - Inicial. 
-            // Si es -5, significa que el nivel bajó (salieron 5 unidades)
             int32_t delta = cant_final - cant_inicial;
 
             if (delta < 0)

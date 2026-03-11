@@ -64,7 +64,7 @@ crow::response Venta::deten(const crow::request &req)
     return crow::response(200, "Venta detenida");
 }
 
-void Venta::on_error(const std::string &error)
+void Venta::on_error(const std::string &device, const std::string &error)
 {
     t_log->m_estatus = error;
     log.update_log(t_log);

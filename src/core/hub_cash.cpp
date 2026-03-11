@@ -22,30 +22,52 @@ std::string CashHub::autentica()
     return "";
 }
 
-int CashHub::obtener_ssp_por_serial(const std::string &puerto_dev)
+#include <cstring> // Para memset
+
+int CashHub::obtener_ssp_por_magia_negra(const std::string &puerto_dev, int ssp_address)
 {
-    std::string nombre_tty = puerto_dev.substr(puerto_dev.find_last_of('/') + 1); // "ttyUSB1"
-    std::string ruta_serial = "/sys/class/tty/" + nombre_tty + "/device/../../serial";
+    CROW_LOG_INFO << "Intentando sincronizar SSP en dirección: " << ssp_address;
 
-    std::ifstream archivo(ruta_serial);
-    std::string serial;
-
-    if (archivo >> serial)
+    SSP_PORT port_handle = OpenSSPPort(puerto_dev.c_str());
+    if(port_handle == -1)
     {
-        if (serial == "A10L8NSY")
-        {
-            CROW_LOG_INFO << "Hardware identificado: Smart Coin System (SSP 16)";
-            return 16;
-        }
-        if (serial == "A10L8NNB")
-        {
-            CROW_LOG_INFO << "Hardware identificado: Spectral Payout (SSP 0)";
-            return 0;
-        }
+        CROW_LOG_ERROR << "No se pudo abrir el puerto " << puerto_dev;
+        return -1;
     }
 
-    CROW_LOG_WARNING << "No se pudo identificar el serial. Usando SSP 0 por defecto.";
-    return 0;
+    // 1. Limpiar la estructura (Básico en C viejo)
+    SSP_COMMAND_SETUP ssp_setup;
+    std::memset(&ssp_setup, 0, sizeof(SSP_COMMAND_SETUP));
+
+    // 2. Configurar
+    ssp_setup.port = port_handle;
+    ssp_setup.Timeout = 1000;
+    ssp_setup.RetryLevel = 3;
+    ssp_setup.SSPAddress = ssp_address;
+    
+    // Asumiendo que NO_ENCRYPTION o similares están definidos en ssp_defines.h
+    ssp_setup.EncryptionStatus = 0; 
+
+    // 3. Ejecutar Sync
+    if (ssp_sync(ssp_setup) == SSP_RESPONSE_OK) {
+        CROW_LOG_INFO << "¡Sincronización exitosa en dirección " << ssp_address << "!";
+        // No olvides cerrar el puerto antes de salir si el SDK no lo mantiene abierto
+        // CloseSSPPort(port_handle); 
+        return ssp_address;
+    }
+
+    // 4. Si falló y estamos en la dirección 0, intentamos la 16 (y paramos ahí)
+    if (ssp_address == 0) {
+        CROW_LOG_WARNING << "Fallo en 0, intentando dirección 16...";
+        // IMPORTANTE: Cerrar el puerto actual antes de la re-apertura en la recursión
+        // o mejor aún, maneja el puerto fuera del bucle de direcciones.
+        CloseSSPPort(port_handle); 
+        return obtener_ssp_por_magia_negra(puerto_dev, 16);
+    }
+
+    CROW_LOG_ERROR << "No se encontró ningún dispositivo SSP en " << puerto_dev;
+    CloseSSPPort(port_handle);
+    return -1;
 }
 
 // --- Escaneo Automático ---
@@ -59,7 +81,7 @@ void CashHub::inicializar_hardware()
     {
         if (std::string path = entry.path().string(); path.find("/dev/ttyUSB") != std::string::npos)
         {
-            int ssp_sugerido = obtener_ssp_por_serial(path);
+            int ssp_sugerido = obtener_ssp_por_magia_negra(path);
             if (ssp_sugerido != -1)
             {
                 CROW_LOG_WARNING << "Puerto " << path << " detectado como Serial "
@@ -101,6 +123,11 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
                 mapa_detalle_entradas[monto]++;
                 signal_credito.emit(device_id, type_val, data, monto);
             } 
+        });
+        
+        v->signal_error.connect([this,&v](std::string device_id, std::string error_msg)
+        {
+            signal_hub_error.emit(device_id, error_msg);
         });
             
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -292,7 +319,7 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
             crow::json::load(snapshot_fin[i].text));
 
     if (remanente > 0)
-        signal_hub_error.emit("Cambio incompleto. Faltaron: " + std::to_string(remanente));
+        signal_hub_error.emit("General", "Cambio incompleto. Faltaron: " + std::to_string(remanente));
 }
 
 // manual

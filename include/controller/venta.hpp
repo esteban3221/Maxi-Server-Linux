@@ -33,7 +33,7 @@ private:
     crow::response deten(const crow::request &req);
 
     void on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito);
-    void on_error(const std::string &error);
+    void on_error(const std::string &device, const std::string &error);
     Glib::RefPtr<MLog> t_log;
 
     void reset_log(const crow::json::rvalue &param);

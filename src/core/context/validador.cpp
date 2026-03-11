@@ -26,7 +26,6 @@ void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
     if (handler_state)
         handler_state->on_exit(*this);
 
-
     auto estado_anterior = handler_state ? handler_state->get_nombre_estado() : "Ninguno";
     handler_state = std::move(nuevo_estado);
 
@@ -53,7 +52,7 @@ const cpr::Response ValidadorUnit::command_get(const std::string &command, bool 
                              cpr::Header{{"Content-Type", "application/json"},
                                          {"Authorization", "Bearer " + token}});
 
-    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN":"BILL"; 
+    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN" : "BILL";
 
     if (debug)
         imprime_debug(command, response);
@@ -68,7 +67,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
                                           {"Authorization", "Bearer " + token}},
                               cpr::Body{json});
 
-    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN":"BILL"; 
+    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN" : "BILL";
 
     if (debug)
         imprime_debug(command, response, json);
@@ -101,8 +100,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 
 const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
 {
-    auto json = crow::json::wvalue
-    {
+    auto json = crow::json::wvalue{
         {"ComPort", conf.puerto},
         {"SspAddress", conf.ssp},
         {"LogFilePath", conf.log_ruta},
@@ -110,8 +108,7 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         {"SetRoutes", set_routes.has("SetRoutes") ? set_routes["SetRoutes"] : set_routes},
         {"EnableAcceptor", conf.habilita_recolector},
         {"EnableAutoAcceptEscrow", conf.auto_acepta_credito},
-        {"EnablePayout", conf.habilita_salida_credito}
-    };
+        {"EnablePayout", conf.habilita_salida_credito}};
 
     auto response = command_post("OpenConnection", json.dump(), true);
     auto json_response = crow::json::load(response.text);
@@ -161,46 +158,48 @@ void ValidadorUnit::iniciar_polling()
     {
         while (poll) {
             auto resp = command_get("GetDeviceStatus/v2");
-            if (resp.status_code == cpr::status::HTTP_OK) {
+            if (resp.status_code == cpr::status::HTTP_OK) 
+            {
                 auto json = crow::json::load(resp.text);
-                for (const auto &item : json["pollBuffer"]) {
+                for (const auto &item : json["pollBuffer"]) 
+                {
                     std::string event_name;
-                    if (item.has("stateAsString")) 
-                        event_name = item["stateAsString"].s();
-                    else if (item.has("eventTypeAsString")) 
-                        event_name = item["eventTypeAsString"].s();
-                    if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") {
+                    if (item.has("stateAsString")) event_name = item["stateAsString"].s();
+                    else if (item.has("eventTypeAsString")) event_name = item["eventTypeAsString"].s();
+
+                    if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") 
+                    {
                         CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i() / 100;
                         signal_event_received.emit(device_id, conf.ssp == 0 ? "BILL" : "COIN", event_name, item);
                     } 
-                    else if (event_name == "FRAUD_ATTEMPT") {
+                    else if (event_name == "FRAUD_ATTEMPT")
                         signal_error.emit(device_id, "Posible intento de fraude detectado");
-                    }
-                    else if (event_name == "JAMMED") {
+                    else if (event_name == "JAMMED") 
+                    {
                         signal_error.emit(device_id,"Dispositivo atascado");
-                        // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
                     }
-                    else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") {
+                    else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") 
+                    {
                         signal_error.emit(device_id,"Pago incompleto detectado");
-                        // transicionar a un estado de Error automáticamente
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "ERROR")
                     {
                         signal_error.emit(device_id, "Error genérico detectado");
-                        // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
+                        break;
                     }
                     else if (event_name == "TIME_OUT")
                     {
                         signal_error.emit(device_id, "Tiempo limite alcanzado" );
-                        // transicionar a un estado de Error automáticamente
                         detiene_desconecta();
                         transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
+                    else if (event_name == "CASHBOX_REMOVED")
+                        signal_error.emit(device_id, event_name);
                     else if (event_name == "IN_PROGRESS")
                     {
                         continue;
@@ -214,13 +213,14 @@ void ValidadorUnit::iniciar_polling()
 }
 
 uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
-{   
+{
     uint cambio = monto;
     auto response = command_get("GetAllLevels");
     auto json = crow::json::load(response.text);
     std::map<int, int> levels;
 
-    for (auto &&i : json) levels[i["value"].i() / 100] = i["storedInPayout"].i();
+    for (auto &&i : json)
+        levels[i["value"].i() / 100] = i["storedInPayout"].i();
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
     if (cambio > 0)
@@ -233,8 +233,9 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
 
 void ValidadorUnit::iniciar_pago(const std::string &denom)
 {
-    if (denom.size() == 0) return;
-    //if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
+    if (denom.size() == 0)
+        return;
+    // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
 
     auto response = command_post("PayoutMultipleDenominations", denom);
     if (response.status_code == cpr::status::HTTP_OK)
@@ -242,8 +243,8 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
     {
         CROW_LOG_ERROR << device_id << " → " << json["dispenseResult"].s() << " - " << json["reason"].s();
-        
-        if(json["reason"].s() == "BUSY")
+
+        if (json["reason"].s() == "BUSY")
         {
             CROW_LOG_INFO << "Reintentando pago.";
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -253,7 +254,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     else
     {
         CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
-        signal_error.emit(device_id, json["dispenseResult"].operator std::string()+ ", Razon: " + json["dispenseResult"].operator std::string());
+        signal_error.emit(device_id, json["dispenseResult"].operator std::string() + ", Razon: " + json["dispenseResult"].operator std::string());
         detiene_desconecta();
     }
 }
@@ -261,8 +262,8 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
 crow::json::wvalue ValidadorUnit::obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio)
 {
     std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
-    auto cambio_original = cambio; // Guardamos el valor original del cambio 
-    int index = reciclador.size() - 1; // Índice para insertar en el vector
+    auto cambio_original = cambio;                        // Guardamos el valor original del cambio
+    int index = reciclador.size() - 1;                    // Índice para insertar en el vector
     for (auto it = reciclador.rbegin(); it != reciclador.rend(); ++it, --index)
     {
         int denominacion = it->first;         // Denominación del billete

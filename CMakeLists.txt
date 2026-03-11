@@ -26,12 +26,12 @@ pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 find_package(SQLite3 REQUIRED)
 find_package(GTest REQUIRED)
 
-include_directories(
-    ${GTKMM_INCLUDE_DIRS}
-    ${LIBNOTIFY_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_BINARY_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+# include_directories(
+#     ${GTKMM_INCLUDE_DIRS}
+#     ${LIBNOTIFY_INCLUDE_DIRS}
+#     ${CMAKE_CURRENT_BINARY_DIR}/include
+#     ${CMAKE_CURRENT_SOURCE_DIR}/include
+# )
 
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
@@ -100,33 +100,42 @@ set(SOURCES
     src/core/hub_cash.cpp
 )
 
-include_directories(include 
-                    include/core
-                    include/core/context
-                    include/core/interfaces
-                    include/core/states
-                    include/controller
-                    include/controller/accion
-                    include/view
-                    include/view/config
-                    include/db
-                    include/model
-                    include/shared
+include_directories(include
+    include/core
+    include/core/context
+    include/core/interfaces
+    include/core/states
+    include/controller
+    include/controller/accion
+    include/view
+    include/view/config
+    include/db
+    include/model
+    include/shared
 )
 
 add_subdirectory(lib/Sqlit3-cpp-lib/)
+add_subdirectory(lib/eSSP)
 
 add_executable(Maxicajero ${SOURCES})
 
-target_link_libraries(Maxicajero 
-                        PUBLIC 
-                        Sqlite-cpp
-                        ${GTKMM_LIBRARIES} 
-                        ${LIBNOTIFY_LIBRARIES}
-                        cpr::cpr
-                        Crow::Crow
+target_link_libraries(Maxicajero
+    PUBLIC
+    Sqlite-cpp
+    eSSP_lib
+    ${GTKMM_LIBRARIES}
+    ${LIBNOTIFY_LIBRARIES}
+    cpr::cpr
+    Crow::Crow
 )
-target_include_directories(Maxicajero PRIVATE ${GTKMM_INCLUDE_DIRS})
+target_include_directories(Maxicajero PRIVATE
+    ${GTKMM_INCLUDE_DIRS}
+    ${LIBNOTIFY_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    lib/eSSP/inc
+    lib/eSSP/lib
+)
 
 enable_testing()
 add_subdirectory(test)

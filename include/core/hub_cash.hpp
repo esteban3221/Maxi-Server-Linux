@@ -12,6 +12,10 @@
 #include "model/detalle_movimiento.hpp"
 #include "controller/session.hpp"
 
+extern "C" {
+    #include "SSPComs.h"
+    #include "itl_types.h"
+}
 
 namespace fs = std::filesystem;
 enum class HttpMethod { GET, POST, PUT, DELETE };
@@ -28,13 +32,13 @@ private:
 
     // Señales Globales
     sigc::signal<void(const std::string &device_id, const std::string &type_val, const crow::json::rvalue &, size_t)> signal_credito;
-    sigc::signal<void(std::string)> signal_hub_error;
+    sigc::signal<void(const std::string &device_id, std::string)> signal_hub_error;
 
     CashHub() = default;
     DetalleMovimiento detalle;
 
     bool intentar_registrar(const std::string &puerto, int ssp);
-    int obtener_ssp_por_serial(const std::string& puerto);
+    int obtener_ssp_por_magia_negra(const std::string& puerto, int ssp = 0);
     crow::json::rvalue rutas_default(ValidadorUnit* val);
 
 public:

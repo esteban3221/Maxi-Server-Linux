@@ -191,7 +191,7 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
     return crow::response(Log::json_ticket(t_log));
 }
 
-void Pago::on_error(const std::string &error)
+void Pago::on_error(const std::string &device, const std::string &error)
 {
     t_log->m_estatus = error;
     log.update_log(t_log);
