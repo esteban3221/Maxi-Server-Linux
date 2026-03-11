@@ -44,7 +44,7 @@ crow::response Pago::inicia(const crow::request &req)
     conf.habilita_salida_credito = true;
 
     hub.inicia_for_all(conf);
-    hub.inicia_pago(t_log->m_cambio);
+    hub.inicia_pago(t_log->m_id, t_log->m_cambio);
 
     log.update_log(t_log);
     hub.detiene_for_all();
@@ -75,7 +75,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
     conf.habilita_salida_credito = true;
 
     hub.inicia_for_all(conf);
-    hub.inicia_pago(map_val);
+    hub.inicia_pago(t_log->m_id, map_val);
 
     log.update_log(t_log);
     hub.detiene_for_all();
@@ -165,7 +165,7 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     for (auto &&k : json["pago_manual"].keys())
         map_val[k] = crow::json::wvalue(json["pago_manual"][k]).dump();
 
-    hub.inicia_pago(map_val);
+    hub.inicia_pago(t_log->m_id, map_val);
     log.update_log(t_log);
     hub.detiene_for_all();
 
@@ -180,7 +180,7 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
 {
     auto bodyParams = crow::json::load(req.body);
 
-    hub.inicia_pago(t_log->m_ingreso);
+    hub.inicia_pago(t_log->m_id, t_log->m_ingreso);
     log.update_log(t_log);
     hub.detiene_for_all();
 
@@ -203,7 +203,7 @@ void Pago::on_credit(const std::string &, const std::string &, const crow::json:
     log.update_log(t_log);
 
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    hub.detiene_poll_for_all();
+    hub.detiene_poll_for_all(t_log->m_id);
 
     // NOTIFICACIÓN: Despertar al endpoint
     {

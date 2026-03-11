@@ -59,7 +59,8 @@ public:
     sigc::signal<void(const std::string &, const std::string &, const std::string &, const crow::json::rvalue &)> signal_event_received; // Eventos del poll
     sigc::signal<void(const std::string &, const std::string &)> signal_error;                                      // Errores graves
 
-    //propertys
+    //propertys encapsulamiento
+    
     size_t &property_poll_milli() { return poll_milli; }
     std::atomic<bool> &property_poll() { return poll; }
     size_t &property_ingreso_credito() { return ingreso_credito; }
@@ -80,7 +81,6 @@ public:
     const std::string get_nombre_estado();
 
     void transiciona_estado(std::unique_ptr<IValidador> nuevo_estado);
-    //void on_handle_event(const std::string &event_type, const crow::json::rvalue &data);
 
     const cpr::Response command_get(const std::string &command, bool debug = false) const;
     const cpr::Response command_post(const std::string &command, const std::string &json = "", bool = false) const;

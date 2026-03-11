@@ -44,6 +44,8 @@ private:
     void on_wb_socket_open(crow::websocket::connection &conn);
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
     void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
+    crow::websocket::connection *conn_ = nullptr;
+    void envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLevelCash> &item);
 
 public:
     Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);

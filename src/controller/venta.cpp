@@ -87,9 +87,8 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
     if (t_log->m_ingreso >= t_log->m_total || cancelado)
     {
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        hub.detiene_poll_for_all();
+        hub.detiene_poll_for_all(t_log->m_id);
         
-        // NOTIFICACIÓN: Despertar al endpoint
         {
             std::lock_guard<std::mutex> lock(mtx_espera);
             transaccion_terminada = true;
@@ -142,13 +141,13 @@ crow::response Venta::inicia(const crow::request &req)
     if (cancelado)
     {
         t_log->m_estatus = "Operación cancelada";
-        hub.inicia_pago(t_log->m_ingreso);
+        hub.inicia_pago(t_log->m_id, t_log->m_ingreso);
         t_log->m_cambio = t_log->m_ingreso;
     }
     else
         t_log->m_estatus = "Exito.";
     if (t_log->m_cambio > 0 && !cancelado)
-        hub.inicia_pago(t_log->m_cambio);
+        hub.inicia_pago(t_log->m_id, t_log->m_cambio);
 
     log.update_log(t_log);    
     hub.detiene_for_all();

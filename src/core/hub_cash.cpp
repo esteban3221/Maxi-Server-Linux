@@ -98,6 +98,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
             if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT" || tipo == "ESCROW") 
             {
                 int monto = data["value"].i() / 100;
+                mapa_detalle_entradas[monto]++;
                 signal_credito.emit(device_id, type_val, data, monto);
             } 
         });
@@ -115,7 +116,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
     return false;
 }
 
-crow::json::rvalue CashHub::rutas_default(ValidadorUnit* val)
+crow::json::rvalue CashHub::rutas_default(ValidadorUnit *val)
 {
     crow::json::wvalue json_rutas;
     json_rutas = crow::json::wvalue::list();
@@ -138,28 +139,31 @@ crow::json::rvalue CashHub::rutas_default(ValidadorUnit* val)
 
 cpr::Response CashHub::command_by_device_id(HttpMethod method, const std::string &device_id, const std::string &command, const std::string &json, bool debug)
 {
-    for (auto const& i : unidades)
+    for (auto const &i : unidades)
     {
-        if(i->property_device_id() == device_id)
+        if (i->property_device_id() == device_id)
         {
             switch (method)
             {
-                case HttpMethod::GET:  return i->command_get(command, debug);
-                case HttpMethod::POST: return i->command_post(command, json, debug);
-                default:               return {}; 
+            case HttpMethod::GET:
+                return i->command_get(command, debug);
+            case HttpMethod::POST:
+                return i->command_post(command, json, debug);
+            default:
+                return {};
             }
         }
     }
 
-    // Si llegamos aquí, el ID no existe. 
+    // Si llegamos aquí, el ID no existe.
     // Creamos una respuesta con error 404 local o status 0 para indicar "No encontrado"
     cpr::Response error_res;
-    error_res.status_code = 0; 
+    error_res.status_code = 0;
     error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
     return error_res;
 }
 
-std::map<std::string , crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(void)
+std::map<std::string, crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(void)
 {
     std::map<std::string, crow::json::rvalue> respuestas;
 
@@ -175,12 +179,12 @@ std::map<std::string , crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(
     return respuestas;
 }
 
-std::map<std::string , cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
+std::map<std::string, cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
 {
     if (command == "OpenConnection")
         throw "Usar la funcion 'inicia_for_all' en su lugar";
 
-    std::map<std::string , cpr::Response> respuestas;
+    std::map<std::string, cpr::Response> respuestas;
 
     for (auto &&i : unidades)
     {
@@ -222,49 +226,93 @@ void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow:
 
 void CashHub::detiene_for_all(void)
 {
-    for (auto &&i : unidades) i->detiene_desconecta();
+    for (auto &&i : unidades)
+        i->detiene_desconecta();
 }
 
 void CashHub::inicia_poll_for_all()
 {
-    for (auto &&i : unidades) i->iniciar_polling();
+    for (auto &&i : unidades)
+        i->iniciar_polling();
 }
 
-void CashHub::detiene_poll_for_all()
+void CashHub::detiene_poll_for_all(size_t t_id)
 {
-    for (auto &&i : unidades) i->property_poll().store(false);
+    for (auto it = mapa_detalle_entradas.begin(); it != mapa_detalle_entradas.end(); ++it)
+    {
+        detalle.insertar_detalle_movimiento(t_id, MDetalleMovimiento::create(
+                                                  -1,
+                                                  t_id,
+                                                  "entrada",
+                                                  it->first,
+                                                  it->second));
+    }
+    
+    mapa_detalle_entradas.clear();
+
+    for (auto &&i : unidades)
+        i->property_poll().store(false);
 }
 
-void CashHub::inicia_pago(size_t monto, bool is_cambio)
+// automatico
+void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
 {
     uint remanente = monto;
+    std::vector<cpr::Response> snapshot_inicio;
+    std::vector<cpr::Response> snapshot_fin;
 
-    // 1. Primero buscamos los validadores de billetes (SSP 0 por convención ITL)
     for (auto &&i : unidades)
-        if (i->property_conf().ssp == 0) { 
+    {
+        if (i->property_conf().ssp == 0)
+        {
+            snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
             remanente = i->iniciar_pago(remanente, is_cambio);
+            snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
         }
+    }
 
-    // 2. Lo que sobre (remanente), intentamos pagarlo con monedas (SSP 16)
     if (remanente > 0)
+    {
         for (auto &&i : unidades)
         {
-            if (i->property_conf().ssp == 16) { 
+            if (i->property_conf().ssp == 16)
+            {
+                snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
                 remanente = i->iniciar_pago(remanente, is_cambio);
+                snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
             }
         }
+    }
 
-    if (remanente > 0) 
+    for (size_t i = 0; i < snapshot_inicio.size(); i++)
+        detalle.registrar_diferencias_salida(t_id, 
+            crow::json::load(snapshot_inicio[i].text), 
+            crow::json::load(snapshot_fin[i].text));
+
+    if (remanente > 0)
         signal_hub_error.emit("Cambio incompleto. Faltaron: " + std::to_string(remanente));
 }
 
-void CashHub::inicia_pago(std::map<std::string ,std::string> map)
+// manual
+void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
 {
+    std::vector<cpr::Response> snapshot_inicio;
+    std::vector<cpr::Response> snapshot_fin;
+
     for (auto &&i : unidades)
-        if(map.contains(i->property_device_id()))
+        if (map.contains(i->property_device_id()))
+        {
+            snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
             i->iniciar_pago(map.at(i->property_device_id()));
+            snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
+        }
         else
             CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";
+    
+    for (size_t i = 0; i < snapshot_inicio.size(); i++)
+        detalle.registrar_diferencias_salida(t_id, 
+            crow::json::load(snapshot_inicio[i].text), 
+            crow::json::load(snapshot_fin[i].text));
 }

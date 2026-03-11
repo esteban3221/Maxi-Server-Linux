@@ -8,16 +8,15 @@ DetalleMovimiento::~DetalleMovimiento()
 {
 }
 
-void DetalleMovimiento::insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<Gio::ListStore<MDetalleMovimiento>> &detalle)
+void DetalleMovimiento::insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<MDetalleMovimiento> &detalle)
 {
     auto &db = Database::getInstance();
-    for (guint i = 0; i < detalle->get_n_items(); ++i)
-        db.sqlite3->command("INSERT INTO detalle_movimientos_dinero (id_log, tipo_movimiento, denominacion, cantidad, creado_en) VALUES (?, ?, ?, ?, ?)",
-                            id_log,
-                            detalle->get_item(i)->m_tipo_movimiento,
-                            detalle->get_item(i)->m_denominacion,
-                            detalle->get_item(i)->m_cantidad,
-                            detalle->get_item(i)->m_creado_en.format_iso8601());
+    db.sqlite3->command("INSERT INTO detalle_movimientos_dinero (id_log, tipo_movimiento, denominacion, cantidad, creado_en) VALUES (?, ?, ?, ?, ?)",
+                        id_log,
+                        detalle->m_tipo_movimiento,
+                        detalle->m_denominacion,
+                        detalle->m_cantidad,
+                        detalle->m_creado_en.format_iso8601());
 }
 
 const std::shared_ptr<ResultMap> DetalleMovimiento::get_detalle_movimiento(uint32_t id_log)
@@ -32,74 +31,72 @@ const std::shared_ptr<ResultMap> DetalleMovimiento::get_detalle_movimiento(uint3
 
 /**
  * Calcula las diferencias entre dos estados de niveles de cash.
- * 
+ *
  * @param inicial Lista inicial (snapshot antes del movimiento)
  * @param final   Lista final (snapshot después del movimiento)
- * @return std::map<denominacion, delta> 
+ * @return std::map<denominacion, delta>
  *         delta > 0 → entradas (billetes/monedas agregados)
  *         delta < 0 → salidas (billetes/monedas retirados)
  *         Si no existe en inicial/final, se considera 0
- */
-/**
+ *
  * Calcula diferencias y devuelve dos mapas separados:
  * - entradas: denominacion → cantidad positiva agregada
  * - salidas:  denominacion → cantidad positiva retirada
- */
-/**
  * Calcula diferencias entre snapshot inicial y final.
- * 
+ *
  * delta > 0  → Entrada (cantidad positiva)
- * delta < 0  → Salida  (cantidad negativa)  ← como tú quieres
- * 
- * Devuelve exactamente el mismo tipo que ya estás usando.
+ * delta < 0  → Salida  (cantidad negativa)
+ *
+ *
  */
-std::map<uint32_t, int32_t> DetalleMovimiento::calcular_diferencias_niveles(
-    const Glib::RefPtr<Gio::ListStore<MLevelCash>>& inicial,   // ← ANTES del movimiento
-    const Glib::RefPtr<Gio::ListStore<MLevelCash>>& final_)    // ← DESPUÉS del movimiento
+void DetalleMovimiento::registrar_diferencias_salida(size_t t_id, const crow::json::rvalue &inicial, const crow::json::rvalue &final_)
 {
-    std::map<uint32_t, int32_t> diferencias;
+    // Mapa para indexar el estado inicial: [Denominación -> Cantidad en Payout]
+    std::map<uint32_t, int32_t> niveles_inicial;
 
-    std::set<uint32_t> todas_denominaciones;
-
-    // Recolectar todas las denominaciones que existen en cualquiera de los dos estados
-    for (guint i = 0; i < inicial->get_n_items(); ++i)
-        todas_denominaciones.insert(inicial->get_item(i)->m_denominacion);
-
-    for (guint i = 0; i < final_->get_n_items(); ++i)
-        todas_denominaciones.insert(final_->get_item(i)->m_denominacion);
-
-    for (uint32_t denom : todas_denominaciones)
+    for (auto &item : inicial)
     {
-        uint32_t cant_inicial = 0;
-        uint32_t cant_final   = 0;
-
-        // Buscar en inicial
-        for (guint j = 0; j < inicial->get_n_items(); ++j)
+        if (item.has("value") && item.has("storedInPayout"))
         {
-            auto item = inicial->get_item(j);
-            if (item->m_denominacion == denom)
-            {
-                cant_inicial = item->m_cant_recy;
-                break;
-            }
+            uint32_t denom = item["value"].u() / 100;
+            niveles_inicial[denom] = item["storedInPayout"].i();
         }
-
-        // Buscar en final
-        for (guint j = 0; j < final_->get_n_items(); ++j)
-        {
-            auto item = final_->get_item(j);
-            if (item->m_denominacion == denom)
-            {
-                cant_final = item->m_cant_recy;
-                break;
-            }
-        }
-
-        int32_t delta = static_cast<int32_t>(cant_final) - static_cast<int32_t>(cant_inicial);
-
-        if (delta != 0)
-            diferencias[denom] = delta;
     }
 
-    return diferencias;
+    // Comparar con el estado final
+    for (auto &item : final_)
+    {
+        if (item.has("value") && item.has("storedInPayout"))
+        {
+            uint32_t denom = item["value"].u() / 100;
+            int32_t cant_final = item["storedInPayout"].i();
+            
+            // Si la denominación no estaba en el snapshot inicial, asumimos 0
+            int32_t cant_inicial = niveles_inicial.count(denom) ? niveles_inicial[denom] : 0;
+            
+            // Diferencia: Final - Inicial. 
+            // Si es -5, significa que el nivel bajó (salieron 5 unidades)
+            int32_t delta = cant_final - cant_inicial;
+
+            if (delta < 0)
+            {
+                uint32_t piezas_salieron = std::abs(delta);
+                
+                CROW_LOG_DEBUG << "Registrando salida confirmada: " << piezas_salieron 
+                               << " piezas de $" << denom << " (ID Movimiento: " << t_id << ")";
+
+                this->insertar_detalle_movimiento(
+                    t_id,
+                    MDetalleMovimiento::create(
+                        0,        // ID autoincremental
+                        t_id,     // Relación con el log principal
+                        "salida", // Etiqueta de egreso
+                        denom,
+                        piezas_salieron,
+                        Glib::DateTime::create_now_local()
+                    )
+                );
+            }
+        }
+    }
 }

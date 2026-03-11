@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <crow.h>
 #include <glibmm.h>
 #include <giomm.h>
 
@@ -50,12 +51,12 @@ class DetalleMovimiento
 private:
     /* data */
 public:
-    void insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<Gio::ListStore<MDetalleMovimiento>> &detalle);
+    void insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<MDetalleMovimiento> &detalle);
     const std::shared_ptr<ResultMap> get_detalle_movimiento(uint32_t id_log);
     DetalleMovimiento(/* args */);
     ~DetalleMovimiento();
 
-    static std::map<uint32_t, int32_t> calcular_diferencias_niveles(
-    const Glib::RefPtr<Gio::ListStore<MLevelCash>>& inicial,
-    const Glib::RefPtr<Gio::ListStore<MLevelCash>>& final_);
+    void registrar_diferencias_salida(size_t t_id,
+                                        const crow::json::rvalue& inicial, 
+                                        const crow::json::rvalue& final_);
 };

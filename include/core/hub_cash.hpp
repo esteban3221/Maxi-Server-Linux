@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <queue>
 #include <glibmm.h>
 #include <cpr/cpr.h>
 
@@ -20,6 +21,7 @@ class CashHub
 {
 private:
     std::vector<std::unique_ptr<ValidadorUnit>> unidades;
+    std::map<size_t, int> mapa_detalle_entradas;
 
     friend class Sesion;
     std::string autentica();
@@ -29,6 +31,7 @@ private:
     sigc::signal<void(std::string)> signal_hub_error;
 
     CashHub() = default;
+    DetalleMovimiento detalle;
 
     bool intentar_registrar(const std::string &puerto, int ssp);
     int obtener_ssp_por_serial(const std::string& puerto);
@@ -54,8 +57,8 @@ public:
     cpr::Response command_by_device_id(HttpMethod method,const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
     void inicia_for_all(const Conf &conf,std::map<std::string, const crow::json::rvalue> = {});
     void inicia_poll_for_all();
-    void inicia_pago(size_t monto, bool is_cambio = false);
-    void inicia_pago(std::map<std::string , std::string>);
-    void detiene_poll_for_all();
+    void inicia_pago(size_t t_id, size_t monto, bool is_cambio = false);
+    void inicia_pago(size_t t_id, std::map<std::string , std::string>);
+    void detiene_poll_for_all(size_t t_id);
     void detiene_for_all(void);
 };

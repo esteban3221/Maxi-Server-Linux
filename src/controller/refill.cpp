@@ -168,9 +168,6 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
     auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
     size_t total = 0;
-    
-    crow::json::wvalue json_ws;
-    json_ws[type] = crow::json::wvalue::list();
 
     for (size_t i = 0; i < list_store->get_n_items(); i++)
     {
@@ -182,34 +179,45 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
             {
                 if (type == "BILL")
                     hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
-                    
+                
                 item->m_ingreso++;
                 item->m_cant_recy++;
-
-                async_gui.dispatch_to_gui([this, item, i, list_store, single]()
+                async_gui.dispatch_to_gui([this, item, i, list_store, single, &total, type]()
                 {
                     list_store->remove(i);
                     list_store->insert(i, item);
                     single->select_item(i, true);
+                    total += calcula_total(type, list_store);
                 });
             
-                total += calcula_total(type, list_store);
-
-                // json_ws[type][i]["Denominacion"] = item->m_denominacion;
-                // json_ws[type][i]["Almacenado"] = item->m_cant_alm;
-                // json_ws[type][i]["Recyclador"] = item->m_cant_recy;
-                // json_ws[type][i]["Inmovilidad_Min"] = item->m_nivel_inmo_min;
-                // json_ws[type][i]["Inmovilidad"] = item->m_nivel_inmo;
-                // json_ws[type][i]["Inmovilidad_Max"] = item->m_nivel_inmo_max;
-                // json_ws[type][i]["Ingreso"] = item->m_ingreso;
-                
-                //conn.send_text(json.dump());
+                envia_mensaje_wb(type, item);
             }
             else
                 hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
         }
     }
     v_lbl_total->set_text(Glib::ustring::format(total));
+}
+
+void Refill::envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLevelCash> &item)
+{
+    // Por el momento se generaliza por tipo, 
+    // pero algun dia sera necesario por device_id, solo se cambia la variable de paso
+    if(not conn_)
+        return;
+        
+    crow::json::wvalue json_ws;
+    json_ws[device] = crow::json::wvalue::list();
+
+    json_ws[device][0]["Denominacion"] = item->m_denominacion;
+    json_ws[device][0]["Almacenado"] = item->m_cant_alm;
+    json_ws[device][0]["Recyclador"] = item->m_cant_recy;
+    json_ws[device][0]["Inmovilidad_Min"] = item->m_nivel_inmo_min;
+    json_ws[device][0]["Inmovilidad"] = item->m_nivel_inmo;
+    json_ws[device][0]["Inmovilidad_Max"] = item->m_nivel_inmo_max;
+    json_ws[device][0]["Ingreso"] = item->m_ingreso;
+    
+    conn_->send_text(json_ws.dump());
 }
 
 void Refill::on_error(const std::string &error)
@@ -375,6 +383,7 @@ void Refill::reset_log(const crow::json::rvalue &param)
 void Refill::on_wb_socket_open(crow::websocket::connection &conn)
 {
     CROW_LOG_INFO << "WebSocket connection opened: " << conn.get_remote_ip();
+    conn_ = &conn;
 }
 
 void Refill::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
@@ -382,6 +391,8 @@ void Refill::on_wb_socket_close(crow::websocket::connection &conn, const std::st
     CROW_LOG_INFO << "WebSocket connection closed: " << conn.get_remote_ip()
               << " Reason: " << reason
               << " Code: " << code;
+    if(conn_ == &conn)
+        conn_ = nullptr;
 }
 
 void Refill::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
