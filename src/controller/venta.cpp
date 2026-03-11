@@ -84,19 +84,7 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
 
     log.update_log(t_log);
 
-    if (t_log->m_ingreso >= t_log->m_total || cancelado)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        hub.detiene_poll_for_all(t_log->m_id);
-        
-        {
-            std::lock_guard<std::mutex> lock(mtx_espera);
-            transaccion_terminada = true;
-        }
-        cv_finalizado.notify_one(); 
-    }
-
-    if (connection)
+		if (connection)
     {
         crow::json::wvalue response;
         response["ingreso"] = t_log->m_ingreso;
@@ -107,6 +95,18 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
         response["faltante"] = faltante;
 
         connection->send_text(response.dump());
+    }
+
+    if (t_log->m_ingreso >= t_log->m_total || cancelado)
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        hub.detiene_poll_for_all(t_log->m_id);
+        
+        {
+            std::lock_guard<std::mutex> lock(mtx_espera);
+            transaccion_terminada = true;
+        }
+        cv_finalizado.notify_one(); 
     }
 }
 
