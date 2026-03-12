@@ -13,24 +13,24 @@ void OTerminales::inserta(const Glib::RefPtr<MTerminales> &terminal)
     auto &database = Database::getInstance();
     database.sqlite3->command("INSERT INTO terminales_pago (id, tipo, alias, modo, acces_token, predeterminado, descripcion, fecha_creado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                               terminal->m_id,
-                              terminal->m_tipo,
-                              terminal->m_alias,
-                              terminal->m_modo,
-                              terminal->m_access_token,
+                              terminal->m_tipo.c_str(),
+                              terminal->m_alias.c_str(),
+                              terminal->m_modo.c_str(),
+                              terminal->m_access_token.c_str(),
                               terminal->m_predeterminado ? 1 : 0,
-                              terminal->m_descripcion,
-                              terminal->m_fecha_creado.format_iso8601());
+                              terminal->m_descripcion.c_str(),
+                              terminal->m_fecha_creado.format_iso8601().c_str());
 }
 
 void OTerminales::edita(const Glib::RefPtr<MTerminales> &terminal)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("UPDATE terminales_pago SET tipo = ?, alias = ?, modo = ?, predeterminado = ?, descripcion = ? WHERE Id = ?",
-                              terminal->m_tipo,
-                              terminal->m_alias,
-                              terminal->m_modo,
+                              terminal->m_tipo.c_str(),
+                              terminal->m_alias.c_str(),
+                              terminal->m_modo.c_str(),
                               terminal->m_predeterminado ? 1 : 0,
-                              terminal->m_descripcion,
+                              terminal->m_descripcion.c_str(),
                               terminal->m_id);
 }
 

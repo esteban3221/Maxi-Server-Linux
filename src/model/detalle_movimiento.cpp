@@ -13,10 +13,10 @@ void DetalleMovimiento::insertar_detalle_movimiento(uint32_t id_log, const Glib:
     auto &db = Database::getInstance();
     db.sqlite3->command("INSERT INTO detalle_movimientos_dinero (id_log, tipo_movimiento, denominacion, cantidad, creado_en) VALUES (?, ?, ?, ?, ?)",
                         id_log,
-                        detalle->m_tipo_movimiento,
+                        detalle->m_tipo_movimiento.c_str(),
                         detalle->m_denominacion,
                         detalle->m_cantidad,
-                        detalle->m_creado_en.format_iso8601());
+                        detalle->m_creado_en.format_iso8601().c_str());
 }
 
 const std::shared_ptr<ResultMap> DetalleMovimiento::get_detalle_movimiento(uint32_t id_log)
