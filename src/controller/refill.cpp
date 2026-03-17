@@ -175,7 +175,7 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
         
         if (item->m_denominacion == credito)
         {
-            if(item->m_cant_recy <= item->m_nivel_inmo)
+            if(item->m_cant_recy < item->m_nivel_inmo)
             {
                 if (type == "BILL")
                     hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
@@ -193,7 +193,17 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
                 envia_mensaje_wb(type, item);
             }
             else
-                hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
+                if (type == "BILL")
+                    hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
+                else
+                    async_gui.dispatch_to_gui([this, item, i, list_store, single, &total, type]()
+                    {
+                        list_store->remove(i);
+                        list_store->insert(i, item);
+                        single->select_item(i, true);
+                        total += calcula_total(type, list_store);
+                        Global::System::showNotify("Refill", "Inmovilidad sobrepasada en la denominacion: " + item->m_denominacion, "dialog-information");
+                    });
         }
     }
     v_lbl_total->set_text(Glib::ustring::format(total));

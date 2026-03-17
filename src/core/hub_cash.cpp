@@ -15,7 +15,10 @@ std::string CashHub::autentica()
         return rcb["token"].s();
     }
     else if (r.status_code == 0)
+    {
+        Global::System::showNotify("Servicio", "Servicio API REST no iniciado o en error", "dialog-error");
         throw std::runtime_error("Servicio API REST no iniciado o en error");
+    }
     else
         CROW_LOG_ERROR << "Error de autenticación con la API REST : " << r.status_code << " - " << r.text;
 
@@ -35,32 +38,22 @@ int CashHub::obtener_ssp_por_magia_negra(const std::string &puerto_dev, int ssp_
         return -1;
     }
 
-    // 1. Limpiar la estructura (Básico en C viejo)
     SSP_COMMAND_SETUP ssp_setup;
     std::memset(&ssp_setup, 0, sizeof(SSP_COMMAND_SETUP));
 
-    // 2. Configurar
     ssp_setup.port = port_handle;
     ssp_setup.Timeout = 1000;
     ssp_setup.RetryLevel = 3;
     ssp_setup.SSPAddress = ssp_address;
-    
-    // Asumiendo que NO_ENCRYPTION o similares están definidos en ssp_defines.h
     ssp_setup.EncryptionStatus = 0; 
 
-    // 3. Ejecutar Sync
     if (ssp_sync(ssp_setup) == SSP_RESPONSE_OK) {
         CROW_LOG_INFO << "¡Sincronización exitosa en dirección " << ssp_address << "!";
-        // No olvides cerrar el puerto antes de salir si el SDK no lo mantiene abierto
-        // CloseSSPPort(port_handle); 
         return ssp_address;
     }
 
-    // 4. Si falló y estamos en la dirección 0, intentamos la 16 (y paramos ahí)
     if (ssp_address == 0) {
         CROW_LOG_WARNING << "Fallo en 0, intentando dirección 16...";
-        // IMPORTANTE: Cerrar el puerto actual antes de la re-apertura en la recursión
-        // o mejor aún, maneja el puerto fuera del bucle de direcciones.
         CloseSSPPort(port_handle); 
         return obtener_ssp_por_magia_negra(puerto_dev, 16);
     }
@@ -84,16 +77,14 @@ void CashHub::inicializar_hardware()
             int ssp_sugerido = obtener_ssp_por_magia_negra(path);
             if (ssp_sugerido != -1)
             {
-                CROW_LOG_WARNING << "Puerto " << path << " detectado como Serial "
-                                 << (ssp_sugerido == 16 ? "A10L8NSY" : "A10L8NNB")
+                CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
+                                 << (ssp_sugerido == 16 ? "COIN" : "Bill")
                                  << ". Usando SSP " << ssp_sugerido;
                 intentar_registrar(path, ssp_sugerido);
             }
             else
             {
-                // Si conectas un hardware nuevo, aquí sí puedes probar ambos
-                intentar_registrar(path, 0);
-                intentar_registrar(path, 16);
+                Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
             }
         }
     }
@@ -145,9 +136,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
 crow::json::rvalue CashHub::rutas_default(ValidadorUnit *val)
 {
-    crow::json::wvalue json_rutas;
-    json_rutas = crow::json::wvalue::list();
-
+    crow::json::wvalue json_rutas = crow::json::wvalue::list();
     auto tipo = val->property_conf().ssp == 16 ? "Level_Coin" : "Level_Bill";
     auto m_list = std::make_unique<LevelCash>(tipo)->get_level_cash();
     auto snapshot_level = val->property_ultimo_cash_level();
@@ -320,6 +309,8 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
 
     if (remanente > 0)
         signal_hub_error.emit("General", "Cambio incompleto. Faltaron: " + std::to_string(remanente));
+    else
+        signal_hub_error.emit("General", "Cambio completo.");
 }
 
 // manual

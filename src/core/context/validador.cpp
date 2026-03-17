@@ -224,7 +224,7 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
     if (cambio > 0)
-        signal_error.emit(device_id, "No se cuenta con suficiente efectivo para dar cambio en el dispositivo");
+        signal_error.emit(device_id, "No se cuenta con suficiente efectivo para dar cambio en el dispositivo " + device_model);
     else
         iniciar_pago(json_pago.dump());
 
