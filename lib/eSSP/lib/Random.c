@@ -3,6 +3,8 @@
 #include "../inc/itl_types.h"
 #include <stdlib.h>
 #include "Random.h"
+#include <sys/time.h>
+#include <unistd.h>
 
 /*	Generates a large prime number by
 |	choosing a randomly large integer, and ensuring the value is odd
