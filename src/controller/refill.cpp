@@ -232,10 +232,10 @@ void Refill::envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLev
 
 void Refill::on_error(const std::string &device, const std::string &error)
 {
-if (error == "CASHBOX_REMOVED")
+    if (error == "CASHBOX_REMOVED")
     {
         hub.detiene_poll_for_all(-1); 
-
+        std::this_thread::sleep_for(std::chrono::seconds(3));
         auto response_level = hub.command_by_device_id(HttpMethod::GET, device, "GetAllLevels");
         auto json_level = crow::json::load(response_level.text);
 
