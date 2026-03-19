@@ -116,7 +116,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
             } 
         });
         
-        v->signal_error.connect([this,&v](std::string device_id, std::string error_msg)
+        v->signal_error.connect([this](std::string device_id, std::string error_msg)
         {
             signal_hub_error.emit(device_id, error_msg);
         });

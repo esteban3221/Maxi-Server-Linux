@@ -223,10 +223,10 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
         levels[i["value"].i() / 100] = i["storedInPayout"].i();
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
+    iniciar_pago(json_pago.dump());
+
     if (cambio > 0)
-        signal_error.emit(device_id, "No se cuenta con suficiente efectivo para dar cambio en el dispositivo " + device_model);
-    else
-        iniciar_pago(json_pago.dump());
+        signal_error.emit(device_id, "Remanente de "+ std::to_string(cambio) + " - " + device_model);
 
     return cambio;
 }
@@ -237,7 +237,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         return;
     // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
 
-    auto response = command_post("PayoutMultipleDenominations", denom);
+    auto response = command_post("PayoutMultipleDenominations", denom, true);
     if (response.status_code == cpr::status::HTTP_OK)
         iniciar_polling();
     else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
