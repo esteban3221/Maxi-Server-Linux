@@ -47,7 +47,7 @@ private:
     Conf conf;
 
     // utilidades para consumir la api rest del validador
-    const std::string BASE_URL = "http://localhost:5000/api/CashDevice/";
+    const std::string BASE_URL = "http://localhost:5000/api/v2/CashDevice/";
     void imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body = "") const;
     crow::json::rvalue ultimo_cash_level;
 

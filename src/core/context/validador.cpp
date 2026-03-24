@@ -157,7 +157,7 @@ void ValidadorUnit::iniciar_polling()
     std::thread([this]()
     {
         while (poll) {
-            auto resp = command_get("GetDeviceStatus/v2");
+            auto resp = command_get("GetDeviceStatus");
             if (resp.status_code == cpr::status::HTTP_OK) 
             {
                 auto json = crow::json::load(resp.text);
