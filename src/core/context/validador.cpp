@@ -261,7 +261,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     }
     catch (const std::exception &e)
     {
-        CROW_LOG_ERROR << device_id << " → " <<e;
+        CROW_LOG_ERROR << device_id << " → " << e.what();
     }
 }
 
