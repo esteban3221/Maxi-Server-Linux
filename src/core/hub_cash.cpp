@@ -137,10 +137,11 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 crow::json::rvalue CashHub::rutas_default(ValidadorUnit *val)
 {
     crow::json::wvalue json_rutas = crow::json::wvalue::list();
-    auto tipo = val->property_conf().ssp == 16 ? "Level_Coin" : "Level_Bill";
-    auto m_list = std::make_unique<LevelCash>(tipo)->get_level_cash();
+    if (val->property_conf().ssp == 16)
+        return crow::json::load(json_rutas.dump());
+
+    auto m_list = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
     auto snapshot_level = val->property_ultimo_cash_level();
-    int32_t indice = 0;
 
     for (size_t i = 0; i < snapshot_level.size(); i++)
     {

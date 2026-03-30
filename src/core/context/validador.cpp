@@ -240,9 +240,10 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
 
         auto response = command_post("PayoutMultipleDenominations", denom, true);
-        if (response.status_code == cpr::status::HTTP_OK)
-            iniciar_polling();
-        else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
+        // if (response.status_code == cpr::status::HTTP_OK)
+        //     iniciar_polling();
+        // else 
+        if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
         {
 
             if (json["reason"].s() == "BUSY")
