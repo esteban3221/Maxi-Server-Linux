@@ -155,7 +155,7 @@ void ValidadorUnit::iniciar_polling()
 {
     poll = true;
     std::thread([this]()
-    {
+                {
         while (poll) {
             auto resp = command_get("GetDeviceStatus");
             if (resp.status_code == cpr::status::HTTP_OK) 
@@ -208,8 +208,8 @@ void ValidadorUnit::iniciar_polling()
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
         } 
-        CROW_LOG_INFO << "Terminando Polleo para el dispositivo " << device_id; 
-    }).detach();
+        CROW_LOG_INFO << "Terminando Polleo para el dispositivo " << device_id; })
+        .detach();
 }
 
 uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
@@ -226,36 +226,42 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
     iniciar_pago(json_pago.dump());
 
     if (cambio > 0)
-        signal_error.emit(device_id, "Remanente de "+ std::to_string(cambio) + " - " + device_model);
+        signal_error.emit(device_id, "Remanente de " + std::to_string(cambio) + " - " + device_model);
 
     return cambio;
 }
 
 void ValidadorUnit::iniciar_pago(const std::string &denom)
 {
-    if (denom.size() == 0)
-        return;
-    // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
-
-    auto response = command_post("PayoutMultipleDenominations", denom, true);
-    if (response.status_code == cpr::status::HTTP_OK)
-        iniciar_polling();
-    else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
+    try
     {
-        CROW_LOG_ERROR << device_id << " → " << json["dispenseResult"].s() << " - " << json["reason"].s();
+        if (denom.size() == 0)
+            return;
+        // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
 
-        if (json["reason"].s() == "BUSY")
+        auto response = command_post("PayoutMultipleDenominations", denom, true);
+        if (response.status_code == cpr::status::HTTP_OK)
+            iniciar_polling();
+        else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
         {
-            CROW_LOG_INFO << "Reintentando pago.";
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            iniciar_pago(denom);
+
+            if (json["reason"].s() == "BUSY")
+            {
+                CROW_LOG_INFO << "Reintentando pago.";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                iniciar_pago(denom);
+            }
+        }
+        else
+        {
+            CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
+            signal_error.emit(device_id, json["dispenseResult"].operator std::string() + ", Razon: " + json["dispenseResult"].operator std::string());
+            detiene_desconecta();
         }
     }
-    else
+    catch (const std::exception &e)
     {
-        CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
-        signal_error.emit(device_id, json["dispenseResult"].operator std::string() + ", Razon: " + json["dispenseResult"].operator std::string());
-        detiene_desconecta();
+        CROW_LOG_ERROR << device_id << " → " <<e;
     }
 }
 
