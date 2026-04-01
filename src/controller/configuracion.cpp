@@ -1,28 +1,28 @@
 #include "controller/configuracion.hpp"
 
-CConfiguracion::CConfiguracion(/* args */)
+CConfiguracion::CConfiguracion(crow::SimpleApp& app)
 {
-    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
-    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_informacion_empresa").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_informacion_empresa));
-    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_operaciones").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_operaciones));
+    CROW_ROUTE(app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
+    CROW_ROUTE(app, "/configuracion/actualiza_informacion_empresa").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_informacion_empresa));
+    CROW_ROUTE(app, "/configuracion/actualiza_operaciones").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_operaciones));
 
-    CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_empresa").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_empresa));
-    CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_sistema").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_sistema));
-    CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_impresora").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_impresora));
-    CROW_ROUTE(RestApp::app, "/configuracion/get_informacion_operaciones").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_operaciones));
+    CROW_ROUTE(app, "/configuracion/get_informacion_empresa").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_empresa));
+    CROW_ROUTE(app, "/configuracion/get_informacion_sistema").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_sistema));
+    CROW_ROUTE(app, "/configuracion/get_informacion_impresora").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_impresora));
+    CROW_ROUTE(app, "/configuracion/get_informacion_operaciones").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_informacion_operaciones));
 
-    CROW_ROUTE(RestApp::app, "/configuracion/test_impresion").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::test_impresion));
-    CROW_ROUTE(RestApp::app, "/configuracion/reiniciar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::reiniciar));
-    CROW_ROUTE(RestApp::app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
-    CROW_ROUTE(RestApp::app, "/configuracion/desactiva_carrousel").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::desactiva_carrousel));
+    CROW_ROUTE(app, "/configuracion/test_impresion").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::test_impresion));
+    CROW_ROUTE(app, "/configuracion/reiniciar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::reiniciar));
+    CROW_ROUTE(app, "/configuracion/apagar").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::apagar));
+    CROW_ROUTE(app, "/configuracion/desactiva_carrousel").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::desactiva_carrousel));
 
-    CROW_ROUTE(RestApp::app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
-    CROW_ROUTE(RestApp::app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
-    CROW_ROUTE(RestApp::app, "/configuracion/sube_imagen_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_imagen_pos));
-    CROW_ROUTE(RestApp::app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
+    CROW_ROUTE(app, "/configuracion/custom_command").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::custom_command));
+    CROW_ROUTE(app, "/configuracion/actualiza_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_pos));
+    CROW_ROUTE(app, "/configuracion/sube_imagen_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_imagen_pos));
+    CROW_ROUTE(app, "/configuracion/sube_carpeta_pos").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::sube_carpeta_pos));
 
-    CROW_ROUTE(RestApp::app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
-    CROW_ROUTE(RestApp::app, "/configuracion/reiniciar_validadores").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::reinicia_validadores));
+    CROW_ROUTE(app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
+    CROW_ROUTE(app, "/configuracion/reiniciar_validadores").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::reinicia_validadores));
 
 
 }
@@ -231,7 +231,6 @@ crow::response CConfiguracion::reiniciar(const crow::request &req)
     Sesion::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown -r +1 &");
-        Global::Rest::app.stop();
         Global::System::showNotify("Sistema", "Se reiniciara el sistema en un minuto.\nTeminando procesos pendientes...\n"
                                               "Servicio de api rest esta desactivado y no recibira mas solicitudes.",
                                    "dialog-information");
@@ -244,7 +243,6 @@ crow::response CConfiguracion::apagar(const crow::request &req)
     Sesion::valida_autorizacion(req, Global::User::Rol::Apagar_Equipo);
     {
         Global::System::exec("shutdown +1 &");
-        Global::Rest::app.stop();
         Global::System::showNotify("Sistema", "Se apagara el sistema en un minuto.\n"
                                               "Servicio de api rest esta desactivado y no recibira mas solicitudes.",
                                    "dialog-information");

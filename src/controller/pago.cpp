@@ -2,7 +2,7 @@
 #include "pago.hpp"
 #include "carrousel.hpp"
 
-Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
+Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Pago");
     v_lbl_timeout->set_visible(false);
@@ -10,13 +10,13 @@ Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
-    CROW_ROUTE(RestApp::app, "/accion/inicia_pago").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia));
-    CROW_ROUTE(RestApp::app, "/accion/inicia_pago_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_manual));
+    CROW_ROUTE(app, "/accion/inicia_pago").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia));
+    CROW_ROUTE(app, "/accion/inicia_pago_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_manual));
 
-    CROW_ROUTE(RestApp::app, "/accion/inicia_cambio").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio));
-    CROW_ROUTE(RestApp::app, "/accion/inicia_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio_manual));
-    CROW_ROUTE(RestApp::app, "/accion/termina_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::termina_cambio_manual));
-    CROW_ROUTE(RestApp::app, "/accion/cancelar_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::cancelar_cambio_manual));
+    CROW_ROUTE(app, "/accion/inicia_cambio").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio));
+    CROW_ROUTE(app, "/accion/inicia_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::inicia_cambio_manual));
+    CROW_ROUTE(app, "/accion/termina_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::termina_cambio_manual));
+    CROW_ROUTE(app, "/accion/cancelar_cambio_manual").methods("POST"_method)(sigc::mem_fun(*this, &Pago::cancelar_cambio_manual));
 }
 
 Pago::~Pago()

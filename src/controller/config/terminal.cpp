@@ -1,12 +1,12 @@
 #include "controller/config/terminal.hpp"
 
-Terminal::Terminal(/* args */)
+Terminal::Terminal(crow::SimpleApp& app)
 {
-    CROW_ROUTE(RestApp::app, "/terminales").methods("GET"_method)(sigc::mem_fun(*this, &Terminal::get_all));
-    CROW_ROUTE(RestApp::app, "/terminales/<string>").methods("GET"_method)(sigc::mem_fun(*this, &Terminal::get_by_id));
-    CROW_ROUTE(RestApp::app, "/terminales/nueva").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::nueva));
-    CROW_ROUTE(RestApp::app, "/terminales/editar").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::editar));
-    CROW_ROUTE(RestApp::app, "/terminales/eliminar").methods("DELETE"_method)(sigc::mem_fun(*this, &Terminal::eliminar));
+    CROW_ROUTE(app, "/terminales").methods("GET"_method)(sigc::mem_fun(*this, &Terminal::get_all));
+    CROW_ROUTE(app, "/terminales/<string>").methods("GET"_method)(sigc::mem_fun(*this, &Terminal::get_by_id));
+    CROW_ROUTE(app, "/terminales/nueva").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::nueva));
+    CROW_ROUTE(app, "/terminales/editar").methods("POST"_method)(sigc::mem_fun(*this, &Terminal::editar));
+    CROW_ROUTE(app, "/terminales/eliminar").methods("DELETE"_method)(sigc::mem_fun(*this, &Terminal::eliminar));
 }
 
 Terminal::~Terminal()

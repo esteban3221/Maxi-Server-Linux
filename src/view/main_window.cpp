@@ -84,47 +84,10 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(<interface>
     this->v_btn_pill = builder->get_widget<Gtk::Button>("btn_pill");
 
     v_lbl_version->set_label(Maxicajero::Version::getFullVersion());
-
     Global::Widget::v_main_stack = Gtk::manage(new Gtk::Stack);
     Global::Widget::v_main_stack->add(*v_box_principal, "0", "Home");
-
-    // widgets dervados
-    builder = Gtk::Builder::create_from_string(View::ui_vp);
-    auto pago = Gtk::Builder::get_widget_derived<Pago>(builder, "box");
-
-    builder = Gtk::Builder::create_from_string(View::ui_vp);
-    auto venta = Gtk::Builder::get_widget_derived<Venta>(builder, "box");
-
-    builder = Gtk::Builder::create_from_string(View::ui_vp);
-    auto pago_manual = Gtk::Builder::get_widget_derived<PagoManual>(builder, "box");
-
-    Global::Widget::v_main_stack->add(*pago, "1", "Pago");
-    Global::Widget::v_main_stack->add(*pago_manual, "2", "Pago Manual");
-    Global::Widget::v_main_stack->add(*venta, "3", "Venta");
-
-    builder = Gtk::Builder::create_from_string(View::ui_refill);
-    auto refill = Gtk::Builder::get_widget_derived<Refill>(builder, "boxVistaEfectivo");
-
-    Global::Widget::v_main_stack->add(*refill, "4", "Refill");
-
-    auto config = Gtk::manage(new Config); 
-    Global::Widget::v_main_stack->add(*config, "5", "Configuracion");
-
-    builder = Gtk::Builder::create_from_string(View::ui_nip);
-    auto nip = Gtk::Builder::get_widget_derived<Nip>(builder, "box_nip");
-    Global::Widget::v_main_stack->add(*nip, "6", "Nip");
-
-    builder = Gtk::Builder::create_from_string(View::ui_nip);
-    auto nnip = Gtk::Builder::get_widget_derived<NuevoNip>(builder, "box_nip");
-    Global::Widget::v_main_stack->add(*nnip, "7", "Nuevo Nip");
-
-    Global::Widget::v_carrousel = Gtk::manage(new VCarrousel);
-    Global::Widget::v_main_stack->add(*Global::Widget::v_carrousel, "10", "Carrousel");
-
-    Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::SLIDE_LEFT_RIGHT);
     this->set_decorated(false);
     this->maximize();
-
     this->set_child(*Global::Widget::v_main_stack);
 }
 

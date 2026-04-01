@@ -7,7 +7,6 @@
 #include "model/detalle_movimiento.hpp"
 #include "core/hub_cash.hpp"
 
-namespace RestApp = Global::Rest;
 class Pago final : public BVentaPago
 {
 private:
@@ -34,6 +33,6 @@ private:
     bool transaccion_terminada = false;
 
 public:
-    Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
+    Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
     ~Pago();
 };

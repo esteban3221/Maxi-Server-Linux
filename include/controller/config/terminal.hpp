@@ -2,7 +2,6 @@
 #include "model/terminales.hpp"
 #include "global.hpp"
 
-namespace RestApp = Global::Rest;
 class Terminal
 {
 private:
@@ -14,6 +13,6 @@ private:
 
     crow::response predeterminar(const crow::request &req);
 public:
-    Terminal(/* args */);
+    Terminal(crow::SimpleApp& app);
     ~Terminal();
 };

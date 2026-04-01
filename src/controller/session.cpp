@@ -1,26 +1,26 @@
 #include "session.hpp"
 
 std::string Sesion::token = "";
-Sesion::Sesion(/* args */)
+Sesion::Sesion(crow::SimpleApp& app)
 {
 
     // dispatcher.connect(sigc::mem_fun(*this, &session_controller::on_dispatcher_emit));
     //
     // callbacks de peticiones
 
-    CROW_ROUTE(RestApp::app, "/sesion/login").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::login));
-    CROW_ROUTE(RestApp::app, "/sesion/alta_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::alta_usuario));
-    CROW_ROUTE(RestApp::app, "/sesion/baja_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::baja_usuario));
-    CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario));
-    CROW_ROUTE(RestApp::app, "/sesion/modifica_usuario_roles").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario_roles));
-    CROW_ROUTE(RestApp::app, "/sesion/logout").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::logout));
+    CROW_ROUTE(app, "/sesion/login").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::login));
+    CROW_ROUTE(app, "/sesion/alta_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::alta_usuario));
+    CROW_ROUTE(app, "/sesion/baja_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::baja_usuario));
+    CROW_ROUTE(app, "/sesion/modifica_usuario").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario));
+    CROW_ROUTE(app, "/sesion/modifica_usuario_roles").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::modifica_usuario_roles));
+    CROW_ROUTE(app, "/sesion/logout").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::logout));
 
-    CROW_ROUTE(RestApp::app, "/sesion/get_all_users").methods("GET"_method)(sigc::mem_fun(*this, &Sesion::get_all_users));
-    CROW_ROUTE(RestApp::app, "/sesion/get_all_roles_by_id").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::get_all_roles_by_id));
-    CROW_ROUTE(RestApp::app, "/api/compatibilidad").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::maxicajero_version_check));
+    CROW_ROUTE(app, "/sesion/get_all_users").methods("GET"_method)(sigc::mem_fun(*this, &Sesion::get_all_users));
+    CROW_ROUTE(app, "/sesion/get_all_roles_by_id").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::get_all_roles_by_id));
+    CROW_ROUTE(app, "/api/compatibilidad").methods("POST"_method)(sigc::mem_fun(*this, &Sesion::maxicajero_version_check));
 
     // WebSocket route
-    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/heartbeat")
+    CROW_WEBSOCKET_ROUTE(app, "/ws/heartbeat")
         .onopen(sigc::mem_fun(*this, &Sesion::on_websocket_open))
         .onclose(sigc::mem_fun(*this, &Sesion::on_websocket_close))
         .onmessage(sigc::mem_fun(*this, &Sesion::on_websocket_message));

@@ -1,10 +1,10 @@
 #include "controller/log.hpp"
 
-LogData::LogData(/* args */)
+LogData::LogData(crow::SimpleApp& app)
 {
-    CROW_ROUTE(RestApp::app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
-    CROW_ROUTE(RestApp::app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
-    CROW_ROUTE(RestApp::app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
+    CROW_ROUTE(app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
+    CROW_ROUTE(app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
+    CROW_ROUTE(app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
 }
 
 LogData::~LogData()

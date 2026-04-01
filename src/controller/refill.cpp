@@ -1,6 +1,6 @@
 #include "controller/refill.hpp"
 
-Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VRefill(cobject, refBuilder)
+Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : VRefill(cobject, refBuilder)
 {
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
@@ -10,15 +10,15 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
     this->signal_map().connect(sigc::mem_fun(*this, &Refill::on_show_map));
     v_btn_deten->signal_clicked().connect(sigc::mem_fun(*this, &Refill::deten));
 
-    CROW_ROUTE(RestApp::app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
-    CROW_ROUTE(RestApp::app, "/accion/deten_refill").methods("GET"_method)(sigc::mem_fun(*this, &Refill::deten_remoto));
-    CROW_ROUTE(RestApp::app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
-    CROW_ROUTE(RestApp::app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
+    CROW_ROUTE(app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
+    CROW_ROUTE(app, "/accion/deten_refill").methods("GET"_method)(sigc::mem_fun(*this, &Refill::deten_remoto));
+    CROW_ROUTE(app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
+    CROW_ROUTE(app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
 
-    CROW_ROUTE(RestApp::app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &Refill::transpaso));
-    CROW_ROUTE(RestApp::app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &Refill::retirada));
+    CROW_ROUTE(app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &Refill::transpaso));
+    CROW_ROUTE(app, "/validador/retirada").methods("POST"_method)(sigc::mem_fun(*this, &Refill::retirada));
 
-    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/refill")
+    CROW_WEBSOCKET_ROUTE(app, "/ws/refill")
         .onopen(sigc::mem_fun(*this, &Refill::on_wb_socket_open))
         .onclose(sigc::mem_fun(*this, &Refill::on_wb_socket_close))
         .onmessage(sigc::mem_fun(*this, &Refill::on_wb_socket_message));

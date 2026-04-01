@@ -2,12 +2,6 @@
 
 namespace Global
 {
-    namespace Rest
-    {
-        crow::SimpleApp app;
-        std::future<void> future;
-    } // namespace Rest
-
     namespace Widget
     {
         Gtk::Stack *v_main_stack = nullptr;

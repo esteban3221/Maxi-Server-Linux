@@ -9,7 +9,7 @@ ValidadorUnit::ValidadorUnit(/* args */) : handler_state(std::make_unique<Estado
                                            poll(false)
 {
     handler_state->on_entry(*this);
-    crow::logger::setLogLevel(crow::LogLevel::Debug);
+    //crow::logger::setLogLevel(crow::LogLevel::Debug);
 }
 
 ValidadorUnit::~ValidadorUnit()
@@ -37,8 +37,8 @@ void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
 
 void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body) const
 {
-    std::puts("");
-    CROW_LOG_DEBUG << "Validador:" << device_id << '\n'
+    std::puts("============== [Debug Interno] ==============");
+    CROW_LOG_INFO << "Validador:" << device_id << '\n'
                    << "\t\t\t\t Comando: " << command << '\n'
                    << "\t\t\t\t Enviado: " << body << '\n'
                    << "\t\t\t\t Tiempo: " << r.elapsed << '\n'
@@ -151,9 +151,50 @@ const std::string ValidadorUnit::get_nombre_estado()
     return handler_state->get_nombre_estado();
 }
 
+bool ValidadorUnit::esperar_pago_async() // Cambia void por bool
+{
+    bool detecto_dispensing = false;
+    bool terminado = false;
+    bool exito = true; // Por defecto asumimos éxito hasta que pase un error
+    int reintentos_iniciales = 0;
+
+    while (!terminado) {
+        auto resp = command_get("GetDeviceStatus");
+        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK) 
+        {
+            auto json = crow::json::load(resp.text);
+    
+            if (json.has("deviceState")) state = json["deviceState"].s();
+            else if (json.has("DeviceState")) state = json["DeviceState"].s();
+            if (state == "DISPENSING") detecto_dispensing = true;
+            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED")) terminado = true;
+            for (const auto &item : json["pollBuffer"]) 
+            {
+                std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
+                
+                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR") {
+                    CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
+                    auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
+                    signal_error.emit(device_id, event + " Entregado: " + value);
+                    exito = false;   // Marcamos como fallo
+                    terminado = true; // Salimos del bucle de espera
+                }
+            }
+            if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+            {
+                exito = false;
+                terminado = true;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+    return exito;
+}
+
 void ValidadorUnit::iniciar_polling()
 {
     poll = true;
+
     std::thread([this]()
                 {
         while (poll) {
@@ -178,25 +219,21 @@ void ValidadorUnit::iniciar_polling()
                     {
                         signal_error.emit(device_id,"Dispositivo atascado");
                         detiene_desconecta();
-                        transiciona_estado(std::make_unique<EstadoError>("Atasco detectado"));
                     }
                     else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") 
                     {
                         signal_error.emit(device_id,"Pago incompleto detectado");
-                        transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "ERROR")
                     {
                         signal_error.emit(device_id, "Error genérico detectado");
                         detiene_desconecta();
-                        transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                         break;
                     }
                     else if (event_name == "TIME_OUT")
                     {
                         signal_error.emit(device_id, "Tiempo limite alcanzado" );
                         detiene_desconecta();
-                        transiciona_estado(std::make_unique<EstadoError>("Error genérico detectado: " ));
                     }
                     else if (event_name == "CASHBOX_REMOVED")
                         signal_error.emit(device_id, event_name);
@@ -225,9 +262,6 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
 
     iniciar_pago(json_pago.dump());
 
-    if (cambio > 0)
-        signal_error.emit(device_id, "Remanente de " + std::to_string(cambio) + " - " + device_model);
-
     return cambio;
 }
 
@@ -235,17 +269,20 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
 {
     try
     {
-        if (denom.size() == 0)
+        if (denom.size() == 0 || denom == "[0,0,0,0,0,0]" || denom == "[0,0,0,0]")
             return;
-        // if(denom.begin()->i() == 0 && denom.end()->i() == 0) return; hay que hacer algun mecanismo para detectar si esta vacio o llenos de ceros
 
         auto response = command_post("PayoutMultipleDenominations", denom, true);
-        // if (response.status_code == cpr::status::HTTP_OK)
-        //     iniciar_polling();
-        // else 
+        if (response.status_code == cpr::status::HTTP_OK)
+        {
+            auto future = std::async(std::launch::async, &ValidadorUnit::esperar_pago_async, this);
+            CROW_LOG_INFO << "Bloqueando hilo hasta finalizar entrega física...";
+            future.wait();
+            CROW_LOG_INFO << "Entrega terminada. Continuando con el flujo.";
+        }
+        else 
         if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
         {
-
             if (json["reason"].s() == "BUSY")
             {
                 CROW_LOG_INFO << "Reintentando pago.";

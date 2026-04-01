@@ -7,7 +7,6 @@
 #include "model/log.hpp"
 #include "carrousel.hpp"
 
-namespace RestApp = Global::Rest;
 class CConfiguracion
 {
 private:
@@ -37,6 +36,6 @@ crow::response reinicia_validadores(const crow::request &req);
 void descomprime_zip(const std::string &filename);
 void limpiar_archivos(const std::string &filename, const std::string &path = "");
 public:
-    CConfiguracion(/* args */);
+    CConfiguracion(crow::SimpleApp& app);
     ~CConfiguracion();
 };

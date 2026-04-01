@@ -6,7 +6,6 @@
 #include "controller/config/impresora.hpp"
 #include <map>
 
-namespace RestApp = Global::Rest;
 class Refill final : public VRefill
 {
 protected:
@@ -47,6 +46,6 @@ private:
     void envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLevelCash> &item);
 
 public:
-    Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
+    Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
     ~Refill();
 };

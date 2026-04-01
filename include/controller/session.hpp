@@ -11,7 +11,6 @@
 #include "shared/version_comparator.hpp"
 #include "core/hub_cash.hpp"
 
-namespace RestApp = Global::Rest;
 class Sesion //: public sigc::trackable
 {
 private:
@@ -35,7 +34,7 @@ private:
     void on_websocket_message(crow::websocket::connection& conn, const std::string& data, bool is_binary);
 
 public:
-    Sesion(/* args */);
+    Sesion(crow::SimpleApp& app);
     ~Sesion();
 
     static void valida_autorizacion(const crow::request &req, Global::User::Rol rol);

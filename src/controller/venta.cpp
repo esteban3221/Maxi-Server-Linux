@@ -1,16 +1,16 @@
 #include "controller/venta.hpp"
 
-Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : BVentaPago(cobject, refBuilder)
+Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Venta");
     v_btn_timeout_retry->set_visible(false);
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
-    CROW_ROUTE(RestApp::app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
-    CROW_ROUTE(RestApp::app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
+    CROW_ROUTE(app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
+    CROW_ROUTE(app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
 
-    CROW_WEBSOCKET_ROUTE(RestApp::app, "/ws/venta")
+    CROW_WEBSOCKET_ROUTE(app, "/ws/venta")
         .onopen(sigc::mem_fun(*this, &Venta::on_wb_socket_open))
         .onclose(sigc::mem_fun(*this, &Venta::on_wb_socket_close))
         .onmessage(sigc::mem_fun(*this, &Venta::on_wb_socket_message));
@@ -99,9 +99,9 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
 
     if (t_log->m_ingreso >= t_log->m_total || cancelado)
     {
+        hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
         std::this_thread::sleep_for(std::chrono::seconds(3));
         hub.detiene_poll_for_all(t_log->m_id);
-        
         {
             std::lock_guard<std::mutex> lock(mtx_espera);
             transaccion_terminada = true;

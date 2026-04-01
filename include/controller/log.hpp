@@ -5,7 +5,6 @@
 #include "model/usuarios.hpp"
 #include "model/detalle_movimiento.hpp"
 
-namespace RestApp = Global::Rest;
 class LogData
 {
 private:
@@ -14,6 +13,6 @@ private:
     crow::response get_levels(const crow::request &req);
 
 public:
-    LogData(/* args */);
+    LogData(crow::SimpleApp& app);
     ~LogData();
 };

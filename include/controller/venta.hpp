@@ -13,7 +13,6 @@
 #include "global.hpp"
 #include "core/hub_cash.hpp"
 
-namespace RestApp = Global::Rest;
 class Venta final: public BVentaPago
 {
 private:
@@ -47,6 +46,6 @@ private:
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
     void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
 public:
-    Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
+    Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
     ~Venta();
 };

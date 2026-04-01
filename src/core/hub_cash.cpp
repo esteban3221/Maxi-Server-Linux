@@ -310,8 +310,6 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
 
     if (remanente > 0)
         signal_hub_error.emit("General", "Cambio incompleto. Faltaron: " + std::to_string(remanente));
-    else
-        signal_hub_error.emit("General", "Cambio completo.");
 }
 
 // manual

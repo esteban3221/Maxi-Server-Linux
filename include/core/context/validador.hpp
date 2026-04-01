@@ -45,6 +45,7 @@ private:
     std::atomic<bool> poll;
     std::string token;
     Conf conf;
+    bool esperar_pago_async();
 
     // utilidades para consumir la api rest del validador
     const std::string BASE_URL = "http://localhost:5000/api/v2/CashDevice/";

@@ -39,15 +39,6 @@ struct ServerError        : AuthException { ServerError(const std::string& m) : 
 // por conveniencia algunas cosas estan en ingles
 namespace Global
 {
-
-    namespace Rest
-    {
-        // manejador de entradas a la api rest
-        extern crow::SimpleApp app;
-        // manejador asyncrono de app
-        extern std::future<void> future;
-    } // namespace Rest
-
     namespace Widget
     {
         // manejador global de vistas
@@ -100,17 +91,6 @@ namespace Global
         extern int total_anterior(const std::map<int, int> &map);
         extern int find_position(const std::unordered_map<int, int>& index_map, int value);
     } // namespace Utility
-
-
-
-    namespace ApiConsume
-    {
-        extern std::string token;
-        extern const std::string URI;
-        extern const std::string BASE_URL;
-
-        extern void autentica();
-    } // namespace ApiConsume
 
     namespace System
     {
