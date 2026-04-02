@@ -11,6 +11,12 @@ message(STATUS "Versión mayor: ${PROJECT_VERSION_MAJOR}")
 message(STATUS "Versión menor: ${PROJECT_VERSION_MINOR}")
 message(STATUS "Parche: ${PROJECT_VERSION_PATCH}")
 
+option(ENABLE_PRETTY_JSON "Activar formato visual para JSON en logs" ON)
+
+if(ENABLE_PRETTY_JSON)
+    add_definitions(-DMODO_DEBUG_JSON)
+endif()
+
 # Configurar archivo de versión
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in

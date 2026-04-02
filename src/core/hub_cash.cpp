@@ -111,7 +111,6 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
             if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT" || tipo == "ESCROW") 
             {
                 int monto = data["value"].i() / 100;
-                mapa_detalle_entradas[monto]++;
                 signal_credito.emit(device_id, type_val, data, monto);
             } 
         });
@@ -136,19 +135,28 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
 crow::json::rvalue CashHub::rutas_default(ValidadorUnit *val)
 {
-    crow::json::wvalue json_rutas = crow::json::wvalue::list();
     if (val->property_conf().ssp == 16)
-        return crow::json::load(json_rutas.dump());
+        return crow::json::load("[]");
 
+    crow::json::wvalue json_rutas; 
     auto m_list = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-    auto snapshot_level = val->property_ultimo_cash_level();
+    auto snapshot_level = crow::json::load(val->property_ultimo_cash_level());
 
     for (size_t i = 0; i < snapshot_level.size(); i++)
     {
-        json_rutas["SetRoutes"][i]["Denomination"] = std::to_string(snapshot_level[i]["value"].i()) + " " + snapshot_level[i]["countryCode"].operator std::string();
-        json_rutas["SetRoutes"][i]["Route"] = (int)(snapshot_level[i]["storedInPayout"].i() <= m_list->get_item(i)->m_nivel_inmo_max);
+        if (!snapshot_level[i].has("storedInPayout") || !snapshot_level[i].has("value")) continue;
 
-        CROW_LOG_DEBUG << "Cuadrando rutas Snapshot " << (snapshot_level[i]["value"].i() / 100) << " vs BD " << m_list->get_item(i)->m_denominacion;
+        int valor = snapshot_level[i]["value"].i();
+        std::string codigo = snapshot_level[i]["countryCode"].s();
+        int almacenado = snapshot_level[i]["storedInPayout"].i();
+
+        json_rutas["SetRoutes"][i]["Denomination"] = std::to_string(valor) + " " + codigo;
+        
+        // Lógica de ruta (1 = Recycler, 0 = Cashbox)
+        bool es_payout = (almacenado <= m_list->get_item(i)->m_nivel_inmo_max);
+        json_rutas["SetRoutes"][i]["Route"] = es_payout ? 1 : 0;
+
+        CROW_LOG_DEBUG << "Cuadrando rutas: " << valor << " (Status: " << (es_payout ? "Recycler" : "Cashbox") << ")";
     }
 
     return crow::json::load(json_rutas.dump());
@@ -186,7 +194,7 @@ std::map<std::string, crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(v
 
     for (auto &&i : unidades)
     {
-        auto snapshot_original = i->property_ultimo_cash_level();
+        auto snapshot_original = crow::json::load(i->property_ultimo_cash_level());
         crow::json::wvalue envoltorio;
         envoltorio["levels"] = snapshot_original;
         envoltorio["type"] = (i->property_conf().ssp == 16 ? "COIN" : "BILL");
@@ -255,20 +263,26 @@ void CashHub::inicia_poll_for_all()
 
 void CashHub::detiene_poll_for_all(size_t t_id)
 {
-    for (auto it = mapa_detalle_entradas.begin(); it != mapa_detalle_entradas.end(); ++it)
-    {
-        detalle.insertar_detalle_movimiento(t_id, MDetalleMovimiento::create(
-                                                  -1,
-                                                  t_id,
-                                                  "entrada",
-                                                  it->first,
-                                                  it->second));
-    }
-    
-    mapa_detalle_entradas.clear();
+    std::vector<cpr::Response> snapshot_inicio;
+    std::vector<cpr::Response> snapshot_fin;
 
     for (auto &&i : unidades)
+    {
+        cpr::Response r_inicio;
+        r_inicio.text = i->property_ultimo_cash_level();
+        r_inicio.status_code = 200;
+        snapshot_inicio.emplace_back(r_inicio);
         i->property_poll().store(false);
+        auto json = i->command_get("GetAllLevels", true);
+        i->property_ultimo_cash_level() = json.text;
+        snapshot_fin.emplace_back(json);
+    }
+
+    for (size_t i = 0; i < snapshot_inicio.size(); i++)
+        detalle.registrar_diferencias(t_id, 
+            crow::json::load(snapshot_inicio[i].text), 
+            crow::json::load(snapshot_fin[i].text));
+        
 }
 
 // automatico
@@ -282,9 +296,13 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
     {
         if (i->property_conf().ssp == 0)
         {
-            snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
+            cpr::Response r_inicio;
+            r_inicio.text = i->property_ultimo_cash_level();
+            auto json_response = crow::json::load(r_inicio.text);
+            r_inicio.status_code = 200;
+            snapshot_inicio.emplace_back(r_inicio);
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
-            remanente = i->iniciar_pago(remanente, is_cambio);
+            remanente = i->iniciar_pago(remanente, is_cambio, json_response);
             snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
         }
     }
@@ -295,16 +313,18 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
         {
             if (i->property_conf().ssp == 16)
             {
-                snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
+                auto response = i->command_get("GetAllLevels", true);
+                auto json_response = crow::json::load(response.text);
+                snapshot_inicio.emplace_back(response);
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
-                remanente = i->iniciar_pago(remanente, is_cambio);
+                remanente = i->iniciar_pago(remanente, is_cambio, json_response);
                 snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
             }
         }
     }
 
     for (size_t i = 0; i < snapshot_inicio.size(); i++)
-        detalle.registrar_diferencias_salida(t_id, 
+        detalle.registrar_diferencias(t_id, 
             crow::json::load(snapshot_inicio[i].text), 
             crow::json::load(snapshot_fin[i].text));
 
@@ -329,7 +349,7 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
             CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";
     
     for (size_t i = 0; i < snapshot_inicio.size(); i++)
-        detalle.registrar_diferencias_salida(t_id, 
+        detalle.registrar_diferencias(t_id, 
             crow::json::load(snapshot_inicio[i].text), 
             crow::json::load(snapshot_fin[i].text));
 }

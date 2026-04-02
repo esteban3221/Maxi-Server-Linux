@@ -17,6 +17,36 @@ ValidadorUnit::~ValidadorUnit()
     // detiene_desconecta();
 }
 
+std::string pretty_json(const std::string& json, const std::string& indent_prefix) {
+    if (json.empty() || json[0] != '{' && json[0] != '[') return json;
+
+    std::string out;
+    out.reserve(json.length() * 2); // Evita realocaciones constantes
+    int level = 0;
+    bool in_quotes = false;
+
+    for (size_t i = 0; i < json.length(); ++i) {
+        char c = json[i];
+        if (c == '"' && (i == 0 || json[i-1] != '\\')) in_quotes = !in_quotes;
+        if (in_quotes) { out += c; continue; }
+
+        if (c == '{' || c == '[') {
+            out += c;
+            out += "\n" + indent_prefix + std::string(++level * 4, ' ');
+        } else if (c == '}' || c == ']') {
+            out += "\n" + indent_prefix + std::string(--level * 4, ' ');
+            out += c;
+        } else if (c == ',') {
+            out += ",\n" + indent_prefix + std::string(level * 4, ' ');
+        } else if (c == ':') {
+            out += ": ";
+        } else if (!std::isspace(c)) {
+            out += c;
+        }
+    }
+    return out;
+}
+
 // context/validador.cpp (implementación)
 void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
 {
@@ -37,13 +67,18 @@ void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
 
 void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body) const
 {
-    std::puts("============== [Debug Interno] ==============");
+    std::string prefix = "\t\t\t\t ";
+    std::puts("\n==================== [Debug Interno] ====================");
     CROW_LOG_INFO << "Validador:" << device_id << '\n'
-                   << "\t\t\t\t Comando: " << command << '\n'
-                   << "\t\t\t\t Enviado: " << body << '\n'
-                   << "\t\t\t\t Tiempo: " << r.elapsed << '\n'
-                   << "\t\t\t\t Codigo: " << r.status_code << '\n'
-                   << "\t\t\t\t Respuesta: " << r.text << '\n';
+                   << prefix << "Comando: " << command << '\n'
+                   << prefix << "Enviado: " << body << '\n'
+                   << prefix << "Tiempo: " << r.elapsed << '\n'
+                   << prefix << "Codigo: " << r.status_code << '\n'
+                #ifdef MODO_DEBUG_JSON
+                    << prefix << "Respuesta (pretty): " << pretty_json(r.text, prefix) << '\n';
+                #else
+                   << prefix << "Respuesta: " << r.text << '\n';
+                #endif
 }
 
 const cpr::Response ValidadorUnit::command_get(const std::string &command, bool debug) const
@@ -71,7 +106,6 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 
     if (debug)
         imprime_debug(command, response, json);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     return response;
 }
 
@@ -118,6 +152,7 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         device_model = json_response["deviceModel"].s();
 
         CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
+        ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
         return json_response["allLevels"];
     }
     else
@@ -131,17 +166,14 @@ void ValidadorUnit::detiene_desconecta()
     if (poll.load())
     {
         poll = false;                                                             // Detiene el polling
-        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli + 100)); // Espera a que el hilo de polling termine
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
     }
 
-    ultimo_cash_level = crow::json::load(command_get("GetAllLevels").text);
-
+    //ultimo_cash_level = "{}"; // Reinicia el snapshot del cash level al desconectar
     auto response = command_post("DisconnectDevice");
+
     if (response.status_code == 200)
-    {
-        CROW_LOG_INFO << response.text;
-        // device_id = "Desconocido";
-    }
+        CROW_LOG_INFO << device_id << " → " << response.text;
     else
         transiciona_estado(std::make_unique<EstadoError>("Error al desconectar del validador: " + response.text));
 }
@@ -151,7 +183,7 @@ const std::string ValidadorUnit::get_nombre_estado()
     return handler_state->get_nombre_estado();
 }
 
-bool ValidadorUnit::esperar_pago_async() // Cambia void por bool
+bool ValidadorUnit::esperar_pago_async() 
 {
     bool detecto_dispensing = false;
     bool terminado = false;
@@ -186,7 +218,7 @@ bool ValidadorUnit::esperar_pago_async() // Cambia void por bool
                 terminado = true;
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
     return exito;
 }
@@ -220,20 +252,11 @@ void ValidadorUnit::iniciar_polling()
                         signal_error.emit(device_id,"Dispositivo atascado");
                         detiene_desconecta();
                     }
-                    else if (event_name == "INCOMPLETE_PAYOUT" || event_name == "ERROR_DURING_PAYOUT") 
-                    {
-                        signal_error.emit(device_id,"Pago incompleto detectado");
-                    }
                     else if (event_name == "ERROR")
                     {
                         signal_error.emit(device_id, "Error genérico detectado");
                         detiene_desconecta();
                         break;
-                    }
-                    else if (event_name == "TIME_OUT")
-                    {
-                        signal_error.emit(device_id, "Tiempo limite alcanzado" );
-                        detiene_desconecta();
                     }
                     else if (event_name == "CASHBOX_REMOVED")
                         signal_error.emit(device_id, event_name);
@@ -249,14 +272,12 @@ void ValidadorUnit::iniciar_polling()
         .detach();
 }
 
-uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio)
+uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const crow::json::rvalue &actual_level)
 {
     uint cambio = monto;
-    auto response = command_get("GetAllLevels");
-    auto json = crow::json::load(response.text);
     std::map<int, int> levels;
 
-    for (auto &&i : json)
+    for (auto &&i : actual_level)
         levels[i["value"].i() / 100] = i["storedInPayout"].i();
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 

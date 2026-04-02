@@ -202,7 +202,7 @@ void Pago::on_credit(const std::string &, const std::string &, const crow::json:
     t_log->m_total = t_log->m_ingreso += credito;
     log.update_log(t_log);
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     hub.detiene_poll_for_all(t_log->m_id);
 
     // NOTIFICACIÓN: Despertar al endpoint

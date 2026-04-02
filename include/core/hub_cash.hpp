@@ -25,7 +25,6 @@ class CashHub
 {
 private:
     std::vector<std::unique_ptr<ValidadorUnit>> unidades;
-    std::map<size_t, int> mapa_detalle_entradas;
 
     friend class Sesion;
     std::string autentica();

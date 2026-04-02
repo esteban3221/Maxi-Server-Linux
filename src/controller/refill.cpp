@@ -302,7 +302,7 @@ crow::response Refill::get_dashboard(const crow::request &req)
 
     crow::json::wvalue json_final;
     auto &hub = CashHub::instance();
-    auto map = hub.obten_ultimo_snapshot_level();
+    auto map =  hub.obten_ultimo_snapshot_level();
 
     for (auto const& [device_id, valor] : map)
     {

@@ -56,7 +56,7 @@ public:
     DetalleMovimiento(/* args */);
     ~DetalleMovimiento();
 
-    void registrar_diferencias_salida(size_t t_id,
+    void registrar_diferencias(size_t t_id,
                                         const crow::json::rvalue& inicial, 
                                         const crow::json::rvalue& final_);
 };

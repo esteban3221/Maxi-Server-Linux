@@ -100,7 +100,7 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
     if (t_log->m_ingreso >= t_log->m_total || cancelado)
     {
         hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         hub.detiene_poll_for_all(t_log->m_id);
         {
             std::lock_guard<std::mutex> lock(mtx_espera);

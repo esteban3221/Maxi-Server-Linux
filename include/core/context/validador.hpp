@@ -50,7 +50,7 @@ private:
     // utilidades para consumir la api rest del validador
     const std::string BASE_URL = "http://localhost:5000/api/v2/CashDevice/";
     void imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body = "") const;
-    crow::json::rvalue ultimo_cash_level;
+    std::string ultimo_cash_level;
 
 public:
     ValidadorUnit(/* args */);
@@ -68,7 +68,7 @@ public:
     size_t &property_salida_credito() { return salida_credito; }
     Conf &property_conf(){return conf;}
     std::string &property_token() { return token; }
-    crow::json::rvalue &property_ultimo_cash_level(){ return ultimo_cash_level; }
+    std::string  &property_ultimo_cash_level(){ return ultimo_cash_level; }
     const std::string &property_device_model() {return device_model;} //solo_lectura
     const std::string &property_device_id() {return device_id;} //solo_lectura
 
@@ -77,7 +77,7 @@ public:
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);
-    uint iniciar_pago(size_t, bool is_cambio);
+    uint iniciar_pago(size_t, bool is_cambio, const crow::json::rvalue &actual_level);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
 
