@@ -313,9 +313,11 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
         {
             if (i->property_conf().ssp == 16)
             {
-                auto response = i->command_get("GetAllLevels", true);
-                auto json_response = crow::json::load(response.text);
-                snapshot_inicio.emplace_back(response);
+                cpr::Response r_inicio;
+            			r_inicio.text = i->property_ultimo_cash_level();
+            		  auto json_response = crow::json::load(r_inicio.text);
+            		  r_inicio.status_code = 200;
+            		  snapshot_inicio.emplace_back(r_inicio);
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
                 remanente = i->iniciar_pago(remanente, is_cambio, json_response);
                 snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
@@ -341,7 +343,11 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
     for (auto &&i : unidades)
         if (map.contains(i->property_device_id()))
         {
-            snapshot_inicio.emplace_back(i->command_get("GetAllLevels", true));
+            cpr::Response r_inicio;
+            r_inicio.text = i->property_ultimo_cash_level();
+            auto json_response = crow::json::load(r_inicio.text);
+            r_inicio.status_code = 200;
+            snapshot_inicio.emplace_back(r_inicio);
             i->iniciar_pago(map.at(i->property_device_id()));
             snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
         }
