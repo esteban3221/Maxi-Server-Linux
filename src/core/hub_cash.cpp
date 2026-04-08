@@ -268,10 +268,12 @@ void CashHub::detiene_poll_for_all(size_t t_id)
 
     for (auto &&i : unidades)
     {
+        i->property_poll().store(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(i->property_poll_milli()));
         cpr::Response r_inicio;
+
         r_inicio.text = i->property_ultimo_cash_level();
         snapshot_inicio.emplace_back(r_inicio);
-        i->property_poll().store(false);
         auto json = i->command_get("GetAllLevels", true);
         i->property_ultimo_cash_level() = json.text;
         snapshot_fin.emplace_back(json);
