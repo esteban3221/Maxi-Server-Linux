@@ -144,7 +144,7 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         {"EnableAutoAcceptEscrow", conf.auto_acepta_credito},
         {"EnablePayout", conf.habilita_salida_credito}};
 
-    auto response = command_post("OpenConnection", json.dump(), true);
+    auto response = command_post("OpenConnection", json.dump());
     auto json_response = crow::json::load(response.text);
     if (response.status_code == 200)
     {
@@ -152,7 +152,7 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         device_model = json_response["deviceModel"].s();
 
         CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
+        ultimo_cash_level = command_get("GetAllLevels", true).text;
         return json_response["allLevels"];
     }
     else
