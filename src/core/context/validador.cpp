@@ -276,7 +276,7 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const std::string
 {
     uint cambio = monto;
     std::map<int, int> levels;
-
+    CROW_LOG_CRITICAL << "String actual_level: \n" << actual_level;
     auto json_levels = crow::json::load(actual_level);
 
     for (auto &&i : json_levels)
