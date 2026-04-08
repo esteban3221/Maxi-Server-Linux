@@ -261,6 +261,9 @@ void CashHub::inicia_poll_for_all()
         i->iniciar_polling();
 }
 
+#include <thread>
+#include <chrono>
+
 void CashHub::detiene_poll_for_all(size_t t_id)
 {
     std::vector<cpr::Response> snapshot_inicio;
@@ -269,21 +272,53 @@ void CashHub::detiene_poll_for_all(size_t t_id)
     for (auto &&i : unidades)
     {
         i->property_poll().store(false);
+        // Espera inicial para que el último ciclo de polleo termine
         std::this_thread::sleep_for(std::chrono::milliseconds(i->property_poll_milli()));
-        cpr::Response r_inicio;
 
+        // Snapshot inicial (estado previo guardado)
+        cpr::Response r_inicio;
         r_inicio.text = i->property_ultimo_cash_level();
         snapshot_inicio.emplace_back(r_inicio);
-        auto json = i->command_get("GetAllLevels", true);
-        i->property_ultimo_cash_level() = json.text;
+
+        // --- Lógica de Reintento ---
+        cpr::Response json;
+        int intentos = 0;
+        const int max_intentos = 5; // Máximo 2.5 segundos de espera total
+
+        while (intentos < max_intentos)
+        {
+            json = i->command_get("GetAllLevels", true);
+            
+            if (json.status_code == 200 && json.text.size() > 2) 
+            {
+                i->property_ultimo_cash_level() = json.text;
+                break; // Éxito, salimos del bucle de reintento
+            }
+
+            intentos++;
+            CROW_LOG_WARNING << "Niveles no listos para unidad " << i->property_device_id() 
+                             << ". Reintentando en 500ms... (Intento " << intentos << ")";
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+
+        // Si después de los reintentos falló, snapshot_fin llevará el último error recibido
         snapshot_fin.emplace_back(json);
     }
 
+    // Procesar diferencias
     for (size_t i = 0; i < snapshot_inicio.size(); i++)
-        detalle.registrar_diferencias(t_id, 
-            crow::json::load(snapshot_inicio[i].text), 
-            crow::json::load(snapshot_fin[i].text));
+    {
+        auto j_ini = crow::json::load(snapshot_inicio[i].text);
+        auto j_fin = crow::json::load(snapshot_fin[i].text);
         
+        // Solo registramos si ambos JSON son válidos
+        if (j_ini && j_fin && j_ini.t() == crow::json::type::List && j_fin.t() == crow::json::type::List) {
+            detalle.registrar_diferencias(t_id, j_ini, j_fin);
+        } else {
+            CROW_LOG_ERROR << "No se pudieron comparar niveles: Snapshot inválido tras reintentos.";
+        }
+    }
 }
 
 // automatico

@@ -68,7 +68,7 @@ public:
     size_t &property_salida_credito() { return salida_credito; }
     Conf &property_conf(){return conf;}
     std::string &property_token() { return token; }
-    std::string  &property_ultimo_cash_level(){ return ultimo_cash_level; }
+    std::string &property_ultimo_cash_level(){ return ultimo_cash_level; }
     const std::string &property_device_model() {return device_model;} //solo_lectura
     const std::string &property_device_id() {return device_id;} //solo_lectura
 

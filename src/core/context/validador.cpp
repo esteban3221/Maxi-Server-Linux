@@ -168,8 +168,6 @@ void ValidadorUnit::detiene_desconecta()
         poll = false;                                                             // Detiene el polling
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
     }
-
-    //ultimo_cash_level = "{}"; // Reinicia el snapshot del cash level al desconectar
     auto response = command_post("DisconnectDevice");
 
     if (response.status_code == 200)
