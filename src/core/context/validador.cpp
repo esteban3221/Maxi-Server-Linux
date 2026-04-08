@@ -199,7 +199,7 @@ bool ValidadorUnit::esperar_pago_async()
             if (json.has("deviceState")) state = json["deviceState"].s();
             else if (json.has("DeviceState")) state = json["DeviceState"].s();
             if (state == "DISPENSING") detecto_dispensing = true;
-            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED")) terminado = true;
+            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" || state == "DISABLE")) terminado = true;
             for (const auto &item : json["pollBuffer"]) 
             {
                 std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
