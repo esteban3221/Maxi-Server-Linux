@@ -270,7 +270,6 @@ void CashHub::detiene_poll_for_all(size_t t_id)
     {
         cpr::Response r_inicio;
         r_inicio.text = i->property_ultimo_cash_level();
-        r_inicio.status_code = 200;
         snapshot_inicio.emplace_back(r_inicio);
         i->property_poll().store(false);
         auto json = i->command_get("GetAllLevels", true);
@@ -298,11 +297,9 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
         {
             cpr::Response r_inicio;
             r_inicio.text = i->property_ultimo_cash_level();
-            auto json_response = crow::json::load(r_inicio.text);
-            r_inicio.status_code = 200;
             snapshot_inicio.emplace_back(r_inicio);
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
-            remanente = i->iniciar_pago(remanente, is_cambio, json_response);
+            remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
             snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
         }
     }
@@ -314,12 +311,10 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
             if (i->property_conf().ssp == 16)
             {
                 cpr::Response r_inicio;
-            			r_inicio.text = i->property_ultimo_cash_level();
-            		  auto json_response = crow::json::load(r_inicio.text);
-            		  r_inicio.status_code = 200;
-            		  snapshot_inicio.emplace_back(r_inicio);
+                r_inicio.text = i->property_ultimo_cash_level();
+                snapshot_inicio.emplace_back(r_inicio);
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
-                remanente = i->iniciar_pago(remanente, is_cambio, json_response);
+                remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
                 snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
             }
         }
@@ -345,8 +340,6 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
         {
             cpr::Response r_inicio;
             r_inicio.text = i->property_ultimo_cash_level();
-            auto json_response = crow::json::load(r_inicio.text);
-            r_inicio.status_code = 200;
             snapshot_inicio.emplace_back(r_inicio);
             i->iniciar_pago(map.at(i->property_device_id()));
             snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));

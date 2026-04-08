@@ -272,12 +272,14 @@ void ValidadorUnit::iniciar_polling()
         .detach();
 }
 
-uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const crow::json::rvalue &actual_level)
+uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const std::string &actual_level)
 {
     uint cambio = monto;
     std::map<int, int> levels;
 
-    for (auto &&i : actual_level)
+    auto json_levels = crow::json::load(actual_level);
+
+    for (auto &&i : json_levels)
         levels[i["value"].i() / 100] = i["storedInPayout"].i();
     auto json_pago = obten_cambio(cambio, levels, is_cambio);
 
@@ -301,8 +303,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
             future.wait();
             CROW_LOG_INFO << "Entrega terminada. Continuando con el flujo.";
         }
-        else 
-        if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
+        else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
         {
             if (json["reason"].s() == "BUSY")
             {

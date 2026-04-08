@@ -77,7 +77,7 @@ public:
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);
-    uint iniciar_pago(size_t, bool is_cambio, const crow::json::rvalue &actual_level);
+    uint iniciar_pago(size_t, bool is_cambio, const std::string &actual_level);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
 
