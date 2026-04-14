@@ -10,15 +10,6 @@
 #include <crow.h>
 #include <cpr/cpr.h>
 
-#include "interfaces/ivalidador.hpp"
-
-// Forward declaration de los estados
-class EstadoIdle;
-class EstadoIniciando;
-class EstadoActivo;
-class EstadoPausado;
-class EstadoDeteniendo;
-
 struct Conf
 {
     std::string puerto = "/dev/ttyUSB";
@@ -33,8 +24,6 @@ struct Conf
 class ValidadorUnit
 {
 private:
-    std::unique_ptr<IValidador> handler_state;
-
     std::string device_id;
     std::string device_model;
 
@@ -80,8 +69,6 @@ public:
     uint iniciar_pago(size_t, bool is_cambio, const std::string &actual_level);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
-
-    void transiciona_estado(std::unique_ptr<IValidador> nuevo_estado);
 
     const cpr::Response command_get(const std::string &command, bool debug = false) const;
     const cpr::Response command_post(const std::string &command, const std::string &json = "", bool = false) const;

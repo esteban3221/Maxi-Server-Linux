@@ -76,7 +76,6 @@ set(SOURCES
     src/view/config/roles.cpp
     src/view/config/wifi.cpp
     #================CONTROLLER=================
-    #src/controller/c_sharp_validator_validator.cpp
     src/controller/session.cpp
     src/controller/main_window.cpp
     src/controller/venta.cpp
@@ -102,7 +101,6 @@ set(SOURCES
     src/shared/global.cpp
     #================STATE MACHINE=================
     src/core/context/validador.cpp
-    src/core/states/svalidador.cpp
     src/core/hub_cash.cpp
 )
 

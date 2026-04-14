@@ -1,14 +1,12 @@
 #include "core/context/validador.hpp"
 #include "core/states/svalidador.hpp"
 
-ValidadorUnit::ValidadorUnit(/* args */) : handler_state(std::make_unique<EstadoIdle>()),
-                                           device_id("Desconocido"),
+ValidadorUnit::ValidadorUnit(/* args */) : device_id("Desconocido"),
                                            ingreso_credito(0),
                                            salida_credito(0),
                                            poll_milli(200),
                                            poll(false)
 {
-    handler_state->on_entry(*this);
     //crow::logger::setLogLevel(crow::LogLevel::Debug);
 }
 
@@ -45,24 +43,6 @@ std::string pretty_json(const std::string& json, const std::string& indent_prefi
         }
     }
     return out;
-}
-
-// context/validador.cpp (implementación)
-void ValidadorUnit::transiciona_estado(std::unique_ptr<IValidador> nuevo_estado)
-{
-    if (!nuevo_estado)
-        return;
-
-    if (handler_state)
-        handler_state->on_exit(*this);
-
-    auto estado_anterior = handler_state ? handler_state->get_nombre_estado() : "Ninguno";
-    handler_state = std::move(nuevo_estado);
-
-    handler_state->on_entry(*this);
-    signal_state_changed.emit(handler_state->get_nombre_estado());
-
-    CROW_LOG_INFO << "Transición: " << estado_anterior << " -> " << handler_state->get_nombre_estado();
 }
 
 void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body) const
@@ -156,7 +136,7 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         return json_response["allLevels"];
     }
     else
-        transiciona_estado(std::make_unique<EstadoError>("Error al conectar al validador: " + device_id));
+        CROW_LOG_ERROR << "Error al conectar al validador: " << device_id;
 
     return {};
 }
@@ -173,12 +153,7 @@ void ValidadorUnit::detiene_desconecta()
     if (response.status_code == 200)
         CROW_LOG_INFO << device_id << " → " << response.text;
     else
-        transiciona_estado(std::make_unique<EstadoError>("Error al desconectar del validador: " + response.text));
-}
-
-const std::string ValidadorUnit::get_nombre_estado()
-{
-    return handler_state->get_nombre_estado();
+        CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
 }
 
 bool ValidadorUnit::esperar_pago_async() 
@@ -197,12 +172,14 @@ bool ValidadorUnit::esperar_pago_async()
             if (json.has("deviceState")) state = json["deviceState"].s();
             else if (json.has("DeviceState")) state = json["DeviceState"].s();
             if (state == "DISPENSING") detecto_dispensing = true;
+            if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
             else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" || state == "DISABLED")) terminado = true;
+
             for (const auto &item : json["pollBuffer"]) 
             {
                 std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
                 
-                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR") {
+                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" || event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT") {
                     CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
                     auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
                     signal_error.emit(device_id, event + " Entregado: " + value);
@@ -210,6 +187,7 @@ bool ValidadorUnit::esperar_pago_async()
                     terminado = true; // Salimos del bucle de espera
                 }
             }
+
             if (!detecto_dispensing && ++reintentos_iniciales > 50) 
             {
                 exito = false;
