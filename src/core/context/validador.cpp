@@ -176,9 +176,9 @@ bool ValidadorUnit::esperar_pago_async()
             if (json.has("PollBuffer")) {
                 for (const auto &item : json["PollBuffer"]) 
                 {
-                    std::string type = item.has("Type") ? item["Type"].s() : "";
-                    std::string stateStr = item.has("StateAsString") ? item["StateAsString"].s() : "";
-                    std::string eventStr = item.has("EventTypeAsString") ? item["EventTypeAsString"].s() : "";
+                    std::string type = item.has("Type") ? std::string(item["Type"].s()) : "";
+                    std::string stateStr = item.has("StateAsString") ? std::string(item["StateAsString"].s()) : "";
+                    std::string eventStr = item.has("EventTypeAsString") ? std::string(item["EventTypeAsString"].s()) : "";
 
                     // Detectamos si el billete está en la boca (Bezel)
                     if (stateStr == "NOTE_HELD_IN_BEZEL" || eventStr == "NOTE_IN_BEZEL_HOLD") {
