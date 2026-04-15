@@ -163,106 +163,100 @@ bool ValidadorUnit::esperar_pago_async()
     bool exito = false;
     bool nota_en_bezel = false;
     int reintentos_iniciales = 0;
-    int vacios_post_dispensing = 0; // Contador de seguridad
 
-    CROW_LOG_INFO << "Iniciando monitoreo de entrega física...";
+    CROW_LOG_INFO << "Iniciando monitoreo de entrega física (Spectral Payout v.11)...";
 
     while (!terminado) {
         auto resp = command_get("GetDeviceStatus");
         
         if (resp.status_code == 200) 
         {
-            auto json = crow::json::load(resp.text);
-            // Manejo de case-sensitivity según tu API
-            std::string state = json.has("DeviceState") ? json["DeviceState"].s() : 
-                               (json.has("deviceState") ? std::string(json["deviceState"].s()) : "");
+            auto json_array = crow::json::load(resp.text);
+            
+            // Según tu PDF, GetDeviceStatus devuelve un ARRAY de objetos de estado
+            for (const auto &item : json_array) 
+            {
+                // Extraemos campos según el PDF (case-sensitive)
+                std::string type = item.has("type") ? std::string(item["type"].s()) : "";
+                std::string stateStr = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : "";
+                std::string eventStr = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
 
-            if (state == "DISPENSING") {
-                detecto_dispensing = true;
-                vacios_post_dispensing = 0; // Reset si sigue reportando dispensing
-            }
-
-            if (json.has("PollBuffer") && json["PollBuffer"].size() > 0) {
-                for (const auto &item : json["PollBuffer"]) 
-                {
-                    std::string type = item.has("Type") ? std::string(item["Type"].s()) : "";
-                    std::string stateStr = item.has("StateAsString") ? std::string(item["StateAsString"].s()) : "";
-                    std::string eventStr = item.has("EventTypeAsString") ? std::string(item["EventTypeAsString"].s()) : "";
-
-                    // 1. Detección de billete en boca
-                    if (stateStr == "NOTE_HELD_IN_BEZEL" || eventStr == "NOTE_IN_BEZEL_HOLD") {
+                // 1. Monitoreo del estado general del dispositivo
+                if (type == "DeviceStatusResponse") {
+                    if (stateStr == "DISPENSING") {
+                        detecto_dispensing = true;
+                    }
+                    else if (stateStr == "NOTE_HELD_IN_BEZEL") {
                         if (!nota_en_bezel) {
-                            CROW_LOG_WARNING << "⚠️ Billete en bezel. Esperando retiro del usuario...";
+                            CROW_LOG_WARNING << "⚠️ Billete en Bezel detectado. Esperando retiro.";
                             nota_en_bezel = true;
+                            exito = true; // El dinero ya salió
                         }
                     }
+                    else if (stateStr == "DISABLED") {
+                        // Si ya hubo éxito o nota en bezel, el DISABLED es el fin del ciclo normal
+                        if (exito || nota_en_bezel) {
+                            CROW_LOG_INFO << "✅ Ciclo finalizado: El dispositivo se deshabilitó tras la entrega.";
+                            terminado = true;
+                        } 
+                        else if (detecto_dispensing) {
+                            CROW_LOG_ERROR << "❌ Error: El dispositivo pasó a DISABLED sin entregar.";
+                            terminado = true;
+                        }
+                    }
+                }
 
-                    // 2. ÉXITO DEFINITIVO (Evento específico de transacción)
-                    if (type == "DispenserTransactionEventResponse") {
-                        if (stateStr == "COMPLETED") {
-                            CROW_LOG_INFO << "✅ Entrega confirmada por el hardware (COMPLETED).";
-                            exito = true;
-                            terminado = true;
-                        } else if (stateStr == "FAILED" || stateStr == "ABORTED") {
-                            CROW_LOG_ERROR << "❌ Entrega abortada/fallida por el hardware: " << stateStr;
-                            exito = false;
-                            terminado = true;
-                        }
+                // 2. Monitoreo de eventos de transacción (DispenserTransactionEventResponse)
+                if (type == "DispenserTransactionEventResponse") {
+                    if (stateStr == "COMPLETED") {
+                        CROW_LOG_INFO << "✅ Transacción COMPLETED confirmada.";
+                        exito = true;
+                        terminado = true;
+                    } 
+                    else if (stateStr == "ERROR") {
+                        CROW_LOG_ERROR << "❌ Transacción con ERROR reportado por hardware.";
+                        exito = false;
+                        terminado = true;
                     }
-                    
-                    // 3. ERRORES CRÍTICOS
-                    if (eventStr == "TIME_OUT" || eventStr == "JAMMED" || eventStr == "ERROR" || stateStr == "JAMMED") {
-                        CROW_LOG_ERROR << "❌ Error crítico detectado: " << eventStr << " / " << stateStr;
+                }
+
+                // 3. Monitoreo de eventos de efectivo (CashEventResponse)
+                if (type == "CashEventResponse") {
+                    if (eventStr == "NOTE_IN_BEZEL_HOLD") {
+                        nota_en_bezel = true;
+                        exito = true;
+                    }
+                    else if (eventStr == "DISPENSED") {
+                        CROW_LOG_INFO << "✅ Billete retirado (DISPENSED).";
+                        exito = true;
+                        terminado = true;
+                    }
+                    else if (eventStr == "JAMMED" || eventStr == "TIME_OUT" || eventStr == "ERROR_DURING_PAYOUT") {
+                        CROW_LOG_ERROR << "❌ Error crítico de efectivo: " << eventStr;
                         exito = false;
                         terminado = true;
                     }
                 }
             }
 
-            // --- SECCIÓN FAILSAFE (REVISADA) ---
-            // Solo evaluamos salir por estado si ya NO estamos en DISPENSING
-            if (detecto_dispensing && state != "DISPENSING") {
-                
-                // Si el estado es IDLE o ENABLED, el dispositivo terminó su ciclo
-                if (state == "IDLE" || state == "ENABLED") {
-                    // Damos un margen de un par de lecturas por si el evento COMPLETED viene retrasado
-                    if (++vacios_post_dispensing > 2) {
-                        terminado = true;
-                        // OJO: Si terminó y no vimos el "COMPLETED", algo es raro.
-                        // En Spectral Payout, mejor ser precavido:
-                        if (!exito) {
-                            CROW_LOG_WARNING << "❓ El ciclo terminó sin evento COMPLETED explícito. Marcando como finalizado.";
-                            // Aquí podrías llamar a una función que verifique niveles si eres muy estricto
-                            exito = true; 
-                        }
-                    }
-                }
-                
-                // Si el estado es DISABLED o se desconectó post-dispensing, es un fallo (posible reset por voltaje)
-                if (state == "DISABLED" || state == "NOT_CONNECTED") {
-                    CROW_LOG_ERROR << "❌ El dispositivo se deshabilitó o desconectó durante la entrega. Posible fallo de energía.";
-                    exito = false;
-                    terminado = true;
-                }
-            }
-
-            // Seguridad por si el comando de pago nunca arrancó los motores
-            if (!detecto_dispensing && ++reintentos_iniciales > 40) { // ~8-10 segundos
-                CROW_LOG_ERROR << "❌ Tiempo de espera agotado: El dispositivo nunca inició el DISPENSING.";
+            // Failsafe: Seguridad por si el comando de pago nunca arrancó
+            if (!detecto_dispensing && ++reintentos_iniciales > 40) { 
+                CROW_LOG_ERROR << "❌ Timeout: El dispositivo nunca inició DISPENSING.";
                 terminado = true;
                 exito = false;
             }
         }
         else {
-            CROW_LOG_ERROR << "❌ Error de comunicación con el servicio del validador (HTTP " << resp.status_code << ")";
-            // No terminamos el bucle inmediatamente, esperamos por si el servicio revive
+            CROW_LOG_ERROR << "❌ Error comunicación HTTP: " << resp.status_code;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+        if (!terminado) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+        }
     }
 
-    // Pequeño delay final para que el hardware asiente el estado
-    std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+    // Delay post-pago: Crucial para que el puerto COM se libere antes del próximo comando
+    std::this_thread::sleep_for(std::chrono::milliseconds(800)); 
     CROW_LOG_INFO << "Resultado final de entrega: " << (exito ? "ÉXITO" : "FALLO");
     
     return exito;
