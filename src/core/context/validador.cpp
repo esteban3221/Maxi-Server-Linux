@@ -174,8 +174,8 @@ bool ValidadorUnit::esperar_pago_async()
             if (state == "DISPENSING") detecto_dispensing = true;
             if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
             else if (detecto_dispensing && (state == "IDLE" || 
-                                            state == "ENABLED" || 
-                                            state == "DISABLED" && json["pollBuffer"].size() == 0)) terminado = true;
+                                            state == "ENABLED" /*|| 
+                                            state == "DISABLED" && json["pollBuffer"].size() == 0)*/)) terminado = true;
 
             for (const auto &item : json["pollBuffer"]) 
             {
