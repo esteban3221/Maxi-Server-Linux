@@ -7,7 +7,7 @@ ValidadorUnit::ValidadorUnit(/* args */) : device_id("Desconocido"),
                                            poll_milli(200),
                                            poll(false)
 {
-    //crow::logger::setLogLevel(crow::LogLevel::Debug);
+    // crow::logger::setLogLevel(crow::LogLevel::Debug);
 }
 
 ValidadorUnit::~ValidadorUnit()
@@ -15,30 +15,47 @@ ValidadorUnit::~ValidadorUnit()
     // detiene_desconecta();
 }
 
-std::string pretty_json(const std::string& json, const std::string& indent_prefix) {
-    if (json.empty() || json[0] != '{' && json[0] != '[') return json;
+std::string pretty_json(const std::string &json, const std::string &indent_prefix)
+{
+    if (json.empty() || json[0] != '{' && json[0] != '[')
+        return json;
 
     std::string out;
     out.reserve(json.length() * 2); // Evita realocaciones constantes
     int level = 0;
     bool in_quotes = false;
 
-    for (size_t i = 0; i < json.length(); ++i) {
+    for (size_t i = 0; i < json.length(); ++i)
+    {
         char c = json[i];
-        if (c == '"' && (i == 0 || json[i-1] != '\\')) in_quotes = !in_quotes;
-        if (in_quotes) { out += c; continue; }
+        if (c == '"' && (i == 0 || json[i - 1] != '\\'))
+            in_quotes = !in_quotes;
+        if (in_quotes)
+        {
+            out += c;
+            continue;
+        }
 
-        if (c == '{' || c == '[') {
+        if (c == '{' || c == '[')
+        {
             out += c;
             out += "\n" + indent_prefix + std::string(++level * 4, ' ');
-        } else if (c == '}' || c == ']') {
+        }
+        else if (c == '}' || c == ']')
+        {
             out += "\n" + indent_prefix + std::string(--level * 4, ' ');
             out += c;
-        } else if (c == ',') {
+        }
+        else if (c == ',')
+        {
             out += ",\n" + indent_prefix + std::string(level * 4, ' ');
-        } else if (c == ':') {
+        }
+        else if (c == ':')
+        {
             out += ": ";
-        } else if (!std::isspace(c)) {
+        }
+        else if (!std::isspace(c))
+        {
             out += c;
         }
     }
@@ -50,15 +67,15 @@ void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Respons
     std::string prefix = "\t\t\t\t ";
     std::puts("\n==================== [Debug Interno] ====================");
     CROW_LOG_INFO << "Validador:" << device_id << '\n'
-                   << prefix << "Comando: " << command << '\n'
-                   << prefix << "Enviado: " << body << '\n'
-                   << prefix << "Tiempo: " << r.elapsed << '\n'
-                   << prefix << "Codigo: " << r.status_code << '\n'
-                #ifdef MODO_DEBUG_JSON
-                    << prefix << "Respuesta (pretty): " << pretty_json(r.text, prefix) << '\n';
-                #else
-                   << prefix << "Respuesta: " << r.text << '\n';
-                #endif
+                  << prefix << "Comando: " << command << '\n'
+                  << prefix << "Enviado: " << body << '\n'
+                  << prefix << "Tiempo: " << r.elapsed << '\n'
+                  << prefix << "Codigo: " << r.status_code << '\n'
+#ifdef MODO_DEBUG_JSON
+                  << prefix << "Respuesta (pretty): " << pretty_json(r.text, prefix) << '\n';
+#else
+                  << prefix << "Respuesta: " << r.text << '\n';
+#endif
 }
 
 const cpr::Response ValidadorUnit::command_get(const std::string &command, bool debug) const
@@ -145,7 +162,7 @@ void ValidadorUnit::detiene_desconecta()
 {
     if (poll.load())
     {
-        poll = false;                                                             // Detiene el polling
+        poll = false;                                                       // Detiene el polling
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
     }
     auto response = command_post("DisconnectDevice");
@@ -156,41 +173,52 @@ void ValidadorUnit::detiene_desconecta()
         CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
 }
 
-bool ValidadorUnit::esperar_pago_async() 
+bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
     bool exito = true; // Por defecto asumimos éxito hasta que pase un error
     int reintentos_iniciales = 0;
 
-    while (!terminado) {
+    while (!terminado)
+    {
         auto resp = command_get("GetDeviceStatus");
-        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK) 
+        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK)
         {
             auto json = crow::json::load(resp.text);
-    
-            if (json.has("deviceState")) state = json["deviceState"].s();
-            else if (json.has("DeviceState")) state = json["DeviceState"].s();
-            if (state == "DISPENSING") detecto_dispensing = true;
-            if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
-            else if (detecto_dispensing && (state == "IDLE" || 
-                                            state == "ENABLED" || 
-                                            state == "DISABLED" && json["pollBuffer"]["stateAsString"].s() == "COMPLETED")) terminado = true;
 
-            for (const auto &item : json["pollBuffer"]) 
-            {
-                std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
-                
-                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" /*|| event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT"*/) {
-                    CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
-                    auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
-                    signal_error.emit(device_id, event + " Entregado: " + value);
-                    exito = false;   // Marcamos como fallo
-                    terminado = true; // Salimos del bucle de espera
+            if (json.has("deviceState"))
+                state = json["deviceState"].s();
+            else if (json.has("DeviceState"))
+                state = json["DeviceState"].s();
+            if (state == "DISPENSING")
+                detecto_dispensing = true;
+            if (state == "IN_PROGRESS")
+                continue; // Ignoramos estados intermedios
+            else if (detecto_dispensing && (state == "IDLE" ||
+                                            state == "ENABLED" ||
+                                            state == "DISABLED" && json["pollBuffer"].size() > 0))
+                for (const auto &item : json["pollBuffer"])
+                {
+                    std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
+                    event = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : event;
+
+                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" /*|| event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT"*/)
+                    {
+                        CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
+                        auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
+                        signal_error.emit(device_id, event + " Entregado: " + value);
+                        exito = false;    // Marcamos como fallo
+                        terminado = true; // Salimos del bucle de espera
+                    } else if (event == "COMPLETED")
+                    {
+                        CROW_LOG_INFO << "Pago completado exitosamente. Entregado: " << (item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A");
+                        exito = true;     // Marcamos como éxito
+                        terminado = true; // Salimos del bucle de espera
+                    }
                 }
-            }
 
-            if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+            if (!detecto_dispensing && ++reintentos_iniciales > 50)
             {
                 exito = false;
                 terminado = true;
@@ -200,7 +228,6 @@ bool ValidadorUnit::esperar_pago_async()
     }
     return exito;
 }
-
 
 void ValidadorUnit::iniciar_polling()
 {
@@ -253,7 +280,8 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const std::string
 {
     uint cambio = monto;
     std::map<int, int> levels;
-    CROW_LOG_CRITICAL << "String actual_level: \n" << actual_level;
+    CROW_LOG_CRITICAL << "String actual_level: \n"
+                      << actual_level;
     auto json_levels = crow::json::load(actual_level);
 
     for (auto &&i : json_levels)
