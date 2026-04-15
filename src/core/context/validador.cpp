@@ -160,36 +160,61 @@ bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
-    bool exito = true; // Por defecto asumimos éxito hasta que pase un error
+    bool exito = false; // Cambiamos a false por defecto para asegurar que solo sea true si vemos el "COMPLETED"
     int reintentos_iniciales = 0;
 
     while (!terminado) {
         auto resp = command_get("GetDeviceStatus");
-        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK) 
+        if (resp.status_code == 200) 
         {
             auto json = crow::json::load(resp.text);
-    
+            std::string state = "";
+
+            // 1. Extraer el estado del dispositivo (soportando ambas carcasas)
             if (json.has("deviceState")) state = json["deviceState"].s();
             else if (json.has("DeviceState")) state = json["DeviceState"].s();
-            if (state == "DISPENSING") detecto_dispensing = true;
-            if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
-            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" /*|| state == "DISABLED"*/)) terminado = true;
 
-            for (const auto &item : json["pollBuffer"]) 
-            {
-                std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
+            if (state == "DISPENSING") detecto_dispensing = true;
+
+            // 2. Analizar el PollBuffer para eventos específicos
+            if (json.has("PollBuffer") || json.has("pollBuffer")) {
+                auto& buffer = json.has("PollBuffer") ? json["PollBuffer"] : json["pollBuffer"];
                 
-                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" /*|| event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT"*/) {
-                    CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
-                    auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
-                    signal_error.emit(device_id, event + " Entregado: " + value);
-                    exito = false;   // Marcamos como fallo
-                    terminado = true; // Salimos del bucle de espera
+                for (const auto &item : buffer) 
+                {
+                    // Obtener el tipo de evento (Type) y su estado interno (StateAsString)
+                    std::string type = item.has("Type") ? std::string(item["Type"].s()) : "";
+                    std::string innerState = item.has("StateAsString") ? std::string(item["StateAsString"].s()) : "";
+
+                    // CASO ÉXITO: Transacción completada
+                    if (type == "DispenserTransactionEventResponse" && innerState == "COMPLETED") {
+                        CROW_LOG_INFO << "Pago completado exitosamente detectado en PollBuffer.";
+                        exito = true;
+                        terminado = true;
+                    }
+
+                    // CASO ERROR: Eventos de fallo
+                    std::string eventErr = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
+                    if (eventErr == "TIME_OUT" || eventErr == "JAMMED" || eventErr == "ERROR") {
+                        CROW_LOG_ERROR << "Fallo detectado durante el pago: " << eventErr;
+                        exito = false;
+                        terminado = true;
+                    }
                 }
             }
 
-            if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+            // 3. Condición de salida por estado del dispositivo (Failsafe)
+            // Si el dispositivo vuelve a IDLE/ENABLED/DISABLED y ya vimos DISPENSING, pero no capturamos el evento COMPLETED arriba
+            if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" || state == "DISABLED")) {
+                // Si llegamos aquí y exito sigue siendo false, es un aviso
+                if (!exito) CROW_LOG_WARNING << "El dispositivo terminó (State: " << state << ") pero no se detectó el evento COMPLETED explícito.";
+                terminado = true;
+            }
+
+            // Timeout de seguridad si nunca llega a DISPENSING
+            if (!detecto_dispensing && ++reintentos_iniciales > 100) // Aumentado un poco por si el hardware tarda en reaccionar
             {
+                CROW_LOG_ERROR << "Timeout: El dispositivo nunca entró en estado DISPENSING.";
                 exito = false;
                 terminado = true;
             }
