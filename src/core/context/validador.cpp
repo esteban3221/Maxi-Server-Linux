@@ -181,7 +181,7 @@ bool ValidadorUnit::esperar_pago_async()
             {
                 std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
                 
-                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" || event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT") {
+                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" /*|| event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT"*/) {
                     CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
                     auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
                     signal_error.emit(device_id, event + " Entregado: " + value);
