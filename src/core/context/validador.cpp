@@ -173,7 +173,7 @@ bool ValidadorUnit::esperar_pago_async()
             else if (json.has("DeviceState")) state = json["DeviceState"].s();
             if (state == "DISPENSING") detecto_dispensing = true;
             if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
-            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" || state == "DISABLED")) terminado = true;
+            else if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" /*|| state == "DISABLED"*/)) terminado = true;
 
             for (const auto &item : json["pollBuffer"]) 
             {
@@ -226,12 +226,10 @@ void ValidadorUnit::iniciar_polling()
                     else if (event_name == "JAMMED") 
                     {
                         signal_error.emit(device_id,"Dispositivo atascado");
-                        detiene_desconecta();
                     }
                     else if (event_name == "ERROR")
                     {
                         signal_error.emit(device_id, "Error genérico detectado");
-                        detiene_desconecta();
                         break;
                     }
                     else if (event_name == "CASHBOX_REMOVED")
