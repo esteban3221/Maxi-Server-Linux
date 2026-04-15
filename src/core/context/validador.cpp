@@ -169,7 +169,7 @@ bool ValidadorUnit::esperar_pago_async()
         if (resp.status_code == 200) 
         {
             auto json = crow::json::load(resp.text);
-            std::string state = json.has("DeviceState") ? json["DeviceState"].s() : (json.has("deviceState") ? json["deviceState"].s() : "");
+            std::string state = json.has("DeviceState") ? json["DeviceState"].s() : (json.has("deviceState") ? std::string(json["deviceState"].s()) : "");
 
             if (state == "DISPENSING") detecto_dispensing = true;
 
