@@ -141,6 +141,21 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
     return {};
 }
 
+void ValidadorUnit::detiene_desconecta()
+{
+    if (poll.load())
+    {
+        poll = false;                                                             // Detiene el polling
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
+    }
+    auto response = command_post("DisconnectDevice");
+
+    if (response.status_code == 200)
+        CROW_LOG_INFO << device_id << " → " << response.text;
+    else
+        CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
+}
+
 bool ValidadorUnit::esperar_pago_async() 
 {
     bool detecto_dispensing = false;
@@ -240,6 +255,7 @@ bool ValidadorUnit::esperar_pago_async()
         }
         else {
             CROW_LOG_ERROR << "❌ Error de comunicación con el servicio del validador (HTTP " << resp.status_code << ")";
+            // No terminamos el bucle inmediatamente, esperamos por si el servicio revive
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
