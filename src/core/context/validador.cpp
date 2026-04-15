@@ -160,107 +160,47 @@ bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
-    bool exito = false;
-    bool nota_en_bezel = false;
+    bool exito = true; // Por defecto asumimos éxito hasta que pase un error
     int reintentos_iniciales = 0;
-
-    CROW_LOG_INFO << "Iniciando monitoreo de entrega física (Spectral Payout v.11)...";
 
     while (!terminado) {
         auto resp = command_get("GetDeviceStatus");
-        
-        if (resp.status_code == 200) 
+        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK) 
         {
-            auto json_array = crow::json::load(resp.text);
-            
-            // Según tu PDF, GetDeviceStatus devuelve un ARRAY de objetos de estado
-            for (const auto &item : json_array) 
-            {
-                // Extraemos campos según el PDF (case-sensitive)
-                std::string type = item.has("type") ? std::string(item["type"].s()) : "";
-                std::string stateStr = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : "";
-                std::string eventStr = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
-
-                // 1. Monitoreo del estado general del dispositivo
-                if (type == "DeviceStatusResponse") {
-                    if (stateStr == "DISPENSING") {
-                        detecto_dispensing = true;
-                    }
-                    else if (stateStr == "NOTE_HELD_IN_BEZEL") {
-                        if (!nota_en_bezel) {
-                            CROW_LOG_WARNING << "⚠️ Billete en Bezel detectado. Esperando retiro.";
-                            nota_en_bezel = true;
-                            exito = true; // El dinero ya salió
-                        }
-                    }
-                    else if (stateStr == "DISABLED") {
-                        // Si ya hubo éxito o nota en bezel, el DISABLED es el fin del ciclo normal
-                        if (exito || nota_en_bezel) {
-                            CROW_LOG_INFO << "✅ Ciclo finalizado: El dispositivo se deshabilitó tras la entrega.";
-                            terminado = true;
-                        } 
-                        else if (detecto_dispensing) {
-                            CROW_LOG_ERROR << "❌ Error: El dispositivo pasó a DISABLED sin entregar.";
-                            terminado = true;
-                        }
-                    }
-                }
-
-                // 2. Monitoreo de eventos de transacción (DispenserTransactionEventResponse)
-                if (type == "DispenserTransactionEventResponse") {
-                    if (stateStr == "COMPLETED") {
-                        CROW_LOG_INFO << "✅ Transacción COMPLETED confirmada.";
-                        exito = true;
-                        terminado = true;
-                    } 
-                    else if (stateStr == "ERROR") {
-                        CROW_LOG_ERROR << "❌ Transacción con ERROR reportado por hardware.";
-                        exito = false;
-                        terminado = true;
-                    }
-                }
-
-                // 3. Monitoreo de eventos de efectivo (CashEventResponse)
-                if (type == "CashEventResponse") {
-                    if (eventStr == "NOTE_IN_BEZEL_HOLD") {
-                        nota_en_bezel = true;
-                        exito = true;
-                    }
-                    else if (eventStr == "DISPENSED") {
-                        CROW_LOG_INFO << "✅ Billete retirado (DISPENSED).";
-                        exito = true;
-                        terminado = true;
-                    }
-                    else if (eventStr == "JAMMED" || eventStr == "TIME_OUT" || eventStr == "ERROR_DURING_PAYOUT") {
-                        CROW_LOG_ERROR << "❌ Error crítico de efectivo: " << eventStr;
-                        exito = false;
-                        terminado = true;
-                    }
-                }
-            }
-
-            // Failsafe: Seguridad por si el comando de pago nunca arrancó
-            if (!detecto_dispensing && ++reintentos_iniciales > 40) { 
-                CROW_LOG_ERROR << "❌ Timeout: El dispositivo nunca inició DISPENSING.";
-                terminado = true;
-                exito = false;
-            }
-        }
-        else {
-            CROW_LOG_ERROR << "❌ Error comunicación HTTP: " << resp.status_code;
-        }
-
-        if (!terminado) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
-        }
-    }
-
-    // Delay post-pago: Crucial para que el puerto COM se libere antes del próximo comando
-    std::this_thread::sleep_for(std::chrono::milliseconds(800)); 
-    CROW_LOG_INFO << "Resultado final de entrega: " << (exito ? "ÉXITO" : "FALLO");
+            auto json = crow::json::load(resp.text);
     
+            if (json.has("deviceState")) state = json["deviceState"].s();
+            else if (json.has("DeviceState")) state = json["DeviceState"].s();
+            if (state == "DISPENSING") detecto_dispensing = true;
+            if (state == "IN_PROGRESS") continue; // Ignoramos estados intermedios
+            else if (detecto_dispensing && (state == "IDLE" || 
+                                            state == "ENABLED" || 
+                                            state == "DISABLED" && json["pollBuffer"].size() == 0)) terminado = true;
+
+            for (const auto &item : json["pollBuffer"]) 
+            {
+                std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
+                
+                if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" || event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT") {
+                    CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
+                    auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
+                    signal_error.emit(device_id, event + " Entregado: " + value);
+                    exito = false;   // Marcamos como fallo
+                    terminado = true; // Salimos del bucle de espera
+                }
+            }
+
+            if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+            {
+                exito = false;
+                terminado = true;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+    }
     return exito;
 }
+
 
 void ValidadorUnit::iniciar_polling()
 {
