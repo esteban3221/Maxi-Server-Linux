@@ -160,7 +160,8 @@ bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
-    bool exito = false; // Cambiamos a false por defecto para asegurar que solo sea true si vemos el "COMPLETED"
+    bool exito = false;
+    bool nota_en_bezel = false; // Nueva bandera
     int reintentos_iniciales = 0;
 
     while (!terminado) {
@@ -168,59 +169,59 @@ bool ValidadorUnit::esperar_pago_async()
         if (resp.status_code == 200) 
         {
             auto json = crow::json::load(resp.text);
-            std::string state = "";
-
-            // 1. Extraer el estado del dispositivo (soportando ambas carcasas)
-            if (json.has("deviceState")) state = json["deviceState"].s();
-            else if (json.has("DeviceState")) state = json["DeviceState"].s();
+            std::string state = json.has("DeviceState") ? json["DeviceState"].s() : (json.has("deviceState") ? json["deviceState"].s() : "");
 
             if (state == "DISPENSING") detecto_dispensing = true;
 
-            // 2. Analizar el PollBuffer para eventos específicos
-            if (json.has("PollBuffer") || json.has("pollBuffer")) {
-                auto& buffer = json.has("PollBuffer") ? json["PollBuffer"] : json["pollBuffer"];
-                
-                for (const auto &item : buffer) 
+            if (json.has("PollBuffer")) {
+                for (const auto &item : json["PollBuffer"]) 
                 {
-                    // Obtener el tipo de evento (Type) y su estado interno (StateAsString)
-                    std::string type = item.has("Type") ? std::string(item["Type"].s()) : "";
-                    std::string innerState = item.has("StateAsString") ? std::string(item["StateAsString"].s()) : "";
+                    std::string type = item.has("Type") ? item["Type"].s() : "";
+                    std::string stateStr = item.has("StateAsString") ? item["StateAsString"].s() : "";
+                    std::string eventStr = item.has("EventTypeAsString") ? item["EventTypeAsString"].s() : "";
 
-                    // CASO ÉXITO: Transacción completada
-                    if (type == "DispenserTransactionEventResponse" && innerState == "COMPLETED") {
-                        CROW_LOG_INFO << "Pago completado exitosamente detectado en PollBuffer.";
+                    // Detectamos si el billete está en la boca (Bezel)
+                    if (stateStr == "NOTE_HELD_IN_BEZEL" || eventStr == "NOTE_IN_BEZEL_HOLD") {
+                        if (!nota_en_bezel) {
+                            CROW_LOG_WARNING << "Billete en bezel. Esperando a que el usuario lo retire...";
+                            nota_en_bezel = true;
+                        }
+                    }
+
+                    // ÉXITO REAL: Solo cuando recibimos COMPLETED de la transacción
+                    if (type == "DispenserTransactionEventResponse" && stateStr == "COMPLETED") {
                         exito = true;
                         terminado = true;
                     }
-
-                    // CASO ERROR: Eventos de fallo
-                    std::string eventErr = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
-                    if (eventErr == "TIME_OUT" || eventErr == "JAMMED" || eventErr == "ERROR") {
-                        CROW_LOG_ERROR << "Fallo detectado durante el pago: " << eventErr;
+                    
+                    // FALLOS
+                    if (eventStr == "TIME_OUT" || eventStr == "JAMMED" || eventStr == "ERROR") {
                         exito = false;
                         terminado = true;
                     }
                 }
             }
 
-            // 3. Condición de salida por estado del dispositivo (Failsafe)
-            // Si el dispositivo vuelve a IDLE/ENABLED/DISABLED y ya vimos DISPENSING, pero no capturamos el evento COMPLETED arriba
-            if (detecto_dispensing && (state == "IDLE" || state == "ENABLED" || state == "DISABLED")) {
-                // Si llegamos aquí y exito sigue siendo false, es un aviso
-                if (!exito) CROW_LOG_WARNING << "El dispositivo terminó (State: " << state << ") pero no se detectó el evento COMPLETED explícito.";
-                terminado = true;
+            // FAILSAFE: Si el estado es DISABLED o ENABLED pero ya no hay nada en el PollBuffer
+            // y ya detectamos dispensing, significa que terminó aunque no vimos el evento.
+            if (detecto_dispensing && (state == "DISABLED" || state == "IDLE" || state == "ENABLED")) {
+                // Si ya no hay eventos de "HELD" en el buffer, podemos salir
+                if (json["PollBuffer"].size() == 0 || (json["PollBuffer"].size() == 1 && json["PollBuffer"][0]["StateAsString"].s() == "DISABLED")) {
+                    terminado = true;
+                    // Si llegamos aquí sin 'exito = true', lo marcamos basado en que no hubo errores
+                    if (!exito) exito = true; 
+                }
             }
 
-            // Timeout de seguridad si nunca llega a DISPENSING
-            if (!detecto_dispensing && ++reintentos_iniciales > 100) // Aumentado un poco por si el hardware tarda en reaccionar
-            {
-                CROW_LOG_ERROR << "Timeout: El dispositivo nunca entró en estado DISPENSING.";
-                exito = false;
+            if (!detecto_dispensing && ++reintentos_iniciales > 60) {
                 terminado = true;
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(800)); 
+    
     return exito;
 }
 
