@@ -189,15 +189,15 @@ bool ValidadorUnit::esperar_pago_async()
 
             if (json.has("deviceState"))
                 state = json["deviceState"].s();
-            else if (json.has("DeviceState"))
-                state = json["DeviceState"].s();
             if (state == "DISPENSING")
                 detecto_dispensing = true;
             if (state == "IN_PROGRESS")
                 continue; // Ignoramos estados intermedios
-            else if (detecto_dispensing && (state == "IDLE" ||
-                                            state == "ENABLED" ||
-                                            state == "DISABLED" && json["pollBuffer"].size() > 0))
+            if (detecto_dispensing && json["pollBuffer"].size() > 0 ||
+                (state == "IDLE" ||
+                 state == "ENABLED" ||
+                 state == "DISABLED" && json["pollBuffer"].size() > 0))
+                 
                 for (const auto &item : json["pollBuffer"])
                 {
                     std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
@@ -210,7 +210,8 @@ bool ValidadorUnit::esperar_pago_async()
                         signal_error.emit(device_id, event + " Entregado: " + value);
                         exito = false;    // Marcamos como fallo
                         terminado = true; // Salimos del bucle de espera
-                    } else if (event == "COMPLETED")
+                    }
+                    else if (event == "COMPLETED")
                     {
                         CROW_LOG_INFO << "Pago completado exitosamente. Entregado: " << (item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A");
                         exito = true;     // Marcamos como éxito
