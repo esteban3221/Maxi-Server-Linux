@@ -13,7 +13,7 @@
 #include "global.hpp"
 #include "core/hub_cash.hpp"
 
-class Venta final: public BVentaPago
+class Efectivo final: public BVentaPago
 {
 private:
     Global::Async async_gui;
@@ -28,17 +28,12 @@ private:
     std::mutex mtx_espera;
     bool transaccion_terminada = false;
 
-    crow::response inicia(const crow::request &req);
+    crow::response inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso);
     crow::response deten(const crow::request &req);
 
     void on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito);
     void on_error(const std::string &device, const std::string &error);
     Glib::RefPtr<MLog> t_log;
-
-    void reset_log(const crow::json::rvalue &param);
-
-    bool is_view_ingreso;
-    std::string concepto;
 
     // websocket
     crow::websocket::connection *connection{nullptr};
@@ -46,6 +41,6 @@ private:
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
     void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
 public:
-    Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
-    ~Venta();
+    Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
+    ~Efectivo();
 };

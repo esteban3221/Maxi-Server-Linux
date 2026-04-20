@@ -19,7 +19,7 @@ MainWindow::MainWindow(/* args */) : contador_click(0),
     Global::Widget::v_main_stack->add(*pago, "1", "Pago");
 
     builder = Gtk::Builder::create_from_string(View::ui_vp);
-    auto venta = Gtk::Builder::get_widget_derived<Venta>(builder, "box", app);
+    auto venta = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
     Global::Widget::v_main_stack->add(*venta, "3", "Venta");
 
     builder = Gtk::Builder::create_from_string(View::ui_vp);

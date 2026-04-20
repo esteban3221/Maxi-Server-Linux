@@ -69,6 +69,7 @@ public:
     uint iniciar_pago(size_t, bool is_cambio, const std::string &actual_level);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
+    cpr::Response get_nivel_actual() const;
 
     const cpr::Response command_get(const std::string &command, bool debug = false) const;
     const cpr::Response command_post(const std::string &command, const std::string &json = "", bool = false) const;

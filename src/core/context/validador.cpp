@@ -149,7 +149,8 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         device_model = json_response["deviceModel"].s();
 
         CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        ultimo_cash_level = command_get("GetAllLevels", true).text;
+        //ultimo_cash_level = get_nivel_actual().text;
+        ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
         return json_response["allLevels"];
     }
     else
@@ -351,4 +352,28 @@ crow::json::wvalue ValidadorUnit::obten_cambio(uint &cambio, std::map<int, int> 
     crow::json::wvalue response;
     response = billsToReturn;
     return response; // Retornamos el JSON con el array
+}
+
+cpr::Response ValidadorUnit::get_nivel_actual() const
+{
+    cpr::Response json;
+    int intentos = 0;
+    const int max_intentos = 5; // Máximo 2.5 segundos de espera total
+
+    while (intentos < max_intentos)
+    {
+        json = command_get("GetAllLevels", true);
+        
+        if (json.status_code == 200 && json.text.size() > 2) 
+            return json; // Éxito, retornamos el resultado
+
+        intentos++;
+        CROW_LOG_WARNING << "Niveles no listos para unidad " << device_id 
+                         << ". Reintentando en 500ms... (Intento " << intentos << ")";
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    CROW_LOG_ERROR << "Niveles no disponibles después de reintentos para unidad " << device_id;
+    return json; // Retornamos el último resultado, aunque sea un error
 }

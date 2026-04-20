@@ -279,31 +279,7 @@ void CashHub::detiene_poll_for_all(size_t t_id)
         cpr::Response r_inicio;
         r_inicio.text = i->property_ultimo_cash_level();
         snapshot_inicio.emplace_back(r_inicio);
-
-        // --- Lógica de Reintento ---
-        cpr::Response json;
-        int intentos = 0;
-        const int max_intentos = 5; // Máximo 2.5 segundos de espera total
-
-        while (intentos < max_intentos)
-        {
-            json = i->command_get("GetAllLevels", true);
-            
-            if (json.status_code == 200 && json.text.size() > 2) 
-            {
-                i->property_ultimo_cash_level() = json.text;
-                break; // Éxito, salimos del bucle de reintento
-            }
-
-            intentos++;
-            CROW_LOG_WARNING << "Niveles no listos para unidad " << i->property_device_id() 
-                             << ". Reintentando en 500ms... (Intento " << intentos << ")";
-            
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-
-        // Si después de los reintentos falló, snapshot_fin llevará el último error recibido
-        snapshot_fin.emplace_back(json);
+        snapshot_fin.emplace_back(i->get_nivel_actual());
     }
 
     // Procesar diferencias
@@ -337,7 +313,7 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
             snapshot_inicio.emplace_back(r_inicio);
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
             remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
-            snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
+            snapshot_fin.emplace_back(i->get_nivel_actual());
         }
     }
 
@@ -352,7 +328,7 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
                 snapshot_inicio.emplace_back(r_inicio);
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
                 remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
-                snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
+                snapshot_fin.emplace_back(i->get_nivel_actual());
             }
         }
     }
@@ -379,7 +355,7 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
             r_inicio.text = i->property_ultimo_cash_level();
             snapshot_inicio.emplace_back(r_inicio);
             i->iniciar_pago(map.at(i->property_device_id()));
-            snapshot_fin.emplace_back(i->command_get("GetAllLevels", true));
+            snapshot_fin.emplace_back(i->get_nivel_actual());
         }
         else
             CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";

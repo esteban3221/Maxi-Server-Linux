@@ -75,10 +75,10 @@ set(SOURCES
     src/view/config/info.cpp
     src/view/config/roles.cpp
     src/view/config/wifi.cpp
+    src/view/metodo_pago.cpp
     #================CONTROLLER=================
     src/controller/session.cpp
     src/controller/main_window.cpp
-    src/controller/venta.cpp
     src/controller/pago.cpp
     src/controller/pago_manual.cpp
     src/controller/refill.cpp
@@ -90,13 +90,15 @@ set(SOURCES
     src/controller/config/terminal.cpp
 
     src/controller/config/validador.cpp
-
     src/controller/config/empresa.cpp
     src/controller/config/general.cpp
     src/controller/config/impresora.cpp
     src/controller/config/info.cpp
     src/controller/config/roles.cpp
     src/controller/config/wifi.cpp
+
+    src/controller/venta/efectivo.cpp
+    src/controller/venta/metodo_pago.cpp
     #================GLOBAL=================
     src/shared/global.cpp
     #================STATE MACHINE=================

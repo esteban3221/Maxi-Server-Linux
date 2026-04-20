@@ -1,39 +1,38 @@
-#include "controller/venta.hpp"
+#include "controller/venta/efectivo.hpp"
 
-Venta::Venta(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
+Efectivo::Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Venta");
     v_btn_timeout_retry->set_visible(false);
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
-    CROW_ROUTE(app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &Venta::inicia));
-    CROW_ROUTE(app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Venta::deten));
+    CROW_ROUTE(app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Efectivo::deten));
 
     CROW_WEBSOCKET_ROUTE(app, "/ws/venta")
-        .onopen(sigc::mem_fun(*this, &Venta::on_wb_socket_open))
-        .onclose(sigc::mem_fun(*this, &Venta::on_wb_socket_close))
-        .onmessage(sigc::mem_fun(*this, &Venta::on_wb_socket_message));
+        .onopen(sigc::mem_fun(*this, &Efectivo::on_wb_socket_open))
+        .onclose(sigc::mem_fun(*this, &Efectivo::on_wb_socket_close))
+        .onmessage(sigc::mem_fun(*this, &Efectivo::on_wb_socket_message));
 }
 
-Venta::~Venta()
+Efectivo::~Efectivo()
 {
 }
 
-void Venta::on_wb_socket_open(crow::websocket::connection &conn)
+void Efectivo::on_wb_socket_open(crow::websocket::connection &conn)
 {
     CROW_LOG_INFO << "WebSocket connected: " << conn.get_remote_ip();
     connection = &conn;
 }
 
-void Venta::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
+void Efectivo::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
 {
     if (connection == &conn)
         connection = nullptr; // Limpiamos la referencia a la conexión cerrada
     CROW_LOG_WARNING << "WebSocket disconnected: " << conn.get_remote_ip() << " Reason: " << reason << " Code: " << code;
 }
 
-void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
+void Efectivo::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
 {
     auto json_data = crow::json::load(data);
 
@@ -44,12 +43,12 @@ void Venta::on_wb_socket_message(crow::websocket::connection &conn, const std::s
     }
 }
 
-void Venta::on_btn_retry_click()
+void Efectivo::on_btn_retry_click()
 {
     CROW_LOG_INFO << "Click otra vez desde Venta\n";
 }
 
-void Venta::on_btn_cancel_click()
+void Efectivo::on_btn_cancel_click()
 {
     std::lock_guard<std::mutex> lock(mtx_espera);
     if (transaccion_terminada) return;
@@ -58,19 +57,19 @@ void Venta::on_btn_cancel_click()
     cv_finalizado.notify_one(); 
 }
 
-crow::response Venta::deten(const crow::request &req)
+crow::response Efectivo::deten(const crow::request &req)
 {
     on_btn_cancel_click();
     return crow::response(200, "Venta detenida");
 }
 
-void Venta::on_error(const std::string &device, const std::string &error)
+void Efectivo::on_error(const std::string &device, const std::string &error)
 {
     t_log->m_estatus = error;
     log.update_log(t_log);
 }
 
-void Venta::on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
+void Efectivo::on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
 {
     t_log->m_ingreso += credito;
     t_log->m_cambio  = (t_log->m_ingreso > t_log->m_total) ? (t_log->m_ingreso - t_log->m_total) : 0;
@@ -99,6 +98,9 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
 
     if (t_log->m_ingreso >= t_log->m_total || cancelado)
     {
+        t_log->m_estatus = "Finalizado";
+        log.update_log(t_log);
+
         hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
         std::this_thread::sleep_for(std::chrono::seconds(1));
         hub.detiene_poll_for_all(t_log->m_id);
@@ -110,11 +112,15 @@ void Venta::on_event_credit(const std::string &device_id, const std::string &typ
     }
 }
 
-crow::response Venta::inicia(const crow::request &req)
+crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
+    // Sesion::valida_autorizacion(req, Global::User::Rol::Venta); se tiene que mover al padre de esta vista, para que el proceso de venta pueda ser iniciado desde otras vistas como ingreso o corte.
+    transaccion_terminada = cancelado = false;
+    this->t_log = t_log;
+    hub.on_credito().connect(sigc::mem_fun(*this, &Efectivo::on_event_credit));
+    hub.on_error().connect(sigc::mem_fun(*this, &Efectivo::on_error));
 
-    reset_log(crow::json::load(req.body));
+    is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
 
     Conf conf;
     conf.habilita_recolector = true;
@@ -127,8 +133,8 @@ crow::response Venta::inicia(const crow::request &req)
     async_gui.dispatch_to_gui([this]()
     { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
-        v_lbl_monto_total->set_text(Glib::ustring::format(t_log->m_total));
-        v_lbl_faltante->set_text(Glib::ustring::format(t_log->m_total));
+        v_lbl_monto_total->set_text(Glib::ustring::format(this->t_log->m_total));
+        v_lbl_faltante->set_text(Glib::ustring::format(this->t_log->m_total));
         v_lbl_cambio->set_text("0");
         v_lbl_recibido->set_text("0"); 
     });
@@ -141,11 +147,12 @@ crow::response Venta::inicia(const crow::request &req)
     if (cancelado)
     {
         t_log->m_estatus = "Operación cancelada";
-        hub.inicia_pago(t_log->m_id, t_log->m_ingreso);
+        if (t_log->m_ingreso > 0)
+            hub.inicia_pago(t_log->m_id, t_log->m_ingreso);
         t_log->m_cambio = t_log->m_ingreso;
     }
     else
-        t_log->m_estatus = "Exito.";
+        t_log->m_estatus = "Completado";
     if (t_log->m_cambio > 0 && !cancelado)
         hub.inicia_pago(t_log->m_id, t_log->m_cambio);
 
@@ -154,33 +161,9 @@ crow::response Venta::inicia(const crow::request &req)
     hub.on_credito().clear();
     hub.on_error().clear();
 
+    // hay que implementar una funcion que determine si hay que volver ala vista de seleccion de pago en caso de que el pago sea diferente a efectivo,
+    // o si se tiene que volver a la vista principal en caso de que el pago se haya completado con efectivo o se haya cancelado la operacion.
     async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
-}
-
-
-void Venta::reset_log(const crow::json::rvalue &param)
-{
-    transaccion_terminada = cancelado = false;
-    hub.on_credito().connect(sigc::mem_fun(*this, &Venta::on_event_credit));
-    hub.on_error().connect(sigc::mem_fun(*this, &Venta::on_error));
-
-    is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
-    is_view_ingreso ? v_lbl_titulo->set_text("Ingreso") : v_lbl_titulo->set_text("Venta");
-
-    t_log = MLog::create
-    (
-        0,
-        Global::User::id,
-        is_view_ingreso ? "Ingreso" : "Venta",
-        param["concepto"].operator std::string(),
-        0,
-        0,
-        param["value"].i(),
-        "Creacion de evento",
-        Glib::DateTime::create_now_local()
-    );
-
-    t_log->m_id = log.insert_log(t_log);
 }

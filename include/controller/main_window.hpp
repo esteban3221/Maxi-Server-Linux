@@ -9,7 +9,7 @@
 #include "controller/session.hpp"
 #include "controller/log.hpp"
 
-#include "controller/venta.hpp"
+#include "controller/venta/efectivo.hpp"
 #include "controller/pago.hpp"
 #include "controller/pago_manual.hpp"
 #include "controller/refill.hpp"

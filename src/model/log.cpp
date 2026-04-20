@@ -81,15 +81,15 @@ crow::json::wvalue Log::json_ticket(Glib::RefPtr<MLog> t_log)
     crow::json::wvalue data;
     data["ticket"] = crow::json::wvalue::list();
 
-    data["ticket"][0]["id"] = t_log->m_id;
-    data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
-    data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
-    data["ticket"][0]["tipo"] = t_log->m_tipo;
-    data["ticket"][0]["descripcion"] = t_log->m_descripcion;
-    data["ticket"][0]["total"] = t_log->m_total;
-    data["ticket"][0]["cambio"] = t_log->m_cambio;
-    data["ticket"][0]["ingreso"] = t_log->m_ingreso;
-    data["ticket"][0]["estatus"] = t_log->m_estatus;
+    data["ticket"][0]["id"] =           t_log->m_id;
+    data["ticket"][0]["usuario"] =      user->get_usuarios(t_log->m_id_user)->m_usuario;
+    data["ticket"][0]["fecha"] =        t_log->m_fecha.format_iso8601();
+    data["ticket"][0]["tipo"] =         t_log->m_tipo;
+    data["ticket"][0]["descripcion"] =  t_log->m_descripcion;
+    data["ticket"][0]["total"] =        t_log->m_total;
+    data["ticket"][0]["cambio"] =       t_log->m_cambio;
+    data["ticket"][0]["ingreso"] =      t_log->m_ingreso;
+    data["ticket"][0]["estatus"] =      t_log->m_estatus;
 
     return data;
 }
