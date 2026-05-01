@@ -99,6 +99,7 @@ set(SOURCES
 
     src/controller/venta/efectivo.cpp
     src/controller/venta/metodo_pago.cpp
+    src/controller/venta/dialmonto.cpp
     #================GLOBAL=================
     src/shared/global.cpp
     #================STATE MACHINE=================
@@ -112,7 +113,7 @@ include_directories(include
     include/core/interfaces
     include/core/states
     include/controller
-    include/controller/accion
+    include/controller/venta
     include/view
     include/view/config
     include/db

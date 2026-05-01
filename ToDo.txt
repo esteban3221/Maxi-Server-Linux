@@ -1,5 +1,0 @@
-ToDo 2.0.0 beta
-
-1.- Terminar funciones faltantes
-2.- Terminar de reportar estados a cliente
-3.- Agregar verdadero reconocedor de SSP (Magia Negra/Black Magic) al inciar los dispositivos

@@ -183,6 +183,7 @@ bool ValidadorUnit::esperar_pago_async()
 
     while (!terminado)
     {
+        std::lock_guard<std::mutex> lock(mtx_comunicacion);
         auto resp = command_get("GetDeviceStatus");
         if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK)
         {
@@ -236,8 +237,9 @@ void ValidadorUnit::iniciar_polling()
     poll = true;
 
     std::thread([this]()
-                {
+    {
         while (poll) {
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
             auto resp = command_get("GetDeviceStatus");
             if (resp.status_code == cpr::status::HTTP_OK) 
             {

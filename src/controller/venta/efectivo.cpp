@@ -114,7 +114,6 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 
 crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
 {
-    // Sesion::valida_autorizacion(req, Global::User::Rol::Venta); se tiene que mover al padre de esta vista, para que el proceso de venta pueda ser iniciado desde otras vistas como ingreso o corte.
     transaccion_terminada = cancelado = false;
     this->t_log = t_log;
     hub.on_credito().connect(sigc::mem_fun(*this, &Efectivo::on_event_credit));
@@ -160,10 +159,6 @@ crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
     hub.detiene_for_all();
     hub.on_credito().clear();
     hub.on_error().clear();
-
-    // hay que implementar una funcion que determine si hay que volver ala vista de seleccion de pago en caso de que el pago sea diferente a efectivo,
-    // o si se tiene que volver a la vista principal en caso de que el pago se haya completado con efectivo o se haya cancelado la operacion.
-    async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
 }

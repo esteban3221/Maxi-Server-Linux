@@ -9,7 +9,9 @@
 #include "controller/session.hpp"
 #include "controller/log.hpp"
 
-#include "controller/venta/efectivo.hpp"
+#include "controller/venta/metodo_pago.hpp"
+
+
 #include "controller/pago.hpp"
 #include "controller/pago_manual.hpp"
 #include "controller/refill.hpp"
@@ -32,7 +34,6 @@ private:
     Terminal terminales;
 
     void on_btn_pill_clicked();
-
     void on_map_view();
 
 public:

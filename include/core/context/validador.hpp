@@ -7,6 +7,8 @@
 #include <memory>  // Necesario para unique_ptr
 #include <atomic>
 #include <string>
+#include <mutex>
+#include <map>
 #include <crow.h>
 #include <cpr/cpr.h>
 
@@ -32,6 +34,7 @@ private:
     size_t poll_milli;
 
     std::atomic<bool> poll;
+    std::mutex mtx_comunicacion;
     std::string token;
     Conf conf;
     bool esperar_pago_async();

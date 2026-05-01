@@ -1,5 +1,6 @@
 #include "controller/main_window.hpp"
 #include "main_window.hpp"
+//#include "view/venta.hpp"
 
 MainWindow::MainWindow(/* args */) : contador_click(0),
                                         sesion(app),
@@ -18,9 +19,9 @@ MainWindow::MainWindow(/* args */) : contador_click(0),
     auto pago = Gtk::Builder::get_widget_derived<Pago>(builder, "box", app);
     Global::Widget::v_main_stack->add(*pago, "1", "Pago");
 
-    builder = Gtk::Builder::create_from_string(View::ui_vp);
-    auto venta = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
-    Global::Widget::v_main_stack->add(*venta, "3", "Venta");
+    builder = Gtk::Builder::create_from_string(View::ui_metodo_pago);
+    auto metodo_pago_view = Gtk::Builder::get_widget_derived<MetodoPago>(builder, "PaymentView", app);
+    Global::Widget::v_main_stack->add(*metodo_pago_view, "3", "MetodoPago");
 
     builder = Gtk::Builder::create_from_string(View::ui_vp);
     auto pago_manual = Gtk::Builder::get_widget_derived<PagoManual>(builder, "box");

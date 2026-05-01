@@ -28,9 +28,6 @@ private:
     std::mutex mtx_espera;
     bool transaccion_terminada = false;
 
-    crow::response inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso);
-    crow::response deten(const crow::request &req);
-
     void on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito);
     void on_error(const std::string &device, const std::string &error);
     Glib::RefPtr<MLog> t_log;
@@ -43,4 +40,7 @@ private:
 public:
     Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);
     ~Efectivo();
+
+    crow::response inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso);
+    crow::response deten(const crow::request &req);
 };

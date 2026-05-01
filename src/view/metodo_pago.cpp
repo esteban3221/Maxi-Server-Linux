@@ -14,15 +14,11 @@ VMetodoPago::~VMetodoPago()
 
 namespace View
 {
-    const char *ui_metodo_pago = R"(
-    <?xml version="1.0" encoding="UTF-8"?>
+    const char *ui_metodo_pago = R"(<?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="PaymentView" parent="GtkBox">
-    <property name="orientation">1</property>
-    <property name="halign">3</property>
-    <property name="valign">3</property>
-    <property name="spacing">24</property>
+  <object class="GtkBox" id="PaymentView">
+    <property name="orientation">1</property> <property name="halign">3</property>      <property name="valign">3</property>      <property name="spacing">24</property>
     <property name="margin-top">32</property>
     <property name="margin-bottom">32</property>
     <property name="margin-start">32</property>
@@ -136,7 +132,6 @@ namespace View
         </child>
       </object>
     </child>
-  </template>
-</interface>
-    )";
+  </object>
+</interface>)";
 }
