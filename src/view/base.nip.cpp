@@ -53,6 +53,7 @@ namespace View
       <object class="GtkBox">
         <property name="orientation">1</property>
         <property name="halign">0</property>
+        <property name="hexpand">true</property>
         <child>
           <object class="GtkPasswordEntry" id="ety_pin">
             <property name="placeholder-text">Digite NIP</property>

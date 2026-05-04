@@ -6,9 +6,9 @@ MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     efectivo_controller = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
     Global::Widget::v_main_stack->add(*efectivo_controller, "8", "Efectivo");
 
-    //builder = Gtk::Builder::create_from_string(View::ui_vp);
-    //tarjeta_controller = Gtk::Builder::get_widget_derived<Tarjeta>(builder, "box", app);
-    //Global::Widget::v_main_stack->add(*tarjeta_controller, "9", "Tarjeta"); 
+    builder = Gtk::Builder::create_from_string(View::ui_cortinilla_carga);
+    cortinilla_carga = Gtk::Builder::get_widget_derived<ViewCarga>(builder, "cortinilla_carga");
+    Global::Widget::v_main_stack->add(*cortinilla_carga, "12", "Carga"); 
 
     builder = Gtk::Builder::create_from_string(View::ui_nip);
     dial_monto = Gtk::Builder::get_widget_derived<DialMonto>(builder, "box_nip");
@@ -65,6 +65,11 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         break;
     }
 
+    {
+        std::unique_lock<std::mutex> lock(mtx_espera);
+        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+    }
+
     return(Log::json_ticket(m_log));
 }
 
@@ -95,30 +100,53 @@ MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()
 
 void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
 {
-    Glib::signal_idle().connect_once([this, metodo, remanente]()
-    {
-        if(remanente > 0)  
-            m_log->m_total = remanente;
+    if(remanente > 0)  
+        m_log->m_total = remanente;
 
-        dial_monto->property_monto_dial() = (m_log->m_total - m_log->m_ingreso);
-        
+    dial_monto->property_monto_dial() = (m_log->m_total - m_log->m_ingreso);
+
+    std::thread([this, metodo, remanente]() 
+    {
         switch (metodo)
         {
             case Metodo::EFECTIVO:
+            {
+                cortinilla_carga->modo(true);
+                Glib::signal_idle().connect_once([this, metodo]()
+                {
+                    Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
+                });
                 efectivo_controller->inicia(m_log, is_view_ingreso);
                 break;
+            }
             case Metodo::TARJETA:
                 // Ir a vista de tarjeta, pasar el log y el remanente
+                cortinilla_carga->modo();
+                Glib::signal_idle().connect_once([this, metodo]()
+                {
+                    Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
+                });
                 break;
             default:
                 break;
         }
 
-        if(m_log->m_ingreso >= total_original)
-            Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
-        else
-            Global::Widget::v_main_stack->set_visible_child(*this);
-    });
+        Glib::signal_idle().connect_once([this, metodo, remanente]()
+        {
+            if(m_log->m_ingreso >= total_original)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(mtx_espera);
+                    transaccion_terminada = true;
+                }
+                cv_finalizado.notify_one(); 
+                Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+            }
+                
+            else
+                Global::Widget::v_main_stack->set_visible_child(*this);
+        });
+    }).detach();
 }
 
 std::string MetodoPago::get_metodo_nombre(Metodo m) {
@@ -132,19 +160,26 @@ std::string MetodoPago::get_metodo_nombre(Metodo m) {
 
 void MetodoPago::btn_efectivo_on_click()
 {
-    metodo_seleccionado = Metodo::EFECTIVO;
-    if (is_mixto)
-        Global::Widget::v_main_stack->set_visible_child("11");
-    else
-        pagar_por_metodo(metodo_seleccionado);
+    Glib::signal_idle().connect_once([this]()
+    {
+         metodo_seleccionado = Metodo::EFECTIVO;
+        if (is_mixto)
+            Global::Widget::v_main_stack->set_visible_child("11");
+        else
+            pagar_por_metodo(metodo_seleccionado);
+    });
 }
+
 void MetodoPago::btn_tarjeta_on_click()
 {
-    metodo_seleccionado = Metodo::TARJETA;
-    if (is_mixto)
-        Global::Widget::v_main_stack->set_visible_child("11");
-    else
-        pagar_por_metodo(metodo_seleccionado);
+    Glib::signal_idle().connect_once([this]()
+    {
+        metodo_seleccionado = Metodo::TARJETA;
+        if (is_mixto)
+            Global::Widget::v_main_stack->set_visible_child("11");
+        else
+            pagar_por_metodo(metodo_seleccionado);
+    });
 }
 
 void MetodoPago::btn_diferido_on_click()

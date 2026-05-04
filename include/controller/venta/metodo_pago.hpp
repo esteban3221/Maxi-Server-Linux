@@ -1,5 +1,9 @@
 #pragma once
+#include <condition_variable>
+#include <mutex>
+
 #include "view/metodo_pago.hpp"
+#include "view/cortinilla_carga.hpp"
 #include "model/configuracion.hpp"
 #include "model/log.hpp"
 #include "dialmonto.hpp"
@@ -15,6 +19,9 @@ private:
     enum class Metodo { EFECTIVO, TARJETA, MIXTO, NINGUNO } metodo_seleccionado;
     enum class Predeterminado { EFECTIVO, TARJETA, MIXTO };
     std::string get_metodo_nombre(Metodo );
+    std::condition_variable cv_finalizado;
+    std::mutex mtx_espera;
+    bool transaccion_terminada = false;
     Glib::RefPtr<MLog> m_log;
     Log log;
     bool is_view_ingreso, is_mixto;
@@ -22,6 +29,7 @@ private:
     Efectivo* efectivo_controller;
     //Tarjeta* tarjeta_controller;
     DialMonto *dial_monto;
+    ViewCarga *cortinilla_carga;
 
     void btn_efectivo_on_click();
     void btn_tarjeta_on_click();
