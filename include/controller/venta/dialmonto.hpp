@@ -4,6 +4,8 @@
 
 class DialMonto : public VBaseNip
 {
+protected:
+    Gtk::Label v_lbl_monto;
 private:
     void on_btn_nip_enter() override;
     void on_btn_nip_back() override;

@@ -14,7 +14,9 @@ VMetodoPago::~VMetodoPago()
 
 namespace View
 {
-    const char *ui_metodo_pago = R"(<?xml version="1.0" encoding="UTF-8"?>
+    const char *ui_metodo_pago = R"(
+    
+    <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
   <object class="GtkBox" id="PaymentView">

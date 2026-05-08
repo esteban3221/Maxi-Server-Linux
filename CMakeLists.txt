@@ -51,6 +51,7 @@ set(SOURCES
     src/model/level_cash.cpp
     src/model/log_historial.cpp
     src/model/pago_pendiente.cpp
+    src/model/pago_terminal.cpp
     src/model/roles.cpp
     src/model/usuario_historial.cpp
     src/model/usuarios_roles.cpp
@@ -99,6 +100,7 @@ set(SOURCES
     src/controller/config/wifi.cpp
 
     src/controller/venta/efectivo.cpp
+    src/controller/venta/tarjeta.cpp
     src/controller/venta/metodo_pago.cpp
     src/controller/venta/dialmonto.cpp
     #================GLOBAL=================

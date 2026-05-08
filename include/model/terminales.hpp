@@ -65,4 +65,5 @@ public:
 
     Glib::RefPtr<MTerminales> get_by_id(const Glib::ustring &id);
     std::shared_ptr<ResultMap> get_all();
+    Glib::RefPtr<MTerminales> obtener_predeterminado();
 };

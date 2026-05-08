@@ -141,11 +141,6 @@
       </object>
     </child>
     <child>
-      <object class="GtkLabel" id="lbl_timeout">
-        <property name="label">Restante: 00:00</property>
-      </object>
-    </child>
-    <child>
       <object class="GtkBox" id="box_action_timeout">
         <property name="homogeneous">true</property>
         <property name="orientation">vertical</property>

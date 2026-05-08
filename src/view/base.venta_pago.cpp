@@ -9,7 +9,6 @@ BVentaPago::BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     v_lbl_mensaje_fin = m_builder->get_widget<Gtk::Label>("lbl_mensaje_fin");
     v_lbl_monto_total = m_builder->get_widget<Gtk::Label>("lbl_monto_total");
     v_lbl_recibido = m_builder->get_widget<Gtk::Label>("lbl_recibido");
-    v_lbl_timeout = m_builder->get_widget<Gtk::Label>("lbl_timeout");
     v_lbl_titulo = m_builder->get_widget<Gtk::Label>("lbl_titulo");
 
     v_BXRW4 = m_builder->get_widget<Gtk::ListBoxRow>("BXRW4");

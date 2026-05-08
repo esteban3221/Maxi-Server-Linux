@@ -6,6 +6,8 @@ MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     efectivo_controller = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
     Global::Widget::v_main_stack->add(*efectivo_controller, "8", "Efectivo");
 
+    tarjeta_controller = std::make_unique<Tarjeta>();
+
     builder = Gtk::Builder::create_from_string(View::ui_cortinilla_carga);
     cortinilla_carga = Gtk::Builder::get_widget_derived<ViewCarga>(builder, "cortinilla_carga");
     Global::Widget::v_main_stack->add(*cortinilla_carga, "12", "Carga"); 
@@ -104,6 +106,10 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
         m_log->m_total = remanente;
 
     dial_monto->property_monto_dial() = (m_log->m_total - m_log->m_ingreso);
+    Glib::signal_idle().connect_once([this]()
+    {
+        Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
+    });
 
     std::thread([this, metodo, remanente]() 
     {
@@ -112,20 +118,15 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
             case Metodo::EFECTIVO:
             {
                 cortinilla_carga->modo(true);
-                Glib::signal_idle().connect_once([this, metodo]()
-                {
-                    Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
-                });
                 efectivo_controller->inicia(m_log, is_view_ingreso);
                 break;
             }
             case Metodo::TARJETA:
-                // Ir a vista de tarjeta, pasar el log y el remanente
                 cortinilla_carga->modo();
-                Glib::signal_idle().connect_once([this, metodo]()
-                {
-                    Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
-                });
+                tarjeta_controller->iniciar(m_log);
+                break;
+            case Metodo::MIXTO:
+
                 break;
             default:
                 break;

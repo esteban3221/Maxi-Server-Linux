@@ -27,9 +27,9 @@ private:
     bool is_view_ingreso, is_mixto;
     size_t total_original = 0;
     Efectivo* efectivo_controller;
-    //Tarjeta* tarjeta_controller;
-    DialMonto *dial_monto;
-    ViewCarga *cortinilla_carga;
+    std::unique_ptr<Tarjeta> tarjeta_controller;
+    DialMonto* dial_monto;
+    ViewCarga* cortinilla_carga;
 
     void btn_efectivo_on_click();
     void btn_tarjeta_on_click();

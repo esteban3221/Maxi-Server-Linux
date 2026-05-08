@@ -5,7 +5,6 @@
 Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Pago");
-    v_lbl_timeout->set_visible(false);
     v_BXRW4->set_visible(false);
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));

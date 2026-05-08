@@ -2,6 +2,8 @@
 
 DialMonto::DialMonto(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : VBaseNip(cobject, refBuilder)
 {
+    prepend(v_lbl_monto);
+    v_lbl_monto.set_css_classes({"dim-label", "title-2"});
     set_modo_monto(true);
     signal_map().connect(sigc::mem_fun(*this, &DialMonto::on_map_show_map));
     v_spn_monto->signal_activate().connect(sigc::mem_fun(*this, &DialMonto::on_btn_nip_enter));
@@ -13,7 +15,7 @@ DialMonto::~DialMonto()
 
 void DialMonto::on_map_show_map()
 {
-    v_spn_monto->set_text("Ingrese el monto a pagar, Restante: " + std::to_string(monto));
+    v_lbl_monto.set_text("Ingrese el monto a pagar, Restante: $" + std::to_string(monto));
 }
 
 void DialMonto::on_btn_nip_enter()
@@ -26,11 +28,8 @@ void DialMonto::on_btn_nip_enter()
     }
     catch (const std::exception &e)
     {
-        v_ety_pin->property_placeholder_text() = "Error: Ingrese un número válido";
-        v_ety_pin->set_css_classes({"error", "title-1"});
+        Global::System::showNotify("Error", "Error: Ingrese un número válido", "dialog-error");
     }
-
-    v_ety_pin->set_text("");
 }
 
 void DialMonto::on_btn_nip_back()
