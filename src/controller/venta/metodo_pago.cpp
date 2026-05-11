@@ -20,6 +20,7 @@ MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     v_btn_cash->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_efectivo_on_click));
     v_btn_card->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_tarjeta_on_click));
     v_btn_deferred->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_diferido_on_click));
+    signal_map().connect(sigc::mem_fun(*this, &MetodoPago::on_show_map));
     CROW_ROUTE(app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &MetodoPago::procesa_pago));
 
 }
@@ -28,13 +29,18 @@ MetodoPago::~MetodoPago()
 {
 }
 
+void MetodoPago::on_show_map()
+{
+    v_btn_deferred->set_visible(!is_mixto);
+}
+
 
 crow::response MetodoPago::procesa_pago(const crow::request &req)
 {   
     Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
     auto param = crow::json::load(req.body);
     metodo_seleccionado = Metodo::NINGUNO;
-    is_mixto = false;
+    transaccion_terminada = is_mixto = false;
     is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
 
     m_log = MLog::create
@@ -72,6 +78,8 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
     }
 
+    m_log->m_total = total_original;
+
     return(Log::json_ticket(m_log));
 }
 
@@ -104,9 +112,8 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
 {
     if(remanente > 0)  
         m_log->m_total = remanente;
-
-    dial_monto->property_monto_dial() = (m_log->m_total - m_log->m_ingreso);
-    Glib::signal_idle().connect_once([this]()
+    
+    Glib::signal_idle().connect_once([this, metodo]()
     {
         Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
     });
@@ -151,7 +158,8 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
 }
 
 std::string MetodoPago::get_metodo_nombre(Metodo m) {
-    switch (m) {
+    switch (m) 
+    {
         case Metodo::EFECTIVO: return "EFECTIVO";
         case Metodo::TARJETA:  return "TARJETA";
         case Metodo::MIXTO:    return "MIXTO";
@@ -163,7 +171,10 @@ void MetodoPago::btn_efectivo_on_click()
 {
     Glib::signal_idle().connect_once([this]()
     {
-         metodo_seleccionado = Metodo::EFECTIVO;
+        metodo_seleccionado = Metodo::EFECTIVO;
+        dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
+        dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
+
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
@@ -176,6 +187,9 @@ void MetodoPago::btn_tarjeta_on_click()
     Glib::signal_idle().connect_once([this]()
     {
         metodo_seleccionado = Metodo::TARJETA;
+        dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
+        dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
+
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
@@ -189,7 +203,6 @@ void MetodoPago::btn_diferido_on_click()
     is_mixto = true;
     btn_tarjeta_on_click();
 }
-
 
 void MetodoPago::on_dial_monto_entered(u_int64_t monto)
 {

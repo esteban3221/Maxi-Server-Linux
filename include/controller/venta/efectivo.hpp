@@ -24,6 +24,7 @@ private:
     void on_btn_cancel_click() override;
 
     bool cancelado;
+    int ingreso_parcial;
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
     bool transaccion_terminada = false;

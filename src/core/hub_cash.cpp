@@ -266,13 +266,13 @@ void CashHub::inicia_poll_for_all()
 
 void CashHub::detiene_poll_for_all(size_t t_id)
 {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     std::vector<cpr::Response> snapshot_inicio;
     std::vector<cpr::Response> snapshot_fin;
 
     for (auto &&i : unidades)
     {
         i->property_poll().store(false);
-        // Espera inicial para que el último ciclo de polleo termine
         std::this_thread::sleep_for(std::chrono::milliseconds(i->property_poll_milli()));
 
         // Snapshot inicial (estado previo guardado)

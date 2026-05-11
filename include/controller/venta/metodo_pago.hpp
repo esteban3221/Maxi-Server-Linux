@@ -21,6 +21,7 @@ private:
     std::string get_metodo_nombre(Metodo );
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
+
     bool transaccion_terminada = false;
     Glib::RefPtr<MLog> m_log;
     Log log;
@@ -35,6 +36,7 @@ private:
     void btn_tarjeta_on_click();
     void btn_diferido_on_click();
     void on_dial_monto_entered(u_int64_t monto);
+    void on_show_map();
     void reset_log();
 
     Predeterminado obtener_metodo_predeterminado();

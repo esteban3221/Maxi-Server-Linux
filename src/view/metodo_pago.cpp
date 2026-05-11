@@ -119,7 +119,7 @@ namespace View
                 <property name="margin-bottom">15</property>
                 <child>
                   <object class="GtkImage">
-                    <property name="icon-name">shape-balance-symbolic</property>
+                    <property name="icon-name">emoji-symbols-symbolic</property>
                     <property name="pixel-size">32</property>
                   </object>
                 </child>

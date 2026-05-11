@@ -71,13 +71,14 @@ void Efectivo::on_error(const std::string &device, const std::string &error)
 
 void Efectivo::on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
 {
+    ingreso_parcial += credito;
     t_log->m_ingreso += credito;
-    t_log->m_cambio  = (t_log->m_ingreso > t_log->m_total) ? (t_log->m_ingreso - t_log->m_total) : 0;
+    t_log->m_cambio  = (ingreso_parcial > t_log->m_total) ? (ingreso_parcial - t_log->m_total) : 0;
     t_log->m_estatus = "Cobrando...";
     t_log->m_fecha = Glib::DateTime::create_now_local();
-    auto faltante = (t_log->m_ingreso > t_log->m_total) ? 0 : (t_log->m_total - t_log->m_ingreso);
+    auto faltante = (ingreso_parcial > t_log->m_total) ? 0 : (t_log->m_total - ingreso_parcial);
 
-    v_lbl_recibido->set_text(Glib::ustring::format(t_log->m_ingreso));
+    v_lbl_recibido->set_text(Glib::ustring::format(ingreso_parcial));
     v_lbl_faltante->set_text(Glib::ustring::format(faltante));
     v_lbl_cambio->set_text(Glib::ustring::format(t_log->m_cambio));
 
@@ -86,7 +87,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 		if (connection)
     {
         crow::json::wvalue response;
-        response["ingreso"] = t_log->m_ingreso;
+        response["ingreso"] = ingreso_parcial;
         response["cambio"] = t_log->m_cambio;
         response["total"] = t_log->m_total;
         response["terminado"] = transaccion_terminada;
@@ -96,7 +97,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
         connection->send_text(response.dump());
     }
 
-    if (t_log->m_ingreso >= t_log->m_total || cancelado)
+    if (ingreso_parcial >= t_log->m_total || cancelado)
     {
         t_log->m_estatus = "Finalizado";
         log.update_log(t_log);
@@ -115,6 +116,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
 {
     transaccion_terminada = cancelado = false;
+    ingreso_parcial = 0;
     this->t_log = t_log;
     hub.on_credito().connect(sigc::mem_fun(*this, &Efectivo::on_event_credit));
     hub.on_error().connect(sigc::mem_fun(*this, &Efectivo::on_error));
@@ -146,9 +148,9 @@ crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
     if (cancelado)
     {
         t_log->m_estatus = "Operación cancelada";
-        if (t_log->m_ingreso > 0)
-            hub.inicia_pago(t_log->m_id, t_log->m_ingreso);
-        t_log->m_cambio = t_log->m_ingreso;
+        if (ingreso_parcial > 0)
+            hub.inicia_pago(t_log->m_id, ingreso_parcial);
+        t_log->m_cambio = ingreso_parcial;
     }
     else
         t_log->m_estatus = "Completado";

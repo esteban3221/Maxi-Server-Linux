@@ -178,60 +178,82 @@ bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
-    bool exito = true; // Por defecto asumimos éxito hasta que pase un error
+    bool exito = true; 
     int reintentos_iniciales = 0;
 
+    // --- Bucle principal de lógica ---
     while (!terminado)
     {
-        std::lock_guard<std::mutex> lock(mtx_comunicacion);
-        auto resp = command_get("GetDeviceStatus");
-        if (std::string state = ""; resp.status_code == cpr::status::HTTP_OK)
-        {
-            auto json = crow::json::load(resp.text);
+        { // Scope para el lock
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
+            auto resp = command_get("GetDeviceStatus");
+            if (resp.status_code == cpr::status::HTTP_OK)
+            {
+                auto json = crow::json::load(resp.text);
+                std::string state = json.has("deviceState") ? std::string(json["deviceState"].s()) : "";
 
-            if (json.has("deviceState"))
-                state = json["deviceState"].s();
-            if (state == "DISPENSING")
-                detecto_dispensing = true;
-            if (state == "IN_PROGRESS")
-                continue; // Ignoramos estados intermedios
-            if (detecto_dispensing && json["pollBuffer"].size() > 0 ||
-                (state == "IDLE" ||
-                 state == "ENABLED" ||
-                 state == "DISABLED" && json["pollBuffer"].size() > 0))
-                 
+                if (state == "DISPENSING")
+                    detecto_dispensing = true;
+                
+                if (state == "IN_PROGRESS")
+                    goto sleep_and_continue; // Usamos esto para no repetir el sleep abajo
+
+                // Lógica de procesamiento de buffer (tu lógica actual)
                 for (const auto &item : json["pollBuffer"])
                 {
                     std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
                     event = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : event;
 
-                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR" /*|| event == "INCOMPLETE_PAYOUT" || event == "ERROR_DURING_PAYOUT"*/)
+                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR") 
                     {
-                        CROW_LOG_ERROR << "Fallo detectado durante el pago: " << event;
-                        auto value = item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A";
-                        signal_error.emit(device_id, event + " Entregado: " + value);
-                        exito = false;    // Marcamos como fallo
-                        terminado = true; // Salimos del bucle de espera
+                        exito = false;
+                        terminado = true;
                     }
-                    else if (event == "COMPLETED")
+                    else if (event == "COMPLETED") 
                     {
-                        CROW_LOG_INFO << "Pago completado exitosamente. Entregado: " << (item.has("value") ? std::to_string(item["value"].i() / 100) : "N/A");
-                        exito = true;     // Marcamos como éxito
-                        terminado = true; // Salimos del bucle de espera
+                        exito = true;
+                        terminado = true;
                     }
                 }
 
-            if (!detecto_dispensing && ++reintentos_iniciales > 50)
+                if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+                {
+                    exito = false;
+                    terminado = true;
+                }
+            }
+        }
+
+sleep_and_continue:
+        if(!terminado)
+            std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+    }
+
+    // --- FASE DE LIMPIEZA (Draining) ---
+    // Seguiremos consultando por 2 segundos más para vaciar cualquier mensaje residual
+    CROW_LOG_INFO << "Iniciando limpieza de buffer por 2 segundos...";
+    auto inicio_limpieza = std::chrono::steady_clock::now();
+    
+    while (std::chrono::steady_clock::now() - inicio_limpieza < std::chrono::seconds(2))
+    {
+        {
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
+            auto resp = command_get("GetDeviceStatus");
+            if (resp.status_code == cpr::status::HTTP_OK)
             {
-                exito = false;
-                terminado = true;
+                auto json = crow::json::load(resp.text);
+                // Solo consumimos el buffer, no tomamos decisiones de éxito/fallo aquí
+                // ya que la transacción principal terminó.
+                if (json["pollBuffer"].size() > 0) {
+                    CROW_LOG_DEBUG << "Mensaje residual descartado durante limpieza: " << json["pollBuffer"].size();
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
+
     return exito;
 }
-
 void ValidadorUnit::iniciar_polling()
 {
     poll = true;

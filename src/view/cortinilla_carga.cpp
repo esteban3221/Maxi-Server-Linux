@@ -16,14 +16,14 @@ void ViewCarga::modo(bool is_efectivo)
 {
     if (is_efectivo)
     {
-        v_img_main->set_from_icon_name("cash-symbolic");
+        v_img_main->set_from_icon_name("device_serial-symbolic");
         v_lbl_main->set_text("Espere un momento");
         v_lbl_sub->set_text("Cargando información de pago en efectivo...");
         v_btn_cancel_tarjeta->hide();
     }
     else
     {
-        v_img_main->set_from_icon_name("credit-card-symbolic");
+        v_img_main->set_from_icon_name("phonelink-symbolic");
         v_lbl_main->set_text("Terminal de Pago Activa");
         v_lbl_sub->set_text("Por favor, siga las instrucciones en la pantalla de la terminal bancaria.");
         v_btn_cancel_tarjeta->show();

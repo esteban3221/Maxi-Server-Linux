@@ -26,7 +26,7 @@ cpr::Response Tarjeta::create_order()
     json_params["config"]["point"]["print_on_terminal"] = "no_ticket";
     json_params["config"]["payment_method"]["default_type"] = "credit_card";
 
-    CROW_LOG_INFO << "Mercado Pago: Creando orden...\n" << json_params.dump();
+    CROW_LOG_INFO << "Mercado Pago: Creando orden..." /*<< json_params.dump()*/;
     return cpr::Post(cpr::Url{MP_BASE_URL},
                      cpr::Header{{"Authorization", "Bearer " + terminal->m_access_token},
                                  {"X-Idempotency-Key", idempotency_base},
