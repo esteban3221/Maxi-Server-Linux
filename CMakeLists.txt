@@ -5,6 +5,32 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC")
 
+# --- Obtener número de Build desde Git ---
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE PROJECT_VERSION_BUILD
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+
+# Si no hay git o es un repo nuevo, inicializamos en 0
+if(NOT PROJECT_VERSION_BUILD)
+    set(PROJECT_VERSION_BUILD 0)
+endif()
+
+message(STATUS "Version: ${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD})")
+
+# Generar el archivo hpp con los datos de CMake
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/config/version.hpp
+    @ONLY
+)
+
 message(STATUS "Proyecto: ${PROJECT_NAME}")
 message(STATUS "Versión: ${PROJECT_VERSION}")
 message(STATUS "Versión mayor: ${PROJECT_VERSION_MAJOR}")
