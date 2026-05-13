@@ -10,7 +10,7 @@ VBaseNip::VBaseNip(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &re
     v_active_editable = v_ety_pin;
 
     v_btn_nip_back->signal_clicked().connect(sigc::mem_fun(*this, &VBaseNip::on_btn_nip_back));
-    v_ety_pin->signal_activate().connect(sigc::mem_fun(*this, &VBaseNip::on_btn_nip_enter));
+    ((Gtk::Entry*)v_ety_pin)->signal_activate().connect(sigc::mem_fun(*this, &VBaseNip::on_btn_nip_enter));
 }
 
 void VBaseNip::set_modo_monto(bool es_monto) 
