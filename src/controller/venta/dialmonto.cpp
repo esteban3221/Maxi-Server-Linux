@@ -10,7 +10,7 @@ DialMonto::DialMonto(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &
     set_modo_monto(true);
     v_spn_monto->set_increments(1, 10);
     signal_map().connect(sigc::mem_fun(*this, &DialMonto::on_map_show_map));
-    v_spn_monto->signal_activate().connect(sigc::mem_fun(*this, &DialMonto::on_btn_nip_enter));
+    ((Gtk::Entry*)v_spn_monto)->signal_activate().connect(sigc::mem_fun(*this, &DialMonto::on_btn_nip_enter));
 }
 
 DialMonto::~DialMonto()

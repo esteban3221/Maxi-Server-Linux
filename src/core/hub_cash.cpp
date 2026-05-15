@@ -108,7 +108,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
         // ÉXITO: Conectar señales locales del objeto a las globales del HUB
         v->signal_event_received.connect([this,&v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
         {
-            if (tipo == "STACKED" || tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT" || tipo == "ESCROW") 
+            if (/*tipo == "STACKED" ||*/ tipo == "VALUE_ADDED" || tipo == "COIN_CREDIT" || tipo == "ESCROW") 
             {
                 int monto = data["value"].i() / 100;
                 signal_credito.emit(device_id, type_val, data, monto);
