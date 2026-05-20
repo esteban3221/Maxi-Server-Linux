@@ -107,6 +107,8 @@ crow::response LogData::get_log(const crow::request &req)
 
 crow::response LogData::get_levels(const crow::request &req)
 {
+    Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
+    
     crow::json::wvalue json;
     auto &hub = CashHub::instance();
     auto map = hub.obten_ultimo_snapshot_level();

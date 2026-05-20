@@ -10,6 +10,7 @@ BVentaPago::BVentaPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     v_lbl_monto_total = m_builder->get_widget<Gtk::Label>("lbl_monto_total");
     v_lbl_recibido = m_builder->get_widget<Gtk::Label>("lbl_recibido");
     v_lbl_titulo = m_builder->get_widget<Gtk::Label>("lbl_titulo");
+    v_img_main = m_builder->get_widget<Gtk::Image>("img_main");
 
     v_BXRW4 = m_builder->get_widget<Gtk::ListBoxRow>("BXRW4");
 
@@ -43,7 +44,7 @@ namespace View
         <property name="orientation">1</property>
         <property name="spacing">8</property>
         <child>
-          <object class="GtkImage">
+          <object class="GtkImage" id="img_main">
             <property name="icon-name">emblem-system-symbolic</property>
             <property name="pixel-size">48</property>
             <style>

@@ -115,6 +115,10 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 
 crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
 {
+    auto db_conf = std::make_unique<Configuracion>();
+    auto data = db_conf->get_conf_data(6,6);
+
+    v_img_main->property_file() = data->get_item(0)->m_valor;
     transaccion_terminada = cancelado = false;
     ingreso_parcial = 0;
     this->t_log = t_log;
