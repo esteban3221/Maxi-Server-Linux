@@ -4,6 +4,8 @@ project("Maxicajero Server Local" VERSION 2.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -march=native -flto -fno-semantic-interposition")
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ARCH_NAME)
+set(EXECUTABLE_NAME "Maxicajero-Server-${ARCH_NAME}")
 
 # --- Obtener número de Build desde Git ---
 find_package(Git QUIET)
@@ -153,9 +155,9 @@ include_directories(include
 add_subdirectory(lib/Sqlit3-cpp-lib/)
 add_subdirectory(lib/eSSP)
 
-add_executable(Maxicajero ${SOURCES})
+add_executable(${EXECUTABLE_NAME} ${SOURCES})
 
-target_link_libraries(Maxicajero
+target_link_libraries(${EXECUTABLE_NAME}
     PUBLIC
     Sqlite-cpp
     eSSP_lib
@@ -164,7 +166,7 @@ target_link_libraries(Maxicajero
     cpr::cpr
     Crow::Crow
 )
-target_include_directories(Maxicajero PRIVATE
+target_include_directories(${EXECUTABLE_NAME} PRIVATE
     ${GTKMM_INCLUDE_DIRS}
     ${LIBNOTIFY_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/include
