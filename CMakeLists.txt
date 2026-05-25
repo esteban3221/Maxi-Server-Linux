@@ -3,7 +3,7 @@ project("Maxicajero Server Local" VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -march=native -flto -fno-semantic-interposition")
 
 # --- Obtener número de Build desde Git ---
 find_package(Git QUIET)
