@@ -86,6 +86,7 @@ namespace View
       <object class="GtkButton" id="btn_cancel_tarjeta">
         <property name="label">Cancelar Transacción</property>
         <property name="halign">3</property>
+        <property name="visible">false</property>
         <style>
           <class name="destructive-action"/>
           <class name="pill"/>

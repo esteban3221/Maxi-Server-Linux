@@ -8,7 +8,7 @@ MainWindow::MainWindow(/* args */) : contador_click(0),
                                         configuracion(app),
                                         terminales(app)
 {
-    v_btn_pill->set_opacity(1);
+    v_btn_pill->set_opacity(0);
 
     v_box_principal->signal_map().connect(sigc::mem_fun(*this, &MainWindow::on_map_view));
     v_btn_logo_nip->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_btn_pill_clicked));
@@ -56,9 +56,11 @@ void MainWindow::on_btn_pill_clicked()
     {
         Global::Widget::v_main_stack->set_visible_child("6");
         contador_click = 0;
+        v_btn_pill->set_opacity(0);
     }
     else
     {
+        v_btn_pill->set_opacity(1);
         contador_click++;
         v_btn_pill->set_label(std::to_string(contador_click));
     }

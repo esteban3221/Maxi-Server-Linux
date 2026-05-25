@@ -59,6 +59,9 @@ void Efectivo::on_btn_cancel_click()
 
 crow::response Efectivo::deten(const crow::request &req)
 {
+    if(Global::Widget::v_main_stack->get_visible_child() != this)
+        return crow::response(400, "No hay una venta en efectivo en proceso");
+        
     on_btn_cancel_click();
     return crow::response(200, "Venta detenida");
 }

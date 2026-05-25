@@ -236,8 +236,7 @@ void Refill::on_error(const std::string &device, const std::string &error)
     {
         hub.detiene_poll_for_all(-1); 
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        auto response_level = hub.command_by_device_id(HttpMethod::GET, device, "GetAllLevels");
-        auto json_level = crow::json::load(response_level.text);
+        auto json_level = crow::json::load(hub.get_nivel_actual_by_id(device).text);
 
         cashbox_level = 0;
         for (auto &&i : json_level)

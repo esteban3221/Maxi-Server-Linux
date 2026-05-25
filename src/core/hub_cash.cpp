@@ -52,10 +52,10 @@ int CashHub::obtener_ssp_por_magia_negra(const std::string &puerto_dev, int ssp_
         return ssp_address;
     }
 
-    if (ssp_address == 0) {
+    if (ssp_address == 16) {
         CROW_LOG_WARNING << "Fallo en 0, intentando dirección 16...";
         CloseSSPPort(port_handle); 
-        return obtener_ssp_por_magia_negra(puerto_dev, 16);
+        return obtener_ssp_por_magia_negra(puerto_dev, 0);
     }
 
     CROW_LOG_ERROR << "No se encontró ningún dispositivo SSP en " << puerto_dev;
@@ -368,4 +368,18 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
         detalle.registrar_diferencias(t_id, 
             crow::json::load(snapshot_inicio[i].text), 
             crow::json::load(snapshot_fin[i].text));
+}
+
+cpr::Response CashHub::get_nivel_actual_by_id(const std::string &device_id) const
+{
+    for (auto const &i : unidades)
+    {
+        if (i->property_device_id() == device_id)
+            return i->get_nivel_actual();
+    }
+
+    cpr::Response error_res;
+    error_res.status_code = 0;
+    error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
+    return error_res;
 }

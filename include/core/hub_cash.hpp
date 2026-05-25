@@ -12,7 +12,8 @@
 #include "model/detalle_movimiento.hpp"
 #include "controller/session.hpp"
 
-extern "C" {
+extern "C" 
+{
     #include "SSPComs.h"
     #include "itl_types.h"
 }
@@ -37,7 +38,7 @@ private:
     DetalleMovimiento detalle;
 
     bool intentar_registrar(const std::string &puerto, int ssp);
-    int obtener_ssp_por_magia_negra(const std::string& puerto, int ssp = 0);
+    int obtener_ssp_por_magia_negra(const std::string& puerto, int ssp = 16);
     crow::json::rvalue rutas_default(ValidadorUnit* val);
 
 public:
@@ -58,6 +59,7 @@ public:
     std::map<std::string , cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
     std::map<std::string , crow::json::rvalue> obten_ultimo_snapshot_level(void);
     cpr::Response command_by_device_id(HttpMethod method,const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
+    cpr::Response get_nivel_actual_by_id(const std::string &device_id) const;
     void inicia_for_all(const Conf &conf,std::map<std::string, const crow::json::rvalue> = {});
     void inicia_poll_for_all();
     void inicia_pago(size_t t_id, size_t monto, bool is_cambio = false);
