@@ -235,7 +235,6 @@ void Refill::on_error(const std::string &device, const std::string &error)
     if (error == "CASHBOX_REMOVED")
     {
         hub.detiene_poll_for_all(-1); 
-        std::this_thread::sleep_for(std::chrono::seconds(3));
         auto json_level = crow::json::load(hub.get_nivel_actual_by_id(device).text);
 
         cashbox_level = 0;
@@ -371,11 +370,9 @@ crow::response Refill::retirada(const crow::request &req)
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        if(!cv_finalizado.wait_for(lock, std::chrono::minutes(2), [this] { return transaccion_terminada; })) 
-        {
-             conn.disconnect();
-             return crow::response(408, "Timeout: No se retiró el cassette");
-        }
+
+        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+        conn.disconnect();
     }
 
     auto t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, cashbox_level, "Completado", Glib::DateTime::create_now_local());

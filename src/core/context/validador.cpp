@@ -272,7 +272,7 @@ void ValidadorUnit::iniciar_polling()
                     if (item.has("stateAsString")) event_name = item["stateAsString"].s();
                     else if (item.has("eventTypeAsString")) event_name = item["eventTypeAsString"].s();
 
-                    if (event_name == "ESCROW" || event_name == "STACKED" || event_name == "VALUE_ADDED") 
+                    if (event_name == "ESCROW" || event_name == "COIN_CREDIT" || event_name == "VALUE_ADDED") 
                     {
                         CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i() / 100;
                         signal_event_received.emit(device_id, conf.ssp == 0 ? "BILL" : "COIN", event_name, item);
@@ -345,14 +345,14 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         }
         else
         {
-            CROW_LOG_CRITICAL << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
+            CROW_LOG_ERROR << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
             signal_error.emit(device_id, json["dispenseResult"].operator std::string() + ", Razon: " + json["dispenseResult"].operator std::string());
             detiene_desconecta();
         }
     }
     catch (const std::exception &e)
     {
-        CROW_LOG_ERROR << device_id << " → " << e.what();
+        CROW_LOG_CRITICAL << device_id << " → " << e.what();
     }
 }
 

@@ -350,9 +350,9 @@ private:
                                    "(null,'SSP coin','16'),"
                                    // 5 - 9
                                    "(null,'Mostrar Notificacion','1'),"
-                                   "(null,'Ruta logo incio','$HOME/Documentos/img/8121259.gif'),"
+                                   "(null,'Ruta logo incio',''),"
                                    "(null,'Mensaje Inicio','Bienvenido'),"
-                                   "(null,'Ruta Carrusel','$HOME/Documentos/img_carrusel'),"
+                                   "(null,'Ruta Carrusel',''),"
                                    "(null,'Temp. Carrusel','0'),"
                                    // 10 - 14
                                    "(null,'Razon Social',''),"

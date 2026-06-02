@@ -26,6 +26,7 @@ class CashHub
 {
 private:
     std::vector<std::unique_ptr<ValidadorUnit>> unidades;
+    Glib::RefPtr<Gio::ListStore<MLevelCash>> m_list_billetes;
 
     friend class Sesion;
     std::string autentica();

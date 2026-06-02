@@ -24,8 +24,6 @@ if(NOT PROJECT_VERSION_BUILD)
     set(PROJECT_VERSION_BUILD 0)
 endif()
 
-message(STATUS "Version: ${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD})")
-
 # Generar el archivo hpp con los datos de CMake
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
@@ -33,11 +31,7 @@ configure_file(
     @ONLY
 )
 
-message(STATUS "Proyecto: ${PROJECT_NAME}")
-message(STATUS "Versión: ${PROJECT_VERSION}")
-message(STATUS "Versión mayor: ${PROJECT_VERSION_MAJOR}")
-message(STATUS "Versión menor: ${PROJECT_VERSION_MINOR}")
-message(STATUS "Parche: ${PROJECT_VERSION_PATCH}")
+message(STATUS "Proyecto: ${PROJECT_NAME} v${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD})")
 
 option(ENABLE_PRETTY_JSON "Activar formato visual para JSON en logs" ON)
 

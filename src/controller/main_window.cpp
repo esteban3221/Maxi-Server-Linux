@@ -71,8 +71,17 @@ void MainWindow::on_map_view()
     auto db_conf = std::make_unique<Configuracion>();
     auto data = db_conf->get_conf_data(6,7);
 
-    v_img_main_logo->property_file() = data->get_item(0)->m_valor;
     v_lbl_main->set_text(data->get_item(1)->m_valor);
+
+    try
+    {
+        auto textura = Gdk::Texture::create_from_filename(data->get_item(0)->m_valor);
+        v_img_main_logo->set(textura);
+    }
+    catch (const Glib::Error& ex) 
+    {
+        v_img_main_logo->set_from_icon_name("workspace-switcher-symbolic");
+    }
     
 }
 
