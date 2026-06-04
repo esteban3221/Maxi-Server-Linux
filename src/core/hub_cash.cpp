@@ -104,45 +104,45 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
     if (v->inicia_conecta(crow::json::load("[]")))
     {
-        if(ssp == 0)
-        {
-            m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-            auto snapshot_level = crow::json::load(v->property_ultimo_cash_level());
+        // if(ssp == 0)
+        // {
+        //     m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
+        //     auto snapshot_level = crow::json::load(v->property_ultimo_cash_level());
             
-            for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
-            {
-                auto item = m_list_billetes->get_item(i);
+        //     for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
+        //     {
+        //         auto item = m_list_billetes->get_item(i);
                 
-                for (size_t j = 0; j < snapshot_level.size(); j++)
-                {
-                    if ((snapshot_level[j]["value"].i() / 100)  == item->m_denominacion)
-                        item->m_cant_recy = snapshot_level[j]["storedInPayout"].i();
-                }
-            }
-        }
+        //         for (size_t j = 0; j < snapshot_level.size(); j++)
+        //         {
+        //             if ((snapshot_level[j]["value"].i() / 100)  == item->m_denominacion)
+        //                 item->m_cant_recy = snapshot_level[j]["storedInPayout"].i();
+        //         }
+        //     }
+        // }
 
         v->signal_event_received.connect([this, &v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
         {
             int monto = data["value"].i() / 100;
 
-            if(v->property_conf().ssp == 0)
-                for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
-                {
-                    auto item = m_list_billetes->get_item(i);
-                    if (monto == item->m_denominacion)
-                    {
-                        if(++item->m_cant_recy >= item->m_nivel_inmo_max)
-                        {
-                            crow::json::wvalue json_rutas;
-                            json_rutas["value"] = monto * 100;
-                            json_rutas["countryCode"] = "MXN";
-                            json_rutas["route"] = 0;
+            // if(v->property_conf().ssp == 0)
+            //     for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
+            //     {
+            //         auto item = m_list_billetes->get_item(i);
+            //         if (monto == item->m_denominacion)
+            //         {
+            //             if(++item->m_cant_recy >= item->m_nivel_inmo_max)
+            //             {
+            //                 crow::json::wvalue json_rutas;
+            //                 json_rutas["value"] = monto * 100;
+            //                 json_rutas["countryCode"] = "MXN";
+            //                 json_rutas["route"] = 0;
                             
-                            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-                            v->command_post("SetDenominationRoute", json_rutas.dump(), true);
-                        }
-                    }
-                }
+            //                 std::this_thread::sleep_for(std::chrono::milliseconds(250));
+            //                 v->command_post("SetDenominationRoute", json_rutas.dump(), true);
+            //             }
+            //         }
+            //     }
             
             signal_credito.emit(device_id, type_val, data, monto);
         });
