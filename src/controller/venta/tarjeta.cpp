@@ -97,7 +97,6 @@ cpr::Response Tarjeta::get_order_status(const std::string &order_id)
 
 void Tarjeta::iniciar(Glib::RefPtr<MLog> t_log)
 {
-    //Global::Widget::v_main_stack
     this->t_log = t_log;
     if(t_log->m_total <= 5)
     {

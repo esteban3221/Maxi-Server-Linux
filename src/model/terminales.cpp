@@ -77,7 +77,7 @@ Glib::RefPtr<MTerminales> OTerminales::obtener_predeterminado()
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("SELECT * FROM terminales_pago WHERE predeterminado = 1");
 
-    if (contenedor_data->at("id").empty())
+    if (not contenedor_data->contains("id"))
         return {};
 
     return MTerminales::create(
