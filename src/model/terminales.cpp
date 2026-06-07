@@ -69,7 +69,7 @@ void OTerminales::predetermina(const Glib::ustring &id)
 {
     auto &database = Database::getInstance();
     database.sqlite3->command("UPDATE terminales_pago SET predeterminado = 0");
-    database.sqlite3->command("UPDATE terminales_pago SET predeterminado = 1 WHERE Id = ?", id);
+    database.sqlite3->command("UPDATE terminales_pago SET predeterminado = 1 WHERE id = ?", id);
 }
 
 Glib::RefPtr<MTerminales> OTerminales::obtener_predeterminado()
@@ -77,16 +77,15 @@ Glib::RefPtr<MTerminales> OTerminales::obtener_predeterminado()
     auto &database = Database::getInstance();
     auto contenedor_data = database.sqlite3->command("SELECT * FROM terminales_pago WHERE predeterminado = 1");
 
-    if (not contenedor_data->contains("id"))
-        return {};
-
-    return MTerminales::create(
-        contenedor_data->at("id")[0],
-        contenedor_data->at("tipo")[0],
-        contenedor_data->at("alias")[0],
-        contenedor_data->at("modo")[0],
-        contenedor_data->at("acces_token")[0],
-        std::stoi(contenedor_data->at("predeterminado")[0]) == 1,
-        contenedor_data->at("descripcion")[0],
-        Glib::DateTime::create_from_iso8601(contenedor_data->at("fecha_creado")[0]));
+    if (contenedor_data->contains("id"))
+        return MTerminales::create(
+            contenedor_data->at("id")[0],
+            contenedor_data->at("tipo")[0],
+            contenedor_data->at("alias")[0],
+            contenedor_data->at("modo")[0],
+            contenedor_data->at("acces_token")[0],
+            std::stoi(contenedor_data->at("predeterminado")[0]) == 1,
+            contenedor_data->at("descripcion")[0],
+            Glib::DateTime::create_from_iso8601(contenedor_data->at("fecha_creado")[0]));
+    return nullptr;
 }

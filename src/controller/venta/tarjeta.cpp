@@ -11,6 +11,11 @@ Tarjeta::~Tarjeta()
 cpr::Response Tarjeta::create_order()
 {
     auto terminal = OTerminales().obtener_predeterminado();
+    if(not terminal)
+    {
+        Global::System::showNotify("Tarjeta","No se encontró un terminal de pago predeterminado. Por favor, configure un terminal y vuelva a intentar.", "dialog-error"); 
+        return {};
+    }
     auto idempotency_base = "ext_ref_" + std::to_string(t_log->m_id) + "_" + std::to_string(t_log->m_total);
 
     crow::json::wvalue json_params;
