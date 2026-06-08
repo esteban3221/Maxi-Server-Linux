@@ -2,7 +2,8 @@
 
 VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientation::HORIZONTAL),
                                                      v_box_contenedor(Gtk::Orientation::HORIZONTAL),
-                                                     ui(R"(<?xml version='1.0' encoding='UTF-8'?>
+                                                     ui(R"(
+<?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 0.96.0 -->
 <interface>
   <!-- interface-name validadores.ui -->
@@ -454,7 +455,7 @@ VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientati
     v_lbl_header.set_hexpand();
     v_lbl_header.set_halign(Gtk::Align::START);
 
-    v_btn_test_coneccion.set_icon_name("am-network-symbolic");
+    v_btn_test_coneccion.set_icon_name("xsi-pci-card-symbolic");
     v_btn_test_coneccion.set_tooltip_text("Cambia puerto de coneccion de los validadores");
     v_btn_test_coneccion.set_halign(Gtk::Align::END);
 
@@ -478,7 +479,7 @@ VDetallesValidador::VDetallesValidador(/* args */) : v_box_header(Gtk::Orientati
 
     // v_box_contenedor.append(*v_box_bill);
     // v_box_contenedor.append(*v_box_coin);
-    v_box_contenedor.set_homogeneous();
+    //v_box_contenedor.set_homogeneous();
 
     v_box.append(v_box_contenedor);
     v_box.set_orientation(Gtk::Orientation::VERTICAL);

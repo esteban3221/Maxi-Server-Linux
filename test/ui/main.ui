@@ -1,8 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Cambalache 1.0.2 -->
 <interface>
+  <!-- interface-name main.ui -->
   <requires lib="gtk" version="4.0"/>
   <object class="GtkBox" id="boxVistaEfectivo">
-    <property name="halign">0</property>
+    <property name="halign">fill</property>
     <property name="margin-bottom">15</property>
     <property name="margin-end">15</property>
     <property name="margin-start">15</property>
@@ -11,7 +13,7 @@
     <child>
       <object class="GtkBox">
         <property name="homogeneous">true</property>
-        <property name="orientation">1</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">20</property>
         <property name="vexpand">true</property>
         <child>
@@ -20,7 +22,7 @@
               <object class="GtkBox">
                 <property name="margin-end">12</property>
                 <property name="margin-start">12</property>
-                <property name="orientation">1</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="label">Monedas</property>
@@ -47,9 +49,9 @@
                     </child>
                     <child>
                       <object class="GtkBox">
-                        <property name="halign">2</property>
+                        <property name="halign">end</property>
                         <property name="hexpand-set">true</property>
-                        <property name="orientation">1</property>
+                        <property name="orientation">vertical</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="label">Total</property>
@@ -80,7 +82,7 @@
               <object class="GtkBox">
                 <property name="margin-end">12</property>
                 <property name="margin-start">12</property>
-                <property name="orientation">1</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="label">Billetes</property>
@@ -106,8 +108,8 @@
                     </child>
                     <child>
                       <object class="GtkBox">
-                        <property name="halign">2</property>
-                        <property name="orientation">1</property>
+                        <property name="halign">end</property>
+                        <property name="orientation">vertical</property>
                         <child>
                           <object class="GtkLabel">
                             <property name="label">Total</property>
@@ -136,7 +138,7 @@
     </child>
     <child>
       <object class="GtkBox">
-        <property name="orientation">1</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">20</property>
         <child>
           <object class="GtkFrame" id="frmTotal">
@@ -146,7 +148,7 @@
                 <property name="margin-end">12</property>
                 <property name="margin-start">12</property>
                 <property name="margin-top">12</property>
-                <property name="orientation">1</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="label">Total</property>
@@ -175,7 +177,7 @@
                 <property name="margin-end">12</property>
                 <property name="margin-start">12</property>
                 <property name="margin-top">12</property>
-                <property name="orientation">1</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="label">Total Monedas</property>
@@ -204,7 +206,7 @@
                 <property name="margin-end">12</property>
                 <property name="margin-start">12</property>
                 <property name="margin-top">12</property>
-                <property name="orientation">1</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkLabel">
                     <property name="label">Total Billetes</property>
@@ -227,8 +229,8 @@
         </child>
         <child>
           <object class="GtkButton" id="btn_detener">
-            <property name="label" translatable="yes">Detener</property>
             <property name="css-classes">destructive-action</property>
+            <property name="label" translatable="yes">Detener</property>
           </object>
         </child>
       </object>

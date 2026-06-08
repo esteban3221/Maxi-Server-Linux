@@ -66,7 +66,8 @@ VRefill::~VRefill()
 
 namespace View
 {
-    const char *ui_refill = R"(<?xml version="1.0" encoding="UTF-8"?>
+    const char *ui_refill = R"(
+    <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
   <object class="GtkBox" id="boxVistaEfectivo">
@@ -104,13 +105,18 @@ namespace View
                     <property name="spacing">10</property>
                     <property name="vexpand">true</property>
                     <child>
-                      <object class="GtkColumnView" id="treeRecicladorMonedas">
-                        <property name="enable-rubberband">true</property>
-                        <property name="hexpand">true</property>
-                        <property name="hexpand-set">true</property>
-                        <property name="show-column-separators">true</property>
-                        <property name="vexpand">true</property>
-                        <property name="vexpand-set">true</property>
+                      <object class="GtkScrolledWindow">
+                        <property name="hscrollbar-policy">1</property>
+                        <child>
+                          <object class="GtkColumnView" id="treeRecicladorMonedas">
+                            <property name="enable-rubberband">true</property>
+                            <property name="hexpand">true</property>
+                            <property name="hexpand-set">true</property>
+                            <property name="show-column-separators">true</property>
+                            <property name="vexpand">true</property>
+                            <property name="vexpand-set">true</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child>
@@ -163,13 +169,18 @@ namespace View
                     <property name="margin-top">12</property>
                     <property name="spacing">10</property>
                     <child>
-                      <object class="GtkColumnView" id="treeRecicladorBilletes">
-                        <property name="enable-rubberband">true</property>
-                        <property name="hexpand">true</property>
-                        <property name="hexpand-set">true</property>
-                        <property name="show-column-separators">true</property>
-                        <property name="vexpand">true</property>
-                        <property name="vexpand-set">true</property>
+                      <object class="GtkScrolledWindow">
+                        <property name="hscrollbar-policy">1</property>
+                        <child>
+                          <object class="GtkColumnView" id="treeRecicladorBilletes">
+                            <property name="enable-rubberband">true</property>
+                            <property name="hexpand">true</property>
+                            <property name="hexpand-set">true</property>
+                            <property name="show-column-separators">true</property>
+                            <property name="vexpand">true</property>
+                            <property name="vexpand-set">true</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                     <child>
@@ -302,5 +313,6 @@ namespace View
       </object>
     </child>
   </object>
-</interface>)";
+</interface>
+    )";
 }

@@ -288,7 +288,7 @@ void ValidadorUnit::iniciar_polling()
                         signal_error.emit(device_id, "Error genérico detectado");
                         break;
                     }
-                    else if (event_name == "CASHBOX_REMOVED")
+                    else if (event_name == "CASHBOX_REPLACED" || event_name == "CASHBOX_REMOVED")
                         signal_error.emit(device_id, event_name);
                     else if (event_name == "IN_PROGRESS")
                     {
@@ -382,7 +382,7 @@ cpr::Response ValidadorUnit::get_nivel_actual() const
 {
     cpr::Response json;
     int intentos = 0;
-    const int max_intentos = 5; // Máximo 2.5 segundos de espera total
+    const int max_intentos = 15;
 
     while (intentos < max_intentos)
     {

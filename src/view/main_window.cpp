@@ -68,8 +68,7 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(
 </interface>
     )")
 {
-    this->set_title("MaxiCajero");
-    this->set_default_size(800, 600);
+    this->set_title("Maxicajero");
 
     Global::Widget::v_main_window = this;
 
@@ -85,6 +84,8 @@ VMainWindow::VMainWindow(/* args */) : ui(R"(
     v_lbl_version->set_label(Maxicajero::Version::getFullVersion());
     Global::Widget::v_main_stack = Gtk::manage(new Gtk::Stack);
     Global::Widget::v_main_stack->add(*v_box_principal, "0", "Home");
+    Global::Widget::v_main_stack->set_interpolate_size(true);
+    Global::Widget::v_main_stack->set_vhomogeneous(false);
     this->set_decorated(false);
     this->maximize();
     this->set_child(*Global::Widget::v_main_stack);

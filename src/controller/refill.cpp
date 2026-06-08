@@ -161,9 +161,6 @@ size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio:
 
 void Refill::on_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
 {
-    t_log->m_ingreso += credito;
-    log.update_log(t_log);
-
     auto selection = (type == "COIN") ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
     auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
@@ -177,18 +174,12 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
         {
             if(item->m_cant_recy < item->m_nivel_inmo)
             {
-                if (type == "BILL")
-                    hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
+                hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
                 
-                item->m_ingreso++;
                 item->m_cant_recy++;
-                async_gui.dispatch_to_gui([this, item, i, list_store, single, &total, type]()
-                {
-                    list_store->remove(i);
-                    list_store->insert(i, item);
-                    single->select_item(i, true);
-                    total += calcula_total(type, list_store);
-                });
+                item->m_ingreso++;
+                t_log->m_ingreso += credito;
+                log.update_log(t_log);
             
                 envia_mensaje_wb(type, item);
             }
@@ -196,14 +187,28 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
                 if (type == "BILL")
                     hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
                 else
-                    async_gui.dispatch_to_gui([this, item, i, list_store, single, &total, type]()
-                    {
-                        list_store->remove(i);
-                        list_store->insert(i, item);
-                        single->select_item(i, true);
-                        total += calcula_total(type, list_store);
-                        Global::System::showNotify("Refill", "Inmovilidad sobrepasada en la denominacion: " + item->m_denominacion, "dialog-information");
-                    });
+                {
+                    item->m_cant_recy++;
+                    item->m_ingreso++; 
+                    t_log->m_ingreso += credito;
+                    log.update_log(t_log);
+                
+                    envia_mensaje_wb(type, item);
+                }
+
+            async_gui.dispatch_to_gui([this, item, i, list_store, single, &total, type]()
+            {
+                list_store->remove(i);
+                list_store->insert(i, item);
+                single->select_item(i, true);
+                total += calcula_total(type, list_store);
+            });
+        }
+        else
+        {
+            t_log->m_ingreso += credito;
+            log.update_log(t_log);
+            Global::System::showNotify("Denominación apilada", ("La denominación " + std::to_string(credito) + " no es posible contabilizar.").c_str(), "dialog-warning");
         }
     }
     v_lbl_total->set_text(Glib::ustring::format(total));
@@ -233,8 +238,10 @@ void Refill::envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLev
 void Refill::on_error(const std::string &device, const std::string &error)
 {
     if (error == "CASHBOX_REMOVED")
-    {
-        hub.detiene_poll_for_all(-1); 
+        Global::System::showNotify("Retirada", ("Cassette retirado en el dispositivo: " + device).c_str() , "dialog-information");
+    else if (error == "CASHBOX_REPLACED")
+    { 
+        hub.detiene_poll_for_all(-1);
         auto json_level = crow::json::load(hub.get_nivel_actual_by_id(device).text);
 
         cashbox_level = 0;

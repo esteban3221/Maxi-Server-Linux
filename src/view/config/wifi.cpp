@@ -57,30 +57,44 @@ VWifi::VWifiRow::VWifiRow(const std::string &titulo,const std::string &subtitulo
 
 namespace View
 {
-    const char *ui_wifi = R"(<?xml version='1.0' encoding='UTF-8'?>
-<!-- Created with Cambalache 0.96.1 -->
+    const char *ui_wifi = R"(
+    <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <!-- interface-name wifi.ui -->
   <requires lib="gtk" version="4.0"/>
   <object class="GtkBox" id="page_5">
-    <property name="orientation">vertical</property>
+    <property name="orientation">1</property>
     <property name="spacing">10</property>
     <child>
       <object class="GtkStack" id="stack_wifi">
-        <property name="transition-type">over-left-right</property>
+        <property name="transition-type">18</property>
         <child>
           <object class="GtkStackPage">
             <property name="child">
               <object class="GtkBox">
-                <property name="orientation">vertical</property>
+                <property name="orientation">1</property>
                 <child>
-                  <object class="GtkLabel">
-                    <property name="label">Inalámbrica</property>
+                  <object class="GtkBox">
+                    <property name="orientation">0</property>
+                    <property name="spacing">10</property>
                     <property name="margin-bottom">10</property>
-                    <property name="xalign">0</property>
-                    <style>
-                      <class name="title-2"/>
-                    </style>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="label">Inalámbrica</property>
+                        <property name="hexpand">true</property>
+                        <property name="xalign">0</property>
+                        <style>
+                          <class name="title-2"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="btn_redes">
+                        <property name="label">Conectar Wi-Fi</property>
+                        <style>
+                          <class name="suggested-action"/>
+                        </style>
+                      </object>
+                    </child>
                   </object>
                 </child>
                 <child>
@@ -92,14 +106,14 @@ namespace View
                           <object class="GtkBox">
                             <child>
                               <object class="GtkLabel">
-                                <property name="halign">start</property>
+                                <property name="halign">1</property>
                                 <property name="label">Red</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkEditableLabel" id="ety_info_ssid_wifi">
                                 <property name="editable">false</property>
-                                <property name="halign">end</property>
+                                <property name="halign">2</property>
                                 <property name="hexpand">true</property>
                                 <property name="text">Type here…</property>
                                 <style>
@@ -118,14 +132,14 @@ namespace View
                           <object class="GtkBox">
                             <child>
                               <object class="GtkLabel">
-                                <property name="halign">start</property>
+                                <property name="halign">1</property>
                                 <property name="label">Direccion IP</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkEditableLabel" id="ety_info_ip_wifi">
                                 <property name="editable">false</property>
-                                <property name="halign">end</property>
+                                <property name="halign">2</property>
                                 <property name="hexpand">true</property>
                                 <property name="text">Type here…</property>
                                 <style>
@@ -144,14 +158,14 @@ namespace View
                           <object class="GtkBox">
                             <child>
                               <object class="GtkLabel">
-                                <property name="halign">start</property>
+                                <property name="halign">1</property>
                                 <property name="label">Direccion Mac</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkEditableLabel" id="ety_info_mac_wifi">
                                 <property name="editable">false</property>
-                                <property name="halign">end</property>
+                                <property name="halign">2</property>
                                 <property name="hexpand">true</property>
                                 <property name="text">Type here…</property>
                                 <style>
@@ -170,106 +184,98 @@ namespace View
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="btn_redes">
-                    <property name="halign">center</property>
-                    <property name="label">Conectar Wi-Fi</property>
-                    <property name="margin-top">40</property>
-                    <property name="valign">center</property>
-                    <style>
-                      <class name="suggested-action"/>
-                    </style>
+                  <object class="GtkBox">
+                    <property name="orientation">1</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">0</property>
+                        <property name="spacing">10</property>
+                        <property name="margin-top">20</property>
+                        <property name="margin-bottom">5</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Ethernet</property>
+                            <property name="hexpand">true</property>
+                            <property name="xalign">0</property>
+                            <style>
+                              <class name="title-2"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="btn_red">
+                            <property name="label">Gestionar conexiones</property>
+                            <style>
+                              <class name="warning"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkBox">
-                    <property name="orientation">vertical</property>
+                  <object class="GtkListBox" id="list_info_con">
                     <child>
-                      <object class="GtkLabel">
-                        <property name="label">Ethernet</property>
-                        <property name="margin-bottom">20</property>
-                        <property name="margin-top">20</property>
-                        <property name="xalign">0</property>
-                        <style>
-                          <class name="title-2"/>
-                        </style>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkListBox" id="list_info_con">
+                      <object class="GtkListBoxRow">
+                        <property name="activatable">false</property>
                         <child>
-                          <object class="GtkListBoxRow">
-                            <property name="activatable">false</property>
+                          <object class="GtkBox">
                             <child>
-                              <object class="GtkBox">
-                                <child>
-                                  <object class="GtkLabel">
-                                    <property name="halign">start</property>
-                                    <property name="label">Direccion IP</property>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkEditableLabel" id="ety_info_ip_eth">
-                                    <property name="editable">false</property>
-                                    <property name="halign">end</property>
-                                    <property name="hexpand">true</property>
-                                    <property name="text">Type here…</property>
-                                    <style>
-                                      <class name="dim-label"/>
-                                    </style>
-                                  </object>
-                                </child>
+                              <object class="GtkLabel">
+                                <property name="halign">1</property>
+                                <property name="label">Direccion IP</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkEditableLabel" id="ety_info_ip_eth">
+                                <property name="editable">false</property>
+                                <property name="halign">2</property>
+                                <property name="hexpand">true</property>
+                                <property name="text">Type here…</property>
+                                <style>
+                                  <class name="dim-label"/>
+                                </style>
                               </object>
                             </child>
                           </object>
                         </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkListBoxRow">
+                        <property name="activatable">false</property>
                         <child>
-                          <object class="GtkListBoxRow">
-                            <property name="activatable">false</property>
+                          <object class="GtkBox">
                             <child>
-                              <object class="GtkBox">
-                                <child>
-                                  <object class="GtkLabel">
-                                    <property name="halign">start</property>
-                                    <property name="label">Direccion MAC</property>
-                                  </object>
-                                </child>
-                                <child>
-                                  <object class="GtkEditableLabel" id="ety_info_ip_eth_mac">
-                                    <property name="editable">false</property>
-                                    <property name="halign">end</property>
-                                    <property name="hexpand">true</property>
-                                    <property name="text">Type here…</property>
-                                    <style>
-                                      <class name="dim-label"/>
-                                    </style>
-                                  </object>
-                                </child>
+                              <object class="GtkLabel">
+                                <property name="halign">1</property>
+                                <property name="label">Direccion MAC</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkEditableLabel" id="ety_info_ip_eth_mac">
+                                <property name="editable">false</property>
+                                <property name="halign">2</property>
+                                <property name="hexpand">true</property>
+                                <property name="text">Type here…</property>
+                                <style>
+                                  <class name="dim-label"/>
+                                </style>
                               </object>
                             </child>
                           </object>
                         </child>
-                        <style>
-                          <class name="rich-list"/>
-                          <class name="boxed-list"/>
-                        </style>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkButton" id="btn_red">
-                        <property name="halign">center</property>
-                        <property name="label">Gestionar conexiones</property>
-                        <property name="margin-top">40</property>
-                        <property name="valign">center</property>
-                        <style>
-                          <class name="warning"/>
-                        </style>
-                      </object>
-                    </child>
+                    <style>
+                      <class name="rich-list"/>
+                      <class name="boxed-list"/>
+                    </style>
                   </object>
                 </child>
               </object>
             </property>
-            <property name="name">status_red</property>
           </object>
         </child>
         <child>
@@ -278,13 +284,13 @@ namespace View
               <object class="GtkViewport">
                 <property name="child">
                   <object class="GtkBox">
-                    <property name="orientation">vertical</property>
+                    <property name="orientation">1</property>
                     <child>
                       <object class="GtkBox">
-                        <property name="hexpand">True</property>
+                        <property name="hexpand">true</property>
                         <child>
                           <object class="GtkButton" id="btn_regresar">
-                            <property name="icon-name">back</property>
+                            <property name="icon-name">go-previous-symbolic</property>
                             <style>
                               <class name="opaque"/>
                             </style>
@@ -292,8 +298,8 @@ namespace View
                         </child>
                         <child>
                           <object class="GtkLabel">
-                            <property name="halign">baseline-center</property>
-                            <property name="hexpand">True</property>
+                            <property name="halign">5</property>
+                            <property name="hexpand">true</property>
                             <property name="label">Redes disponibles</property>
                             <property name="margin-bottom">10</property>
                             <property name="xalign">0</property>
@@ -304,7 +310,7 @@ namespace View
                         </child>
                         <child>
                           <object class="GtkButton" id="btn_refresh">
-                            <property name="icon-name">object-rotate-left-symbolic</property>
+                            <property name="icon-name">search-global-symbolic</property>
                           </object>
                         </child>
                       </object>
@@ -315,7 +321,7 @@ namespace View
                         <property name="margin-end">40</property>
                         <property name="margin-start">40</property>
                         <property name="margin-top">20</property>
-                        <property name="vexpand">True</property>
+                        <property name="vexpand">true</property>
                         <child>
                           <object class="GtkListBox" id="list_box_wifi">
                             <style>
