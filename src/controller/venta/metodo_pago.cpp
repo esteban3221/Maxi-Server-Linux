@@ -1,6 +1,6 @@
 #include "controller/venta/metodo_pago.hpp"
 
-MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : VMetodoPago(cobject, refBuilder)
+MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : VMetodoPago(cobject, refBuilder)
 {
     auto builder = Gtk::Builder::create_from_string(View::ui_vp);
     efectivo_controller = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
@@ -10,7 +10,7 @@ MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
 
     builder = Gtk::Builder::create_from_string(View::ui_cortinilla_carga);
     cortinilla_carga = Gtk::Builder::get_widget_derived<ViewCarga>(builder, "cortinilla_carga");
-    Global::Widget::v_main_stack->add(*cortinilla_carga, "12", "Carga"); 
+    Global::Widget::v_main_stack->add(*cortinilla_carga, "12", "Carga");
 
     builder = Gtk::Builder::create_from_string(View::ui_nip);
     dial_monto = Gtk::Builder::get_widget_derived<DialMonto>(builder, "box_nip");
@@ -20,9 +20,9 @@ MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder>
     v_btn_cash->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_efectivo_on_click));
     v_btn_card->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_tarjeta_on_click));
     v_btn_deferred->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_diferido_on_click));
+    v_btn_cancela->signal_clicked().connect(sigc::mem_fun(*this, &MetodoPago::btn_cancelar_on_click));
     signal_map().connect(sigc::mem_fun(*this, &MetodoPago::on_show_map));
     CROW_ROUTE(app, "/accion/inicia_venta").methods("POST"_method)(sigc::mem_fun(*this, &MetodoPago::procesa_pago));
-
 }
 
 MetodoPago::~MetodoPago()
@@ -34,17 +34,44 @@ void MetodoPago::on_show_map()
     v_btn_deferred->set_visible(!is_mixto);
 }
 
+void MetodoPago::btn_cancelar_on_click()
+{
+    v_dialog.reset(new Gtk::MessageDialog(*Global::Widget::v_main_window,
+                                          "Venta",
+                                          false,
+                                          Gtk::MessageType::QUESTION,
+                                          Gtk::ButtonsType::OK_CANCEL));
+    v_dialog->set_secondary_text("¿Desea cancelar la transacción actual?");
+
+    v_dialog->signal_response().connect([this](int response_id)
+                                        {
+            if (response_id == Gtk::ResponseType::OK)
+            {
+                m_log->m_estatus = "Cancelado";
+                log.update_log(m_log);
+
+                {
+                    std::lock_guard<std::mutex> lock(mtx_espera);
+                    transaccion_terminada = true;
+                }
+                cv_finalizado.notify_one();
+
+                Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+            } 
+            
+            v_dialog->close(); });
+    v_dialog->show();
+}
 
 crow::response MetodoPago::procesa_pago(const crow::request &req)
-{   
+{
     Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
     auto param = crow::json::load(req.body);
     metodo_seleccionado = Metodo::NINGUNO;
     transaccion_terminada = is_mixto = false;
     is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
 
-    m_log = MLog::create
-    (
+    m_log = MLog::create(
         0,
         Global::User::id,
         is_view_ingreso ? "Ingreso" : "Venta",
@@ -53,8 +80,7 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         0,
         param["value"].i(),
         "Creacion de evento",
-        Glib::DateTime::create_now_local()
-    );
+        Glib::DateTime::create_now_local());
 
     m_log->m_id = log.insert_log(m_log);
     total_original = m_log->m_total;
@@ -75,14 +101,14 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+        cv_finalizado.wait(lock, [this]
+                           { return transaccion_terminada; });
     }
 
     m_log->m_total = total_original;
 
-    return(Log::json_ticket(m_log));
+    return (Log::json_ticket(m_log));
 }
-
 
 MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()
 {
@@ -96,30 +122,28 @@ MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()
         v_btn_deferred->set_visible(false);
 
     switch (metodo)
-    {    
-        case 0:
-            return Predeterminado::EFECTIVO;
-        case 1:
-            return Predeterminado::TARJETA;
-        case 2:
-            return Predeterminado::MIXTO;
-        default:
-            return Predeterminado::EFECTIVO;
+    {
+    case 0:
+        return Predeterminado::EFECTIVO;
+    case 1:
+        return Predeterminado::TARJETA;
+    case 2:
+        return Predeterminado::MIXTO;
+    default:
+        return Predeterminado::EFECTIVO;
     }
 }
 
 void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
 {
-    if(remanente > 0)  
+    if (remanente > 0)
         m_log->m_total = remanente;
-    
-    Glib::signal_idle().connect_once([this, metodo]()
-    {
-        Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga);
-    });
 
-    std::thread([this, metodo, remanente]() 
-    {
+    Glib::signal_idle().connect_once([this, metodo]()
+                                     { Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga); });
+
+    std::thread([this, metodo, remanente]()
+                {
         switch (metodo)
         {
             case Metodo::EFECTIVO:
@@ -153,24 +177,29 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
                 
             else
                 Global::Widget::v_main_stack->set_visible_child(*this);
-        });
-    }).detach();
+        }); })
+        .detach();
 }
 
-std::string MetodoPago::get_metodo_nombre(Metodo m) {
-    switch (m) 
+std::string MetodoPago::get_metodo_nombre(Metodo m)
+{
+    switch (m)
     {
-        case Metodo::EFECTIVO: return "EFECTIVO";
-        case Metodo::TARJETA:  return "TARJETA";
-        case Metodo::MIXTO:    return "MIXTO";
-        default:               return "NO_SELECCIONADO";
+    case Metodo::EFECTIVO:
+        return "EFECTIVO";
+    case Metodo::TARJETA:
+        return "TARJETA";
+    case Metodo::MIXTO:
+        return "MIXTO";
+    default:
+        return "NO_SELECCIONADO";
     }
 }
 
 void MetodoPago::btn_efectivo_on_click()
 {
     Glib::signal_idle().connect_once([this]()
-    {
+                                     {
         metodo_seleccionado = Metodo::EFECTIVO;
         dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
         dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
@@ -178,14 +207,13 @@ void MetodoPago::btn_efectivo_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
-            pagar_por_metodo(metodo_seleccionado);
-    });
+            pagar_por_metodo(metodo_seleccionado); });
 }
 
 void MetodoPago::btn_tarjeta_on_click()
 {
     Glib::signal_idle().connect_once([this]()
-    {
+                                     {
         metodo_seleccionado = Metodo::TARJETA;
         dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
         dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
@@ -193,8 +221,7 @@ void MetodoPago::btn_tarjeta_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
-            pagar_por_metodo(metodo_seleccionado);
-    });
+            pagar_por_metodo(metodo_seleccionado); });
 }
 
 void MetodoPago::btn_diferido_on_click()
@@ -207,7 +234,7 @@ void MetodoPago::btn_diferido_on_click()
 void MetodoPago::on_dial_monto_entered(u_int64_t monto)
 {
 
-    if(monto > total_original - m_log->m_ingreso)
+    if (monto > total_original - m_log->m_ingreso)
     {
         Global::System::showNotify("Error", "El monto ingresado excede el total restante por pagar.", "dialog-error");
         return;

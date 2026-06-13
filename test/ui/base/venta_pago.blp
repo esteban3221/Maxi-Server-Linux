@@ -1,0 +1,145 @@
+using Gtk 4.0;
+
+Box box {
+  margin-bottom: 15;
+  margin-end: 15;
+  margin-start: 15;
+  margin-top: 15;
+  orientation: vertical;
+  spacing: 20;
+  vexpand: true;
+
+  Label lbl_titulo {
+    label: "Venta / Cobro | Pago";
+
+    styles [
+      "title-1",
+    ]
+  }
+
+  ListBox list_venta {
+    ListBoxRow BXRW1 {
+      Box r1 {
+        Label {
+          label: "Total";
+
+          styles [
+            "title-3",
+          ]
+        }
+
+        Label lbl_monto_total {
+          halign: end;
+          hexpand: true;
+
+          styles [
+            "title-3",
+            "dim-label",
+          ]
+        }
+      }
+    }
+
+    ListBoxRow BXRW2 {
+      Box r2 {
+        Label {
+          label: "Recibido";
+
+          styles [
+            "title-3",
+          ]
+        }
+
+        Label lbl_recibido {
+          halign: end;
+          hexpand: true;
+
+          styles [
+            "title-3",
+            "dim-label",
+          ]
+        }
+      }
+    }
+
+    ListBoxRow BXRW3 {
+      Box r3 {
+        Label {
+          label: "Falta";
+
+          styles [
+            "title-3",
+          ]
+        }
+
+        Label lbl_faltante {
+          halign: end;
+          hexpand: true;
+
+          styles [
+            "title-3",
+            "dim-label",
+          ]
+        }
+      }
+    }
+
+    ListBoxRow BXRW4 {
+      Box r4 {
+        Label {
+          label: "Cambio";
+
+          styles [
+            "title-3",
+          ]
+        }
+
+        Label lbl_cambio {
+          halign: end;
+          hexpand: true;
+
+          styles [
+            "title-3",
+            "dim-label",
+          ]
+        }
+      }
+    }
+
+    styles [
+      "rich-list",
+      "boxed-list",
+    ]
+  }
+
+  Label lbl_mensaje_fin {
+    visible: false;
+
+    styles [
+      "title-2",
+      "dim-label",
+    ]
+  }
+
+  Box box_action_timeout {
+    homogeneous: true;
+    orientation: vertical;
+    spacing: 10;
+
+    Button btn_timeout_cancel {
+      label: "Cancelar";
+
+      styles [
+        "destructive-action",
+      ]
+    }
+
+    Button btn_timeout_retry {
+      label: "Necesito mas tiempo";
+
+      styles [
+        "suggested-action",
+      ]
+    }
+  }
+}

@@ -1,22 +1,4 @@
-#include "view/metodo_pago.hpp"
-
-VMetodoPago::VMetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : m_builder{refBuilder},
-                                                                                                  Gtk::Box(cobject)
-{
-  v_btn_cash = m_builder->get_widget<Gtk::Button>("btn_cash");
-  v_btn_card = m_builder->get_widget<Gtk::Button>("btn_card");
-  v_btn_deferred = m_builder->get_widget<Gtk::Button>("btn_deferred");
-  v_btn_cancela = m_builder->get_widget<Gtk::Button>("btn_cancela");
-}
-
-VMetodoPago::~VMetodoPago()
-{
-}
-
-namespace View
-{
-  const char *ui_metodo_pago = R"(
-    <?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 1.0.2 -->
 <interface>
   <!-- interface-name metodo_pago.ui -->
@@ -155,5 +137,3 @@ namespace View
     </child>
   </object>
 </interface>
-    )";
-}

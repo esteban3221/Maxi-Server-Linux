@@ -1,6 +1,6 @@
 #include "controller/venta/efectivo.hpp"
 
-Efectivo::Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
+Efectivo::Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Venta");
     v_btn_timeout_retry->set_visible(false);
@@ -38,8 +38,13 @@ void Efectivo::on_wb_socket_message(crow::websocket::connection &conn, const std
 
     if (json_data["action"] == "detener")
     {
-        on_btn_cancel_click();
-        conn.send_text(R"({"status":"detenido"})");
+        if (not estado_cambio)
+        {
+            on_btn_cancel_click();
+            conn.send_text(R"({"status":"detenido"})");
+        }
+        else
+            conn.send_text(R"({"status":"no se puede detener, proceso en cambio"})");
     }
 }
 
@@ -51,17 +56,21 @@ void Efectivo::on_btn_retry_click()
 void Efectivo::on_btn_cancel_click()
 {
     std::lock_guard<std::mutex> lock(mtx_espera);
-    if (transaccion_terminada) return;
+    if (transaccion_terminada)
+        return;
 
     transaccion_terminada = cancelado = true;
-    cv_finalizado.notify_one(); 
+    cv_finalizado.notify_one();
 }
 
 crow::response Efectivo::deten(const crow::request &req)
 {
-    if(Global::Widget::v_main_stack->get_visible_child() != this)
+    if (Global::Widget::v_main_stack->get_visible_child() != this)
         return crow::response(400, "No hay una venta en efectivo en proceso");
-        
+
+    if (estado_cambio || cancelado)
+        return crow::response(400, "La venta ya ha sido detenida o está en proceso de cambio");
+
     on_btn_cancel_click();
     return crow::response(200, "Venta detenida");
 }
@@ -76,7 +85,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 {
     ingreso_parcial += credito;
     t_log->m_ingreso += credito;
-    t_log->m_cambio  = (ingreso_parcial > t_log->m_total) ? (ingreso_parcial - t_log->m_total) : 0;
+    t_log->m_cambio = (ingreso_parcial > t_log->m_total) ? (ingreso_parcial - t_log->m_total) : 0;
     t_log->m_estatus = "Cobrando...";
     t_log->m_fecha = Glib::DateTime::create_now_local();
     auto faltante = (ingreso_parcial > t_log->m_total) ? 0 : (t_log->m_total - ingreso_parcial);
@@ -87,7 +96,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
 
     log.update_log(t_log);
 
-		if (connection)
+    if (connection)
     {
         crow::json::wvalue response;
         response["ingreso"] = ingreso_parcial;
@@ -110,29 +119,28 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
         hub.detiene_poll_for_all(t_log->m_id);
         {
             std::lock_guard<std::mutex> lock(mtx_espera);
-            transaccion_terminada = true;
+            estado_cambio = transaccion_terminada = true;
         }
-        cv_finalizado.notify_one(); 
+        cv_finalizado.notify_one();
     }
 }
 
 crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
 {
     auto db_conf = std::make_unique<Configuracion>();
-    auto data = db_conf->get_conf_data(6,6);
+    auto data = db_conf->get_conf_data(6, 6);
 
     try
     {
         auto textura = Gdk::Texture::create_from_filename(data->get_item(0)->m_valor);
         v_img_main->set(textura);
     }
-    catch (const Glib::Error& ex) 
+    catch (const Glib::Error &ex)
     {
         v_img_main->set_from_icon_name("gnome-pie-symbolic");
     }
 
-
-    transaccion_terminada = cancelado = false;
+    estado_cambio = transaccion_terminada = cancelado = false;
     ingreso_parcial = 0;
     this->t_log = t_log;
     hub.on_credito().connect(sigc::mem_fun(*this, &Efectivo::on_event_credit));
@@ -149,17 +157,17 @@ crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
     hub.inicia_poll_for_all();
 
     async_gui.dispatch_to_gui([this]()
-    { 
+                              { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(Glib::ustring::format(this->t_log->m_total));
         v_lbl_faltante->set_text(Glib::ustring::format(this->t_log->m_total));
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+        cv_finalizado.wait(lock, [this]
+                           { return transaccion_terminada; });
     }
 
     if (cancelado)
@@ -171,10 +179,10 @@ crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
     }
     else
         t_log->m_estatus = "Completado";
-    if (t_log->m_cambio > 0 && !cancelado)
+    if (estado_cambio = t_log->m_cambio > 0 and not cancelado)
         hub.inicia_pago(t_log->m_id, t_log->m_cambio);
 
-    log.update_log(t_log);    
+    log.update_log(t_log);
     hub.detiene_for_all();
     hub.on_credito().clear();
     hub.on_error().clear();
