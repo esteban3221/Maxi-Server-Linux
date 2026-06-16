@@ -149,7 +149,6 @@ const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue 
         device_model = json_response["deviceModel"].s();
 
         CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        //ultimo_cash_level = get_nivel_actual().text;
         ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
         return json_response["allLevels"];
     }
@@ -178,7 +177,7 @@ bool ValidadorUnit::esperar_pago_async()
 {
     bool detecto_dispensing = false;
     bool terminado = false;
-    bool exito = true; 
+    bool exito = true;
     int reintentos_iniciales = 0;
 
     // --- Bucle principal de lógica ---
@@ -194,7 +193,7 @@ bool ValidadorUnit::esperar_pago_async()
 
                 if (state == "DISPENSING")
                     detecto_dispensing = true;
-                
+
                 if (state == "IN_PROGRESS")
                     goto sleep_and_continue; // Usamos esto para no repetir el sleep abajo
 
@@ -204,19 +203,19 @@ bool ValidadorUnit::esperar_pago_async()
                     std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
                     event = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : event;
 
-                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR") 
+                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR")
                     {
                         exito = false;
                         terminado = true;
                     }
-                    else if (event == "COMPLETED") 
+                    else if (event == "COMPLETED")
                     {
                         exito = true;
                         terminado = true;
                     }
                 }
 
-                if (!detecto_dispensing && ++reintentos_iniciales > 50) 
+                if (!detecto_dispensing && ++reintentos_iniciales > 50)
                 {
                     exito = false;
                     terminado = true;
@@ -224,8 +223,8 @@ bool ValidadorUnit::esperar_pago_async()
             }
         }
 
-sleep_and_continue:
-        if(!terminado)
+    sleep_and_continue:
+        if (!terminado)
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
 
@@ -233,7 +232,7 @@ sleep_and_continue:
     // Seguiremos consultando por 2 segundos más para vaciar cualquier mensaje residual
     CROW_LOG_INFO << "Iniciando limpieza de buffer por 2 segundos...";
     auto inicio_limpieza = std::chrono::steady_clock::now();
-    
+
     while (std::chrono::steady_clock::now() - inicio_limpieza < std::chrono::seconds(2))
     {
         {
@@ -244,7 +243,8 @@ sleep_and_continue:
                 auto json = crow::json::load(resp.text);
                 // Solo consumimos el buffer, no tomamos decisiones de éxito/fallo aquí
                 // ya que la transacción principal terminó.
-                if (json["pollBuffer"].size() > 0) {
+                if (json["pollBuffer"].size() > 0)
+                {
                     CROW_LOG_DEBUG << "Mensaje residual descartado durante limpieza: " << json["pollBuffer"].size();
                 }
             }
@@ -259,7 +259,7 @@ void ValidadorUnit::iniciar_polling()
     poll = true;
 
     std::thread([this]()
-    {
+                {
         while (poll) {
             std::lock_guard<std::mutex> lock(mtx_comunicacion);
             auto resp = command_get("GetDeviceStatus");
@@ -378,7 +378,7 @@ crow::json::wvalue ValidadorUnit::obten_cambio(uint &cambio, std::map<int, int> 
     return response; // Retornamos el JSON con el array
 }
 
-cpr::Response ValidadorUnit::get_nivel_actual() const
+cpr::Response ValidadorUnit::get_nivel_actual()
 {
     cpr::Response json;
     int intentos = 0;
@@ -387,14 +387,17 @@ cpr::Response ValidadorUnit::get_nivel_actual() const
     while (intentos < max_intentos)
     {
         json = command_get("GetAllLevels", true);
-        
-        if (json.status_code == 200 && json.text.size() > 2) 
-            return json; // Éxito, retornamos el resultado
+
+        if (json.status_code == 200 && json.text.size() > 2)
+        {
+            ultimo_cash_level = json.text;
+            return json;
+        }
 
         intentos++;
-        CROW_LOG_WARNING << "Niveles no listos para unidad " << device_id 
+        CROW_LOG_WARNING << "Niveles no listos para unidad " << device_id
                          << ". Reintentando en 500ms... (Intento " << intentos << ")";
-        
+
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 

@@ -4,7 +4,7 @@
 
 #include <sigc++/sigc++.h>
 #include <utility>
-#include <memory>  // Necesario para unique_ptr
+#include <memory> // Necesario para unique_ptr
 #include <atomic>
 #include <string>
 #include <mutex>
@@ -48,31 +48,31 @@ public:
     ValidadorUnit(/* args */);
     ~ValidadorUnit();
 
-    sigc::signal<void(const std::string &)> signal_state_changed;                              // Emite nuevo estado
+    sigc::signal<void(const std::string &)> signal_state_changed;                                                                        // Emite nuevo estado
     sigc::signal<void(const std::string &, const std::string &, const std::string &, const crow::json::rvalue &)> signal_event_received; // Eventos del poll
-    sigc::signal<void(const std::string &, const std::string &)> signal_error;                                      // Errores graves
+    sigc::signal<void(const std::string &, const std::string &)> signal_error;                                                           // Errores graves
 
-    //propertys encapsulamiento
-    
+    // propertys encapsulamiento
+
     size_t &property_poll_milli() { return poll_milli; }
     std::atomic<bool> &property_poll() { return poll; }
     size_t &property_ingreso_credito() { return ingreso_credito; }
     size_t &property_salida_credito() { return salida_credito; }
-    Conf &property_conf(){return conf;}
+    Conf &property_conf() { return conf; }
     std::string &property_token() { return token; }
-    std::string &property_ultimo_cash_level(){ return ultimo_cash_level; }
-    const std::string &property_device_model() {return device_model;} //solo_lectura
-    const std::string &property_device_id() {return device_id;} //solo_lectura
+    std::string &property_ultimo_cash_level() { return ultimo_cash_level; }
+    const std::string &property_device_model() { return device_model; } // solo_lectura
+    const std::string &property_device_id() { return device_id; }       // solo_lectura
 
-    //devuelve los niveles actuales de ingreso y salida al conectar
-    const crow::json::rvalue inicia_conecta (const crow::json::rvalue &set_routes);
+    // devuelve los niveles actuales de ingreso y salida al conectar
+    const crow::json::rvalue inicia_conecta(const crow::json::rvalue &set_routes);
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);
     uint iniciar_pago(size_t, bool is_cambio, const std::string &actual_level);
     crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
     const std::string get_nombre_estado();
-    cpr::Response get_nivel_actual() const;
+    cpr::Response get_nivel_actual();
 
     const cpr::Response command_get(const std::string &command, bool debug = false) const;
     const cpr::Response command_post(const std::string &command, const std::string &json = "", bool = false) const;

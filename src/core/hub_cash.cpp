@@ -125,7 +125,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
                             json_rutas["countryCode"] = "MXN";
                             json_rutas["route"] = 0;
                             
-                            std::this_thread::sleep_for(std::chrono::milliseconds(125));
+                            std::this_thread::sleep_for(std::chrono::milliseconds(200));
                             raw_v->command_post("SetDenominationRoute", json_rutas.dump(), true);
                         }
                     }
@@ -315,7 +315,6 @@ void CashHub::detiene_poll_for_all(size_t t_id)
         r_inicio.text = i->property_ultimo_cash_level();
         snapshot_inicio.emplace_back(r_inicio);
         snapshot_fin.emplace_back(i->get_nivel_actual());
-        i->property_ultimo_cash_level() = snapshot_fin.back().text;
     }
 
     // Procesar diferencias
@@ -353,7 +352,6 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
             remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
             snapshot_fin.emplace_back(i->get_nivel_actual());
-            i->property_ultimo_cash_level() = snapshot_fin.back().text;
         }
     }
 
@@ -369,7 +367,6 @@ void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
                 remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
                 snapshot_fin.emplace_back(i->get_nivel_actual());
-                i->property_ultimo_cash_level() = snapshot_fin.back().text;
             }
         }
     }
@@ -397,7 +394,6 @@ void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
             snapshot_inicio.emplace_back(r_inicio);
             i->iniciar_pago(map.at(i->property_device_id()));
             snapshot_fin.emplace_back(i->get_nivel_actual());
-            i->property_ultimo_cash_level() = snapshot_fin.back().text;
         }
         else
             CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";
