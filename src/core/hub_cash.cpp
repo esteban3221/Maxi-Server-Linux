@@ -118,7 +118,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
                     auto item = m_list_billetes->get_item(i);
                     if (monto == item->m_denominacion)
                     {
-                        if(++item->m_cant_recy > item->m_nivel_inmo_max)
+                        if(++item->m_cant_recy >= item->m_nivel_inmo_max)
                         {
                             crow::json::wvalue json_rutas;
                             json_rutas["value"] = monto * 100;
