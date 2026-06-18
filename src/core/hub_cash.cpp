@@ -74,21 +74,24 @@ void CashHub::inicializar_hardware()
 
     for (const auto &entry : fs::directory_iterator("/dev"))
     {
-        if (std::string path = entry.path().string(); path.find("/dev/ttyUSB") != std::string::npos)
-        {
-            int ssp_sugerido = obtener_ssp_por_magia_negra(path);
-            if (ssp_sugerido != -1)
+        std::thread([this, path = entry.path().string()]()
+                    {
+            if (path.find("/dev/ttyUSB") != std::string::npos)
             {
-                CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
-                                 << (ssp_sugerido == 16 ? "COIN" : "Bill")
-                                 << ". Usando SSP " << ssp_sugerido;
-                intentar_registrar(path, ssp_sugerido);
-            }
-            else
-            {
-                Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
-            }
-        }
+                int ssp_sugerido = obtener_ssp_por_magia_negra(path);
+                if (ssp_sugerido != -1)
+                {
+                    CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
+                                     << (ssp_sugerido == 16 ? "COIN" : "Bill")
+                                     << ". Usando SSP " << ssp_sugerido;
+                    intentar_registrar(path, ssp_sugerido);
+                }
+                else
+                {
+                    Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
+                }
+            } })
+            .detach();
     }
 }
 
