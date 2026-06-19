@@ -112,7 +112,8 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
     m_log->m_total = total_original;
 
     if (imprimir_ticket)
-        Global::System::imprime_ticket(m_log);
+        Glib::signal_idle().connect_once([this]()
+                                         { Global::System::imprime_ticket(m_log); });
 
     return (Log::json_ticket(m_log));
 }

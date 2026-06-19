@@ -190,10 +190,10 @@ namespace Global
                    << std::right << std::setw(18) << "Efectivo\n";
 
             ticket << std::left << std::setw(18) << "Ingreso:"
-                   << std::right << std::setw(18) << "$" << log->m_ingreso << "\n";
+                   << "$" << log->m_ingreso << "\n";
 
             ticket << std::left << std::setw(18) << "Cambio:"
-                   << std::right << std::setw(18) << "$" << log->m_cambio << "\n";
+                   << "$" << log->m_cambio << "\n";
 
             ticket << "------------------------------------\n";
 
