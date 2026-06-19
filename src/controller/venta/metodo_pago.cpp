@@ -68,6 +68,10 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
     Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
     auto param = crow::json::load(req.body);
     metodo_seleccionado = Metodo::NINGUNO;
+    auto db = std::make_unique<Configuracion>();
+    auto db_empresa = db->get_conf_data(15, 15);
+    bool imprimir_ticket = db_empresa->get_item(0)->m_valor == "1";
+
     transaccion_terminada = is_mixto = false;
     is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
 
@@ -106,6 +110,9 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
     }
 
     m_log->m_total = total_original;
+
+    if (imprimir_ticket)
+        Global::System::imprime_ticket(m_log);
 
     return (Log::json_ticket(m_log));
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "view/config/impresora.hpp"
+#include "controller/config/print_operation.hpp"
 #include "configuracion.hpp"
 #include "model/log.hpp"
 #include "controller/pago.hpp"
@@ -30,6 +31,6 @@ namespace Global
 {
     namespace System
     {
-        extern std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante = 0);
+        extern void imprime_ticket(Glib::RefPtr<MLog> log);
     } // namespace System
 }

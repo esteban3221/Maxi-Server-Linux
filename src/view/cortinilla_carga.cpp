@@ -1,38 +1,38 @@
 #include "view/cortinilla_carga.hpp"
 
-ViewCarga::ViewCarga(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refBuilder) : Gtk::Box(cobject)
+ViewCarga::ViewCarga(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : Gtk::Box(cobject)
 {
-    // Mapeo de widgets desde el Blueprint/XML
-    v_img_main = refBuilder->get_widget<Gtk::Image>("img_main");
-    v_lbl_main = refBuilder->get_widget<Gtk::Label>("lbl_main");
-    v_lbl_sub = refBuilder->get_widget<Gtk::Label>("lbl_sub");
-    v_spinner = refBuilder->get_widget<Gtk::Spinner>("spinner");
-    v_btn_cancel_tarjeta = refBuilder->get_widget<Gtk::Button>("btn_cancel_tarjeta");
+  // Mapeo de widgets desde el Blueprint/XML
+  v_img_main = refBuilder->get_widget<Gtk::Image>("img_main");
+  v_lbl_main = refBuilder->get_widget<Gtk::Label>("lbl_main");
+  v_lbl_sub = refBuilder->get_widget<Gtk::Label>("lbl_sub");
+  v_spinner = refBuilder->get_widget<Gtk::Spinner>("spinner");
+  v_btn_cancel_tarjeta = refBuilder->get_widget<Gtk::Button>("btn_cancel_tarjeta");
 }
 
 ViewCarga::~ViewCarga() {}
 
 void ViewCarga::modo(bool is_efectivo)
 {
-    if (is_efectivo)
-    {
-        v_img_main->set_from_icon_name("device_serial-symbolic");
-        v_lbl_main->set_text("Espere un momento");
-        v_lbl_sub->set_text("Cargando información de pago en efectivo...");
-        v_btn_cancel_tarjeta->hide();
-    }
-    else
-    {
-        v_img_main->set_from_icon_name("phonelink-symbolic");
-        v_lbl_main->set_text("Terminal de Pago Activa");
-        v_lbl_sub->set_text("Por favor, siga las instrucciones en la pantalla de la terminal bancaria.");
-        v_btn_cancel_tarjeta->show();
-    }
+  if (is_efectivo)
+  {
+    v_img_main->set_from_icon_name("usb-hub-symbolic");
+    v_lbl_main->set_text("Espere un momento");
+    v_lbl_sub->set_text("Cargando información de pago en efectivo...");
+    v_btn_cancel_tarjeta->hide();
+  }
+  else
+  {
+    v_img_main->set_from_icon_name("phonelink-symbolic");
+    v_lbl_main->set_text("Terminal de Pago Activa");
+    v_lbl_sub->set_text("Por favor, siga las instrucciones en la pantalla de la terminal bancaria.");
+    v_btn_cancel_tarjeta->show();
+  }
 }
 
 namespace View
 {
-    const char *ui_cortinilla_carga = R"(
+  const char *ui_cortinilla_carga = R"(
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>

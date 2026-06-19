@@ -3,7 +3,7 @@ project("Maxicajero Server Local" VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -march=native -flto -fno-semantic-interposition")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fPIC -march=native -flto=auto -fno-semantic-interposition")
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ARCH_NAME)
 set(EXECUTABLE_NAME "Maxicajero-Server-${ARCH_NAME}")
 
@@ -112,6 +112,7 @@ set(SOURCES
     src/controller/nuevo_nip.cpp
     src/controller/log.cpp
     src/controller/config/terminal.cpp
+    src/controller/config/print_operation.cpp
 
     src/controller/config/validador.cpp
     src/controller/config/empresa.cpp

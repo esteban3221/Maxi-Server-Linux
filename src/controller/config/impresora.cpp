@@ -138,53 +138,119 @@ namespace Global
 {
     namespace System
     {
-        std::string imprime_ticket(Glib::RefPtr<MLog> log, int faltante)
+        void imprime_ticket(Glib::RefPtr<MLog> log)
         {
-            std::stringstream ticket_config;
+            std::stringstream ticket;
             auto db = std::make_unique<Configuracion>();
             auto db_empresa = db->get_conf_data(10, 14);
 
-            ticket_config << "****** "<< log->m_tipo <<" ******\n"
-                        << "--------------------------------\n\n"
-                        << std::left << std::setw(20) << db_empresa->get_item(0)->m_valor << "\n\n";
+            ticket << "<span size=\"x-large\" weight=\"bold\">" << log->m_tipo << "</span>\n"
+                   << std::left << std::setw(20) << "<span weight=\"bold\">Descripcion:</span>"
+                   << std::right << std::setw(20) << log->m_descripcion << "\n";
+
+            // Fecha (Respetando el toggle de visualización del servidor)
+            if (Global::Widget::Impresora::state_vizualizacion[2])
+                ticket << "<span size=\"small\">" << Glib::DateTime::create_now_local().format("%Y-%m-%d %H:%M:%S") << "</span>\n";
+
+            ticket << "====================================\n\n";
+
+            // Datos de la empresa
+            ticket << "<span weight=\"bold\">" << db_empresa->get_item(0)->m_valor << "</span>\n";
 
             if (Global::Widget::Impresora::state_vizualizacion[0])
-                ticket_config << "Direccion: " << db_empresa->get_item(1)->m_valor << "\n"
-                            << "--------------------------------\n";
+                ticket << db_empresa->get_item(1)->m_valor << "\n";
 
             if (Global::Widget::Impresora::state_vizualizacion[1])
-                ticket_config << "RFC: " << db_empresa->get_item(2)->m_valor << "\n"
-                            << "--------------------------------\n";
+                ticket << "RFC: " << db_empresa->get_item(2)->m_valor << "\n";
 
-            if (Global::Widget::Impresora::state_vizualizacion[2])
-                ticket_config << "Fecha: " << Glib::DateTime::create_now_local().format("%Y-%m-%d %H:%M:%S") << "\n";
+            ticket << "------------------------------------\n";
 
-            ticket_config << "No. Ticket: " << log->m_id << "\n\n";
+            // Información de la operación
+            ticket << "<span weight=\"bold\">Folio:</span> " << log->m_id << "\n";
 
             if (Global::Widget::Impresora::state_vizualizacion[3])
-                ticket_config << std::left << std::setw(10) << "Le atendio: " << Global::User::Current << "\n\n"
-                            << "--------------------------------\n";
+                ticket << "<span weight=\"bold\">Atendió:</span> " << Global::User::Current << "\n";
 
-            ticket_config << std::left << std::setw(20) << "Total:" << log->m_total <<"\n";
-            ticket_config << std::left << std::setw(20) << "Tipo de Pago:" << "Efectivo\n"
-                        << "--------------------------------\n";
-            ticket_config << std::left << std::setw(20) << "Ingreso:" << log->m_ingreso <<"\n";
-            ticket_config << std::left << std::setw(20) << "Cambio:" << log->m_cambio <<"\n";
-            // ticket_config << std::left << std::setw(20) << "Faltante:" << faltante <<"\n";
-            // ticket_config << std::left << std::setw(20) << "Faltante Cambio:"<< Pago::faltante << "\n"
-                        // << "-------------STATUS------------\n"
-                        // << log->m_estatus <<"\n"
-                        // << "--------------------------------\n";
+            ticket << "------------------------------------\n";
 
+            // Detalle de montos (alineados a la derecha)
+            ticket << std::left << std::setw(18) << "Total:"
+                   << std::right << std::setw(18) << "<span weight=\"bold\" size=\"large\">$" << log->m_total << "</span>\n";
+
+            ticket << std::left << std::setw(18) << "Tipo de pago:"
+                   << std::right << std::setw(18) << "Efectivo\n";
+
+            ticket << std::left << std::setw(18) << "Ingreso:"
+                   << std::right << std::setw(18) << "$" << log->m_ingreso << "\n";
+
+            ticket << std::left << std::setw(18) << "Cambio:"
+                   << std::right << std::setw(18) << "$" << log->m_cambio << "\n";
+
+            ticket << "------------------------------------\n";
+
+            // Estado destacado con colores (Verde, Naranja, Rojo)
+            ticket << "<span size=\"large\" weight=\"bold\" foreground=\""
+                   << (log->m_estatus == "Exito" ? "#2ecc71" : (log->m_estatus == "PENDIENTE" ? "#f39c12" : "#e74c3c"))
+                   << "\">" << log->m_estatus << "</span>\n";
+
+            ticket << "====================================\n";
+
+            // Pie de página (Contacto y Agradecimiento)
             if (Global::Widget::Impresora::state_vizualizacion[4])
-                ticket_config << "**" << db_empresa->get_item(3)->m_valor << "**\n"
-                            << "--------------------------------\n";
+                ticket << "<span size=\"small\" style=\"italic\">"
+                       << db_empresa->get_item(3)->m_valor << "</span>\n";
 
             if (Global::Widget::Impresora::state_vizualizacion[5])
-                ticket_config << "**" << db_empresa->get_item(4)->m_valor << "**\n"
-                            << "--------------------------------\n";
+                ticket << "\n<span size=\"small\" style=\"italic\" weight=\"bold\">"
+                       << db_empresa->get_item(4)->m_valor << "</span>\n";
 
-            return ticket_config.str();
+            ticket << "\n\n\n";
+
+            auto print_op = PrintFormOperation::create();
+            auto settings = Gtk::PrintSettings::create();
+            auto page_setup = Gtk::PageSetup::create();
+
+            print_op->set_markup(ticket.str());
+            print_op->set_track_print_status(true);
+
+            // Tamaño típico para ticket (80mm ancho × longitud variable)
+            auto paper_size = Gtk::PaperSize("custom", "Ticket", 80, 297, Gtk::Unit::MM); // 80mm × 297mm (largo suficiente)
+            page_setup->set_paper_size(paper_size);
+            page_setup->set_orientation(Gtk::PageOrientation::PORTRAIT);
+            page_setup->set_top_margin(5, Gtk::Unit::MM);
+            page_setup->set_bottom_margin(5, Gtk::Unit::MM);
+            page_setup->set_left_margin(5, Gtk::Unit::MM);
+            page_setup->set_right_margin(5, Gtk::Unit::MM);
+
+            print_op->set_default_page_setup(page_setup);
+            print_op->set_print_settings(settings);
+
+            try
+            {
+                print_op->run(Gtk::PrintOperation::Action::PRINT, *Global::Widget::v_main_window);
+
+                print_op->signal_done().connect([](Gtk::PrintOperation::Result result)
+                                                {
+                    switch (result)
+                    {
+                        case Gtk::PrintOperation::Result(0):
+                            Global::System::showNotify("Error al imprimir", "Ocurrió un error durante la impresión.", "dialog-error");
+                            break;
+                        case Gtk::PrintOperation::Result::APPLY:
+                            Global::System::showNotify("Ticket impreso correctamente", "El ticket se imprimió correctamente.", "dialog-information");
+                            break;
+                        case Gtk::PrintOperation::Result::CANCEL:
+                            Global::System::showNotify("Impresión cancelada", "La impresión fue cancelada.", "dialog-warning");
+                            break;
+                        default:
+                            break;
+                    } });
+            }
+            catch (const Gtk::PrintError &ex)
+            {
+                Global::System::showNotify("Error al imprimir", ex.what(), "dialog-error");
+                std::cerr << "Error en impresión: " << ex.what() << std::endl;
+            }
         }
     }
 }

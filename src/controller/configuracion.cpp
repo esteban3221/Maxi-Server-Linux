@@ -1,6 +1,6 @@
 #include "controller/configuracion.hpp"
 
-CConfiguracion::CConfiguracion(crow::SimpleApp& app)
+CConfiguracion::CConfiguracion(crow::SimpleApp &app)
 {
     CROW_ROUTE(app, "/configuracion/actualiza_impresion").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_impresion));
     CROW_ROUTE(app, "/configuracion/actualiza_informacion_empresa").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::actualiza_informacion_empresa));
@@ -23,8 +23,6 @@ CConfiguracion::CConfiguracion(crow::SimpleApp& app)
 
     CROW_ROUTE(app, "/configuracion/get_volcado_servicio").methods("GET"_method)(sigc::mem_fun(*this, &CConfiguracion::get_volcado_servicio));
     CROW_ROUTE(app, "/configuracion/reiniciar_validadores").methods("POST"_method)(sigc::mem_fun(*this, &CConfiguracion::reinicia_validadores));
-
-
 }
 
 CConfiguracion::~CConfiguracion()
@@ -38,17 +36,17 @@ crow::response CConfiguracion::reinicia_validadores(const crow::request &req)
 
     Sesion::valida_autorizacion(req, (Global::User::Rol)rol);
     auto &hub = CashHub::instance();
-    
+
     hub.inicia_for_all({});
     auto map = hub.command_for_all(HttpMethod::POST, "ResetDevice");
     for (auto &&i : map)
     {
-        if(i.second.status_code != cpr::status::HTTP_OK)
-            return(crow::status::CONFLICT, "Error al reiniciar el dispositivo: " + i.first);
+        if (i.second.status_code != cpr::status::HTTP_OK)
+            return (crow::status::CONFLICT, "Error al reiniciar el dispositivo: " + i.first);
     }
     hub.detiene_for_all();
-    
-    return(crow::response(200));
+
+    return (crow::response(200));
 }
 
 crow::response CConfiguracion::get_volcado_servicio(const crow::request &req)
@@ -77,7 +75,6 @@ crow::response CConfiguracion::get_volcado_servicio(const crow::request &req)
     }
 
     return crow::response();
-    
 }
 
 crow::response CConfiguracion::actualiza_impresion(const crow::request &req)
@@ -179,7 +176,7 @@ crow::response CConfiguracion::actualiza_informacion_empresa(const crow::request
 
 crow::response CConfiguracion::get_informacion_empresa(const crow::request &req)
 {
-    //Sesion::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
+    // Sesion::valida_autorizacion(req, Global::User::Rol::Mostrar_Reportes);
 
     auto db = std::make_unique<Configuracion>();
     auto list = db->get_conf_data(10, 14);
@@ -217,9 +214,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
-        std::string command = "echo \"" + Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()), 0) + "\" | lp";
-        std::system(command.c_str());
-
+        Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()));
         Global::System::showNotify("Impresión", "Se imprimio hoja de prueba.", "dialog-information");
 
         return crow::response(crow::status::OK);
@@ -322,7 +317,7 @@ crow::response CConfiguracion::sube_imagen_pos(const crow::request &req)
         filename = param.at("filename");
     else
         filename = "archivo_sin_nombre";
-    
+
     auto path = Glib::get_user_special_dir(Glib::UserDirectory::PICTURES);
     std::ofstream out(path + "/" + filename, std::ios::binary);
     out.write(file_part.body.data(), file_part.body.size());
@@ -382,7 +377,7 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
         auto bill_command = bodyParams["bill"]["command"].s();
         auto bill_args = bodyParams["bill"]["args"].s();
         // Device::dv_bill.inicia_dispositivo_v6();
-        //json_bill = crow::json::load(// Device::dv_bill.command_post(bill_command, bill_args, true).second);
+        // json_bill = crow::json::load(// Device::dv_bill.command_post(bill_command, bill_args, true).second);
     }
 
     if (bodyParams.has("coin"))
@@ -390,7 +385,7 @@ crow::response CConfiguracion::custom_command(const crow::request &req)
         auto coin_command = bodyParams["coin"]["command"].s();
         auto coin_args = bodyParams["coin"]["args"].s();
         // Device::dv_coin.inicia_dispositivo_v6();
-        //json_coin = crow::json::load(// Device::dv_coin.command_post(coin_command, coin_args, true).second);
+        // json_coin = crow::json::load(// Device::dv_coin.command_post(coin_command, coin_args, true).second);
     }
 
     if (not json_bill.error())
