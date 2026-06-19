@@ -69,64 +69,73 @@ void Impresora::estado_checkbutton()
 
 std::string Impresora::test_text_impresion()
 {
-    std::stringstream ticket_config;
+    std::stringstream ticket;
     auto db = std::make_unique<Configuracion>();
     auto db_empresa = db->get_conf_data(10, 14);
 
-    ticket_config << "****** TICKET DE COMPRA ******\n"
-                  << "--------------------------------\n\n"
-                  << std::left << std::setw(20) << db_empresa->get_item(0)->m_valor << "\n\n";
+    ticket << "<span size=\"x-large\" weight=\"bold\">Test Impresion</span>\n"
+           << std::left << std::setw(20) << "<span weight=\"bold\">Descripcion:</span>"
+           << std::right << std::setw(20) << "Impresora POS/Maxicajero" << "\n";
 
-    if (v_check_config[2]->get_active())
-        ticket_config << "Direccion: " << db_empresa->get_item(1)->m_valor << "\n"
-                      << "--------------------------------\n";
+    // Fecha (Respetando el toggle de visualización del servidor)
+    if (Global::Widget::Impresora::state_vizualizacion[2])
+        ticket << "<span size=\"small\">" << Glib::DateTime::create_now_local().format("%Y-%m-%d %H:%M:%S") << "</span>\n";
 
-    if (v_check_config[3]->get_active())
-        ticket_config << "RFC: " << db_empresa->get_item(2)->m_valor << "\n"
-                      << "--------------------------------\n";
+    ticket << "====================================\n\n";
 
-    if (v_check_config[1]->get_active())
-        ticket_config << "Fecha: "
-                      << Glib::DateTime::create_now_local().format("%Y-%m-%d %H:%M:%S") << "\n";
+    // Datos de la empresa
+    ticket << "<span weight=\"bold\">" << db_empresa->get_item(0)->m_valor << "</span>\n";
 
-    ticket_config << "No. Ticket: 0001"
-                  << "\n\n";
+    if (Global::Widget::Impresora::state_vizualizacion[0])
+        ticket << db_empresa->get_item(1)->m_valor << "\n";
 
-    if (v_check_config[4]->get_active())
-        ticket_config << std::left << std::setw(10) << "Le atendio: "
-                      << "Juan Perez \n\n"
-                      << "--------------------------------\n";
+    if (Global::Widget::Impresora::state_vizualizacion[1])
+        ticket << "RFC: " << db_empresa->get_item(2)->m_valor << "\n";
 
-    ticket_config << "Articulo\n"
-                  << std::left << std::setw(10) << "Cnt." << std::setw(10) << "P.U."
-                  << "T.\n"
-                  << "--------------------------------\n";
-    ticket_config << "Articulo de prueba\n"
-                  << std::setw(10) << "10" << std::setw(10) << "6"
-                  << std::setw(10) << "60"
-                  << "\n"
-                  << "--------------------------------\n";
-    ticket_config << std::left << std::setw(20) << "Total:"
-                  << "60.00\n";
-    ticket_config << std::left << std::setw(20) << "Tipo de Pago:"
-                  << "Efectivo\n"
-                  << "--------------------------------\n";
-    ticket_config << std::left << std::setw(20) << "Ingreso:"
-                  << "90.00\n";
-    ticket_config << std::left << std::setw(20) << "Cambio:"
-                  << "30.00\n"
-                  << "--------------------------------\n";
+    ticket << "------------------------------------\n";
 
-    if (v_check_config[5]->get_active())
-        ticket_config << "**" << db_empresa->get_item(3)->m_valor << "**"
-                      << "\n"
-                      << "--------------------------------\n";
-    if (v_check_config[0]->get_active())
-        ticket_config << "**" << db_empresa->get_item(4)->m_valor << "**"
-                      << "\n"
-                      << "--------------------------------\n";
+    // Información de la operación
+    ticket << "<span weight=\"bold\">Folio:</span> 10 000" << "\n";
 
-    return ticket_config.str();
+    if (Global::Widget::Impresora::state_vizualizacion[3])
+        ticket << "<span weight=\"bold\">Atendió:</span> " << Global::User::Current << "\n";
+
+    ticket << "------------------------------------\n";
+
+    // Detalle de montos (alineados a la derecha)
+    ticket << std::left << std::setw(18) << "Total:"
+           << std::right << std::setw(18) << "<span weight=\"bold\" size=\"large\">$" << 10000 << "</span>\n";
+
+    ticket << std::left << std::setw(18) << "Tipo de pago:"
+           << std::right << std::setw(18) << "Efectivo\n";
+
+    ticket << std::left << std::setw(18) << "Ingreso:"
+           << std::right << std::setw(18) << "$" << 10000 << "\n";
+
+    ticket << std::left << std::setw(18) << "Cambio:"
+           << std::right << std::setw(18) << "$" << 0 << "\n";
+
+    ticket << "------------------------------------\n";
+
+    // Estado destacado con colores (Verde, Naranja, Rojo)
+    ticket << "<span size=\"large\" weight=\"bold\" foreground=\""
+              "#2ecc71"
+           << "\">Completado</span>\n";
+
+    ticket << "====================================\n";
+
+    // Pie de página (Contacto y Agradecimiento)
+    if (Global::Widget::Impresora::state_vizualizacion[4])
+        ticket << "<span size=\"small\" style=\"italic\">"
+               << db_empresa->get_item(3)->m_valor << "</span>\n";
+
+    if (Global::Widget::Impresora::state_vizualizacion[5])
+        ticket << "\n<span size=\"small\" style=\"italic\" weight=\"bold\">"
+               << db_empresa->get_item(4)->m_valor << "</span>\n";
+
+    ticket << "\n\n\n";
+
+    return ticket.str();
 }
 
 void Impresora::actualiza_buffer()
