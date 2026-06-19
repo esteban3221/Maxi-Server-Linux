@@ -3,61 +3,61 @@
 VWifi::VWifi(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : m_builder{refBuilder},
                                                                                       Gtk::Box(cobject)
 {
-    this->v_lbl_red[0] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_wifi");
-    this->v_lbl_red[1] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_mac_wifi");
-    this->v_lbl_red[2] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_eth");
-    this->v_lbl_red[3] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_eth_mac");
-    this->v_lbl_red[4] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ssid_wifi");
+  this->v_lbl_red[0] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_wifi");
+  this->v_lbl_red[1] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_mac_wifi");
+  this->v_lbl_red[2] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_eth");
+  this->v_lbl_red[3] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ip_eth_mac");
+  this->v_lbl_red[4] = this->m_builder->get_widget<Gtk::EditableLabel>("ety_info_ssid_wifi");
 
-    this->v_btn_red = this->m_builder->get_widget<Gtk::Button>("btn_red");
-    this->v_btn_redes = this->m_builder->get_widget<Gtk::Button>("btn_redes");
-    this->v_btn_regresar = this->m_builder->get_widget<Gtk::Button>("btn_regresar");
-    this->v_btn_refresh = this->m_builder->get_widget<Gtk::Button>("btn_refresh");
-    this->v_stack_wifi = this->m_builder->get_widget<Gtk::Stack>("stack_wifi");
-    //this->v_list_info_red = this->m_builder->get_widget<Gtk::ListBox>("list_info_red");
-    this->v_list_box_wifi = this->m_builder->get_widget<Gtk::ListBox>("list_box_wifi");
+  this->v_btn_red = this->m_builder->get_widget<Gtk::Button>("btn_red");
+  this->v_btn_redes = this->m_builder->get_widget<Gtk::Button>("btn_redes");
+  this->v_btn_regresar = this->m_builder->get_widget<Gtk::Button>("btn_regresar");
+  this->v_btn_refresh = this->m_builder->get_widget<Gtk::Button>("btn_refresh");
+  this->v_stack_wifi = this->m_builder->get_widget<Gtk::Stack>("stack_wifi");
+  // this->v_list_info_red = this->m_builder->get_widget<Gtk::ListBox>("list_info_red");
+  this->v_list_box_wifi = this->m_builder->get_widget<Gtk::ListBox>("list_box_wifi");
 }
 
 VWifi::~VWifi()
 {
 }
 
-VWifi::VWifiRow::VWifiRow(const std::string &titulo,const std::string &subtitulo)
+VWifi::VWifiRow::VWifiRow(const std::string &titulo, const std::string &subtitulo)
 {
-    v_image_wifi = Gtk::manage(new Gtk::Image());
-    v_image_wifi->set_from_icon_name("network-wireless-symbolic");
-    v_image_wifi->set_icon_size(Gtk::IconSize::LARGE);
+  v_image_wifi = Gtk::manage(new Gtk::Image());
+  v_image_wifi->set_from_icon_name("network-wireless-symbolic");
+  v_image_wifi->set_icon_size(Gtk::IconSize::LARGE);
 
-    v_image_check = Gtk::manage(new Gtk::Image());
-    v_image_check->set_from_icon_name("preferences-system-network-symbolic");
+  v_image_check = Gtk::manage(new Gtk::Image());
+  v_image_check->set_from_icon_name("preferences-system-network-symbolic");
 
-    v_SSID = Gtk::manage(new Gtk::Label(titulo));
-    v_SSID->set_halign(Gtk::Align::START);
-    v_SSID->set_css_classes({"title-4"});
-    v_subtitulo = Gtk::manage(new Gtk::Label(subtitulo));
-    v_subtitulo->set_halign(Gtk::Align::START);
-    v_subtitulo->set_css_classes({"dim-label"});
-    v_subtitulo->set_ellipsize(Pango::EllipsizeMode::END);
-    v_subtitulo->set_justify(Gtk::Justification::LEFT);
+  v_SSID = Gtk::manage(new Gtk::Label(titulo));
+  v_SSID->set_halign(Gtk::Align::START);
+  v_SSID->set_css_classes({"title-4"});
+  v_subtitulo = Gtk::manage(new Gtk::Label(subtitulo));
+  v_subtitulo->set_halign(Gtk::Align::START);
+  v_subtitulo->set_css_classes({"dim-label"});
+  v_subtitulo->set_ellipsize(Pango::EllipsizeMode::END);
+  v_subtitulo->set_justify(Gtk::Justification::LEFT);
 
-    auto box_label = Gtk::manage(new Gtk::Box(Gtk::Orientation::VERTICAL));
-    box_label->append(*v_SSID);
-    box_label->append(*v_subtitulo);
-    box_label->set_hexpand();
+  auto box_label = Gtk::manage(new Gtk::Box(Gtk::Orientation::VERTICAL));
+  box_label->append(*v_SSID);
+  box_label->append(*v_subtitulo);
+  box_label->set_hexpand();
 
-    v_box = Gtk::manage(new Gtk::Box(Gtk::Orientation::HORIZONTAL));
-    v_box->append(*v_image_wifi);
-    v_box->append(*box_label);
-    v_box->append(*v_image_check);
-    v_image_check->set_halign(Gtk::Align::END);
-    v_box->set_margin(5);
+  v_box = Gtk::manage(new Gtk::Box(Gtk::Orientation::HORIZONTAL));
+  v_box->append(*v_image_wifi);
+  v_box->append(*box_label);
+  v_box->append(*v_image_check);
+  v_image_check->set_halign(Gtk::Align::END);
+  v_box->set_margin(5);
 
-    set_child(*v_box);
+  set_child(*v_box);
 }
 
 namespace View
 {
-    const char *ui_wifi = R"(
+  const char *ui_wifi = R"(
     <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
@@ -276,6 +276,7 @@ namespace View
                 </child>
               </object>
             </property>
+            <property name="name">status_red</property>
           </object>
         </child>
         <child>
