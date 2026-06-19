@@ -50,8 +50,7 @@ void Impresora::activa_visualizacion(Gtk::ListBoxRow *row)
 void Impresora::activa_test(Gtk::ListBoxRow *row)
 {
     Global::System::showNotify("Impresión", "Se imprimio ticket de prueba.", "dialog-information");
-    std::string command = "echo \"" + text_buffer->get_text() + "\" | lp";
-    std::system(command.c_str());
+    Global::System::imprime_ticket(MLog::create(1110, 1, "Test Impresion", "Este es un ticket de prueba para verificar la funcionalidad de impresión.", 10000, 10000, 0, "Exito", Glib::DateTime::create_now_local()));
 }
 
 void Impresora::estado_checkbutton()
@@ -140,7 +139,8 @@ std::string Impresora::test_text_impresion()
 
 void Impresora::actualiza_buffer()
 {
-    text_buffer->set_text(test_text_impresion());
+    text_buffer->set_text("");
+    text_buffer->insert_markup(text_buffer->end(), test_text_impresion());
 }
 
 namespace Global
