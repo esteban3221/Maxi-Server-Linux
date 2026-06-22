@@ -162,8 +162,8 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
     auto selection = (type == "COIN") ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
     auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
-
     bool encontrado = false;
+
     std::shared_ptr<MLevelCash> item_encontrado = nullptr;
     size_t index_encontrado = 0;
 
@@ -288,6 +288,7 @@ crow::response Refill::inicia(const crow::request &req)
     conf.habilita_recolector = true;
     conf.auto_acepta_credito = false;
     conf.habilita_salida_credito = true;
+    hub.property_modo_refill() = true;
 
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
@@ -304,6 +305,7 @@ crow::response Refill::inicia(const crow::request &req)
     hub.detiene_for_all();
     hub.on_credito().clear();
     hub.on_error().clear();
+    hub.property_modo_refill() = false;
 
     async_gui.dispatch_to_gui([this]()
                               { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });

@@ -12,15 +12,25 @@
 #include "model/detalle_movimiento.hpp"
 #include "controller/session.hpp"
 
-extern "C" 
+extern "C"
 {
-    #include "SSPComs.h"
-    #include "itl_types.h"
+#include "SSPComs.h"
+#include "itl_types.h"
 }
 
 namespace fs = std::filesystem;
-enum class HttpMethod { GET, POST, PUT, DELETE };
-enum class ValidadorType {BILL = 0, COIN = 16 }; // referencia del ssp
+enum class HttpMethod
+{
+    GET,
+    POST,
+    PUT,
+    DELETE
+};
+enum class ValidadorType
+{
+    BILL = 0,
+    COIN = 16
+}; // referencia del ssp
 
 class CashHub
 {
@@ -30,6 +40,7 @@ private:
 
     friend class Sesion;
     std::string autentica();
+    bool modo_refill = false;
 
     // Señales Globales
     sigc::signal<void(const std::string &device_id, const std::string &type_val, const crow::json::rvalue &, size_t)> signal_credito;
@@ -39,8 +50,8 @@ private:
     DetalleMovimiento detalle;
 
     bool intentar_registrar(const std::string &puerto, int ssp);
-    int obtener_ssp_por_magia_negra(const std::string& puerto, int ssp = 16);
-    crow::json::rvalue rutas_default(ValidadorUnit* val);
+    int obtener_ssp_por_magia_negra(const std::string &puerto, int ssp = 16);
+    crow::json::rvalue rutas_default(ValidadorUnit *val);
 
 public:
     static CashHub &instance()
@@ -55,16 +66,17 @@ public:
     // Accessors para las señales centralizadas
     auto &on_credito() { return signal_credito; }
     auto &on_error() { return signal_hub_error; }
+    bool &property_modo_refill() { return modo_refill; }
 
-    //Pass-through
-    std::map<std::string , cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
-    std::map<std::string , crow::json::rvalue> obten_ultimo_snapshot_level(void);
-    cpr::Response command_by_device_id(HttpMethod method,const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
+    // Pass-through
+    std::map<std::string, cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
+    std::map<std::string, crow::json::rvalue> obten_ultimo_snapshot_level(void);
+    cpr::Response command_by_device_id(HttpMethod method, const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
     cpr::Response get_nivel_actual_by_id(const std::string &device_id) const;
-    void inicia_for_all(const Conf &conf,std::map<std::string, const crow::json::rvalue> = {});
+    void inicia_for_all(const Conf &conf, std::map<std::string, const crow::json::rvalue> = {});
     void inicia_poll_for_all();
     void inicia_pago(size_t t_id, size_t monto, bool is_cambio = false);
-    void inicia_pago(size_t t_id, std::map<std::string , std::string>);
+    void inicia_pago(size_t t_id, std::map<std::string, std::string>);
     void detiene_poll_for_all(size_t t_id);
     void detiene_for_all(void);
 };

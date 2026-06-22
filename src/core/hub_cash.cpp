@@ -115,7 +115,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
                                          {
             int monto = data["value"].i() / 100;
 
-            if(type_val == "BILL")
+            if(type_val == "BILL" and not modo_refill)
                 for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
                 {
                     auto item = m_list_billetes->get_item(i);
