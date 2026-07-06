@@ -183,7 +183,7 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
     {
         if (item_encontrado->m_cant_recy < item_encontrado->m_nivel_inmo)
         {
-            hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow", "", true);
+            hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow");
             item_encontrado->m_cant_recy++;
             item_encontrado->m_ingreso++;
             t_log->m_ingreso += credito;
@@ -192,7 +192,18 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
         }
         else if (type == "BILL")
         {
-            hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow", "", true);
+            if (auto response = hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow");
+                response.status_code != cpr::status::HTTP_OK)
+            {
+                CROW_LOG_ERROR << "Error al devolver billete desde el dispositivo " << device_id << ": $ " << credito;
+                Global::System::showNotify("Refill", ("No se pudo devolver el billete de " + std::to_string(credito) + " desde el dispositivo " + device_id).c_str(), "dialog-error");
+
+                item_encontrado->m_cant_alm++;
+                item_encontrado->m_ingreso++;
+                t_log->m_ingreso += credito;
+                log.update_log(t_log);
+                envia_mensaje_wb(type, item_encontrado);
+            }
         }
         else // Monedas que ya superaron el límite de reciclaje
         {
@@ -288,7 +299,6 @@ crow::response Refill::inicia(const crow::request &req)
     conf.habilita_recolector = true;
     conf.auto_acepta_credito = false;
     conf.habilita_salida_credito = true;
-    hub.property_modo_refill() = true;
 
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
@@ -305,7 +315,6 @@ crow::response Refill::inicia(const crow::request &req)
     hub.detiene_for_all();
     hub.on_credito().clear();
     hub.on_error().clear();
-    hub.property_modo_refill() = false;
 
     async_gui.dispatch_to_gui([this]()
                               { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });

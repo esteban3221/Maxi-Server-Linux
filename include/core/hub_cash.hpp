@@ -40,7 +40,7 @@ private:
 
     friend class Sesion;
     std::string autentica();
-    bool modo_refill = false;
+    // bool modo_refill = false;
 
     // Señales Globales
     sigc::signal<void(const std::string &device_id, const std::string &type_val, const crow::json::rvalue &, size_t)> signal_credito;
@@ -66,7 +66,7 @@ public:
     // Accessors para las señales centralizadas
     auto &on_credito() { return signal_credito; }
     auto &on_error() { return signal_hub_error; }
-    bool &property_modo_refill() { return modo_refill; }
+    // bool &property_modo_refill() { return modo_refill; }
 
     // Pass-through
     std::map<std::string, cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
