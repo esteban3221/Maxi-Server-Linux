@@ -7,8 +7,6 @@ Efectivo::Efectivo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &re
 
     async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
 
-    CROW_ROUTE(app, "/accion/detiene_venta").methods("GET"_method)(sigc::mem_fun(*this, &Efectivo::deten));
-
     CROW_WEBSOCKET_ROUTE(app, "/ws/venta")
         .onopen(sigc::mem_fun(*this, &Efectivo::on_wb_socket_open))
         .onclose(sigc::mem_fun(*this, &Efectivo::on_wb_socket_close))
@@ -27,9 +25,10 @@ void Efectivo::on_wb_socket_open(crow::websocket::connection &conn)
 
 void Efectivo::on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code)
 {
+    CROW_LOG_WARNING << "WebSocket disconnected: " << conn.get_remote_ip() << " Reason: " << reason << " Code: " << code;
+
     if (connection == &conn)
         connection = nullptr; // Limpiamos la referencia a la conexión cerrada
-    CROW_LOG_WARNING << "WebSocket disconnected: " << conn.get_remote_ip() << " Reason: " << reason << " Code: " << code;
 }
 
 void Efectivo::on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary)
@@ -46,6 +45,17 @@ void Efectivo::on_wb_socket_message(crow::websocket::connection &conn, const std
         else
             conn.send_text(R"({"status":"no se puede detener, proceso en cambio"})");
     }
+    if (json_data["action"] == "cancelar")
+    {
+        if (not estado_cambio)
+        {
+            on_btn_cancel_click();
+            conn.send_text(R"({"status":"cancelado"})");
+            cancelacion_total = true;
+        }
+        else
+            conn.send_text(R"({"status":"no se puede cancelar, proceso en cambio"})");
+    }
 }
 
 void Efectivo::on_btn_retry_click()
@@ -61,18 +71,6 @@ void Efectivo::on_btn_cancel_click()
 
     transaccion_terminada = cancelado = true;
     cv_finalizado.notify_one();
-}
-
-crow::response Efectivo::deten(const crow::request &req)
-{
-    if (Global::Widget::v_main_stack->get_visible_child() != this)
-        return crow::response(400, "No hay una venta en efectivo en proceso");
-
-    if (estado_cambio || cancelado)
-        return crow::response(400, "La venta ya ha sido detenida o está en proceso de cambio");
-
-    on_btn_cancel_click();
-    return crow::response(200, "Venta detenida");
 }
 
 void Efectivo::on_error(const std::string &device, const std::string &error)
@@ -140,7 +138,7 @@ crow::response Efectivo::inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso)
         v_img_main->set_from_icon_name("gnome-pie-symbolic");
     }
 
-    estado_cambio = transaccion_terminada = cancelado = false;
+    estado_cambio = transaccion_terminada = cancelado = cancelacion_total = false;
     ingreso_parcial = 0;
     this->t_log = t_log;
     hub.on_credito().connect(sigc::mem_fun(*this, &Efectivo::on_event_credit));

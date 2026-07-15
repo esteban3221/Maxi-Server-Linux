@@ -49,6 +49,7 @@ private:
     void btn_cancelar_on_click();
     void on_dial_monto_entered(u_int64_t monto);
     void on_show_map();
+    void cancelacion_completa();
     void reset_log();
 
     Predeterminado obtener_metodo_predeterminado();

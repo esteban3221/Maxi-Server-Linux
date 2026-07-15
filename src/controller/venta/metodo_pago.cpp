@@ -34,6 +34,20 @@ void MetodoPago::on_show_map()
     v_btn_deferred->set_visible(!is_mixto);
 }
 
+void MetodoPago::cancelacion_completa()
+{
+    m_log->m_estatus = "Operación cancelada";
+    log.update_log(m_log);
+
+    {
+        std::lock_guard<std::mutex> lock(mtx_espera);
+        transaccion_terminada = true;
+    }
+    cv_finalizado.notify_one();
+
+    Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+}
+
 void MetodoPago::btn_cancelar_on_click()
 {
     v_dialog.reset(new Gtk::MessageDialog(*Global::Widget::v_main_window,
@@ -46,18 +60,7 @@ void MetodoPago::btn_cancelar_on_click()
     v_dialog->signal_response().connect([this](int response_id)
                                         {
             if (response_id == Gtk::ResponseType::OK)
-            {
-                m_log->m_estatus = "Cancelado";
-                log.update_log(m_log);
-
-                {
-                    std::lock_guard<std::mutex> lock(mtx_espera);
-                    transaccion_terminada = true;
-                }
-                cv_finalizado.notify_one();
-
-                Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
-            } 
+                cancelacion_completa();
             
             v_dialog->close(); });
     v_dialog->show();
@@ -158,6 +161,8 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
             {
                 cortinilla_carga->modo(true);
                 efectivo_controller->inicia(m_log, is_view_ingreso);
+                if (efectivo_controller->is_cancelacion_total())
+                    cancelacion_completa();
                 break;
             }
             case Metodo::TARJETA:
@@ -173,7 +178,7 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
 
         Glib::signal_idle().connect_once([this, metodo, remanente]()
         {
-            if(m_log->m_ingreso >= total_original)
+            if(m_log->m_ingreso >= total_original || efectivo_controller->is_cancelacion_total())
             {
                 {
                     std::lock_guard<std::mutex> lock(mtx_espera);

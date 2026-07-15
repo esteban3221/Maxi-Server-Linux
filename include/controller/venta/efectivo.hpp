@@ -23,7 +23,7 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
 
-    bool cancelado, estado_cambio, transaccion_terminada;
+    bool cancelado, cancelacion_total, estado_cambio, transaccion_terminada;
     int ingreso_parcial;
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
@@ -44,4 +44,6 @@ public:
 
     crow::response inicia(Glib::RefPtr<MLog> t_log, bool is_view_ingreso);
     crow::response deten(const crow::request &req);
+
+    const bool &is_cancelacion_total() const { return cancelacion_total; }
 };

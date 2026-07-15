@@ -1,18 +1,17 @@
 #include "controller/main_window.hpp"
 #include "main_window.hpp"
-//#include "view/venta.hpp"
+// #include "view/venta.hpp"
 
 MainWindow::MainWindow(/* args */) : contador_click(0),
-                                        sesion(app),
-                                        log_data(app),
-                                        configuracion(app),
-                                        terminales(app)
+                                     sesion(app),
+                                     log_data(app),
+                                     configuracion(app),
+                                     terminales(app)
 {
     v_btn_pill->set_opacity(0);
 
     v_box_principal->signal_map().connect(sigc::mem_fun(*this, &MainWindow::on_map_view));
     v_btn_logo_nip->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_btn_pill_clicked));
-
 
     // widgets dervados
     auto builder = Gtk::Builder::create_from_string(View::ui_vp);
@@ -69,7 +68,7 @@ void MainWindow::on_btn_pill_clicked()
 void MainWindow::on_map_view()
 {
     auto db_conf = std::make_unique<Configuracion>();
-    auto data = db_conf->get_conf_data(6,7);
+    auto data = db_conf->get_conf_data(6, 7);
 
     v_lbl_main->set_text(data->get_item(1)->m_valor);
 
@@ -78,11 +77,10 @@ void MainWindow::on_map_view()
         auto textura = Gdk::Texture::create_from_filename(data->get_item(0)->m_valor);
         v_img_main_logo->set(textura);
     }
-    catch (const Glib::Error& ex) 
+    catch (const Glib::Error &ex)
     {
         v_img_main_logo->set_from_icon_name("workspace-switcher-symbolic");
     }
-    
 }
 
 MainWindow::~MainWindow()
