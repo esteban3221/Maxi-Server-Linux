@@ -1,7 +1,7 @@
 #include "session.hpp"
 
 std::string Sesion::token = "";
-Sesion::Sesion(crow::SimpleApp& app)
+Sesion::Sesion(crow::SimpleApp &app)
 {
 
     // dispatcher.connect(sigc::mem_fun(*this, &session_controller::on_dispatcher_emit));
@@ -208,9 +208,14 @@ crow::response Sesion::modifica_usuario(const crow::request &req)
         Glib::ustring{bodyParams["username"].s()},
         Glib::ustring{bodyParams["password"].s()});
 
-    auto usuarios = std::make_unique<Usuarios>();
-    usuarios->update_usuario(usuario);
-    return crow::response();
+    if (usuario->m_id == Global::User::id || valida_administrador(req))
+    {
+        auto usuarios = std::make_unique<Usuarios>();
+        usuarios->update_usuario(usuario);
+        return crow::response(crow::status::OK);
+    }
+
+    return crow::response(crow::status::UNAUTHORIZED, "No autorizado para modificar este usuario");
 }
 
 crow::response Sesion::modifica_usuario_roles(const crow::request &req)
@@ -219,6 +224,9 @@ crow::response Sesion::modifica_usuario_roles(const crow::request &req)
 
     auto bodyParams = crow::json::load(req.body);
     auto id_usuario = bodyParams["id_usuario"].i();
+
+    if (id_usuario == 1)
+        return crow::response(crow::status::CONFLICT, "No se puede modificar los roles del usuario administrador");
 
     auto roles = std::make_unique<UsuariosRoles>();
     auto list_roles = Gio::ListStore<MRoles>::create();

@@ -68,7 +68,6 @@ void MetodoPago::btn_cancelar_on_click()
 
 crow::response MetodoPago::procesa_pago(const crow::request &req)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
     auto param = crow::json::load(req.body);
     metodo_seleccionado = Metodo::NINGUNO;
     auto db = std::make_unique<Configuracion>();
@@ -77,6 +76,8 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
 
     transaccion_terminada = is_mixto = false;
     is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
+
+    is_view_ingreso ? Sesion::valida_autorizacion(req, Global::User::Rol::Ingresos) : Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
 
     m_log = MLog::create(
         0,

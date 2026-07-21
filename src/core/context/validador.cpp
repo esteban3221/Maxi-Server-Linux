@@ -345,8 +345,8 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         }
         else
         {
-            CROW_LOG_ERROR << device_id << " → " << json["dispenseResult"].s() << ", Razon: " << json["dispenseResult"].s();
-            signal_error.emit(device_id, json["dispenseResult"].operator std::string() + ", Razon: " + json["dispenseResult"].operator std::string());
+            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["message"].s();
+            signal_error.emit(device_id, json["message"].operator std::string());
             detiene_desconecta();
         }
     }

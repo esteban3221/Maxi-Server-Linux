@@ -1,10 +1,11 @@
 #include "controller/log.hpp"
 
-LogData::LogData(crow::SimpleApp& app)
+LogData::LogData(crow::SimpleApp &app)
 {
     CROW_ROUTE(app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
     CROW_ROUTE(app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
     CROW_ROUTE(app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
+    CROW_ROUTE(app, "/log/get_levels_sin_permiso").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels_sin_permiso));
 }
 
 LogData::~LogData()
@@ -108,12 +109,25 @@ crow::response LogData::get_log(const crow::request &req)
 crow::response LogData::get_levels(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
-    
+
     crow::json::wvalue json;
     auto &hub = CashHub::instance();
     auto map = hub.obten_ultimo_snapshot_level();
 
-    for (auto const& [llave, valor] : map)
+    for (auto const &[llave, valor] : map)
+        json[llave] = valor["levels"];
+
+    return crow::response(json);
+}
+
+crow::response LogData::get_levels_sin_permiso(const crow::request &req)
+{
+    Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
+    crow::json::wvalue json;
+    auto &hub = CashHub::instance();
+    auto map = hub.obten_ultimo_snapshot_level();
+
+    for (auto const &[llave, valor] : map)
         json[llave] = valor["levels"];
 
     return crow::response(json);

@@ -11,8 +11,9 @@ private:
     crow::response get_log(const crow::request &req);
     crow::response corte_caja(const crow::request &req);
     crow::response get_levels(const crow::request &req);
+    crow::response get_levels_sin_permiso(const crow::request &req);
 
 public:
-    LogData(crow::SimpleApp& app);
+    LogData(crow::SimpleApp &app);
     ~LogData();
 };
