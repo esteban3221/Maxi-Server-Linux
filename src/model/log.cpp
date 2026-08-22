@@ -1,8 +1,8 @@
 #include "model/log.hpp"
+#include "controller/cloud/cloud.h"
 
-Log::Log(/* args */) // : tam_row{0}
+Log::Log(/* args */)
 {
-    // Glib::init();
 }
 
 Log::~Log()
@@ -47,18 +47,29 @@ const std::shared_ptr<ResultMap> Log::get_log(const std::string &tipo, const std
 size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
-    database.sqlite3->command("INSERT INTO log VALUES(null,?,?,?,?,?,?,?,?)",
-                              list->m_id_user,
-                              list->m_tipo.c_str(),
-                              list->m_descripcion.c_str(),
-                              list->m_ingreso,
-                              list->m_cambio,
-                              list->m_total,
-                              list->m_estatus.c_str(),
-                              list->m_fecha.format_iso8601().c_str());
+
+    if (list->m_uuid_cloud.empty())
+        list->m_uuid_cloud = std::unique_ptr<gchar, void (*)(gpointer)>(g_uuid_string_random(), g_free).get();
+
+    database.sqlite3->command(
+        "INSERT INTO log (IdUser, Tipo, Descripcion, Ingreso, Cambio, Total, Estatus, Fecha, uuid_cloud, sync_status) "
+        "VALUES(?,?,?,?,?,?,?,?,?,0)",
+        list->m_id_user,
+        list->m_tipo.c_str(),
+        list->m_descripcion.c_str(),
+        list->m_ingreso,
+        list->m_cambio,
+        list->m_total,
+        list->m_estatus.c_str(),
+        list->m_fecha.format_iso8601().c_str(),
+        list->m_uuid_cloud.c_str());
 
     auto contenedor_data = database.sqlite3->command("SELECT Id FROM log ORDER BY Id DESC LIMIT 1");
-    return std::stoull(contenedor_data->at("Id")[0]);
+    list->m_id = std::stoull(contenedor_data->at("Id")[0]);
+
+    Cloud::sincronizar_con_nube_async(list);
+
+    return list->m_id;
 }
 
 void Log::update_log(const Glib::RefPtr<MLog> &list)
@@ -73,6 +84,8 @@ void Log::update_log(const Glib::RefPtr<MLog> &list)
                                                      list->m_estatus.c_str(),
                                                      list->m_fecha.format_iso8601().c_str(),
                                                      list->m_id);
+
+    Cloud::sincronizar_con_nube_async(list);
 }
 
 crow::json::wvalue Log::json_ticket(Glib::RefPtr<MLog> t_log)
@@ -81,15 +94,15 @@ crow::json::wvalue Log::json_ticket(Glib::RefPtr<MLog> t_log)
     crow::json::wvalue data;
     data["ticket"] = crow::json::wvalue::list();
 
-    data["ticket"][0]["id"] =           t_log->m_id;
-    data["ticket"][0]["usuario"] =      user->get_usuarios(t_log->m_id_user)->m_usuario;
-    data["ticket"][0]["fecha"] =        t_log->m_fecha.format_iso8601();
-    data["ticket"][0]["tipo"] =         t_log->m_tipo;
-    data["ticket"][0]["descripcion"] =  t_log->m_descripcion;
-    data["ticket"][0]["total"] =        t_log->m_total;
-    data["ticket"][0]["cambio"] =       t_log->m_cambio;
-    data["ticket"][0]["ingreso"] =      t_log->m_ingreso;
-    data["ticket"][0]["estatus"] =      t_log->m_estatus;
+    data["ticket"][0]["id"] = t_log->m_id;
+    data["ticket"][0]["usuario"] = user->get_usuarios(t_log->m_id_user)->m_usuario;
+    data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
+    data["ticket"][0]["tipo"] = t_log->m_tipo;
+    data["ticket"][0]["descripcion"] = t_log->m_descripcion;
+    data["ticket"][0]["total"] = t_log->m_total;
+    data["ticket"][0]["cambio"] = t_log->m_cambio;
+    data["ticket"][0]["ingreso"] = t_log->m_ingreso;
+    data["ticket"][0]["estatus"] = t_log->m_estatus;
 
     return data;
 }

@@ -1,7 +1,9 @@
 #include "controller/log.hpp"
+#include "controller/cloud/worker.hpp"
 
 LogData::LogData(crow::SimpleApp &app)
 {
+    CloudWorker::getInstance().start();
     CROW_ROUTE(app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
     CROW_ROUTE(app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
     CROW_ROUTE(app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
@@ -10,6 +12,7 @@ LogData::LogData(crow::SimpleApp &app)
 
 LogData::~LogData()
 {
+    CloudWorker::getInstance().stop();
 }
 
 crow::response LogData::corte_caja(const crow::request &req)

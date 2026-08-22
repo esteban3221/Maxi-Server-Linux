@@ -34,7 +34,7 @@ private:
                                    "FOREIGN KEY (id_usuario) REFERENCES usuarios (id),\n"
                                    "FOREIGN KEY (id_rol) REFERENCES roles (id)\n"
                                    ")");
-            
+
             this->sqlite3->command(R"(
                 CREATE table terminales_pago(
             	id text not null PRIMARY KEY ,
@@ -115,7 +115,8 @@ private:
                                    "(NULL,'Apagar equipo');");
             this->sqlite3->command("insert into usuarios values (null,'admin','admin');");
 
-            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Descripcion text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
+            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Descripcion text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , uuid_cloud TEXT , sync_status INTEGER DEFAULT 0 , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
+
             this->sqlite3->command("CREATE TABLE pagoPendiente (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdLog int, Remanente real, Estatus text, FOREIGN KEY (IdLog) REFERENCES log (Id))");
 
             this->sqlite3->command("CREATE TABLE IF NOT EXISTS usuarios_historial (\n"
@@ -343,7 +344,7 @@ private:
                                    ")");
 
             this->sqlite3->command("INSERT into configuracion values"
-                                    //1 - 4
+                                   // 1 - 4
                                    "(null,'Puerto bill','/dev/ttyUSB0'),"
                                    "(null,'SSP bill','0'),"
                                    "(null,'Puerto coin','/dev/ttyUSB1'),"
@@ -373,8 +374,13 @@ private:
                                    "(null,'Terminar Operaciones','1'),"
                                    "(null,'Iniciar Proceso en','1'),"
                                    "(null,'Permite diferir','1'),"
+                                   // Cloud Services
+                                   "(101,'Cloud Server URL','http://localhost:3000'),"
+                                   "(102,'Cloud Device UUID',''),"
+                                   "(103,'Cloud API Key',''),"
+                                   "(104,'Cloud Status',''),"
                                    // nip 100
-                                    "(100,'Nip','123456')");
+                                   "(100,'Nip','123456')");
         }
     }
 

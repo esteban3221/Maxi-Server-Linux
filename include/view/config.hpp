@@ -8,11 +8,13 @@
 #include "controller/config/info.hpp"
 #include "controller/config/roles.hpp"
 #include "controller/config/wifi.hpp"
+#include "controller/config/qr_cloud.hpp"
 
 class VConfig : public Gtk::Box
 {
 private:
     const char *ui;
+
 protected:
     Gtk::Button *v_btn_back_config = nullptr;
     Gtk::Box *v_left_box = nullptr;
