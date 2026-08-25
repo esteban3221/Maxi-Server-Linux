@@ -18,6 +18,8 @@ public:
 
     static inline std::string qr_url;
     static inline std::atomic_bool poll_status_pair;
+    static inline std::string pairing_code;
+    static inline std::mutex cloud_mutex;
 
 private:
     void sendData(const std::string &data);

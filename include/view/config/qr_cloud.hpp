@@ -11,6 +11,15 @@ class VQrCloud : public Gtk::Box
 {
 protected:
     Gtk::Picture v_picture;
+
+    Gtk::Label v_label_titulo;
+    Gtk::Label v_label_subtitulo;
+    Gtk::ListBox v_listbox;
+
+    Gtk::Label v_label_uuid;
+    Gtk::Label v_label_status;
+    Gtk::Label v_label_pin;
+
     void actualizar_qr(const std::string &url);
 
 public:

@@ -2,8 +2,75 @@
 
 VQrCloud::VQrCloud()
 {
-    append(v_picture);
-    v_picture.set_expand(true);
+    // Configuración del contenedor principal
+    set_orientation(Gtk::Orientation::VERTICAL);
+    set_spacing(18);
+    set_margin(24);
+
+    // Textos principales
+    v_label_titulo.set_text("Maxi Cloud");
+    v_label_titulo.set_css_classes({"title-1"});
+    v_label_titulo.set_halign(Gtk::Align::START);
+
+    v_label_subtitulo.set_text(
+        "Para tener tu Maxi Server en la nube, escanea el siguiente código QR con tu celular "
+        "y sigue los pasos. Si ya tenes tu cuenta de Maxi Cloud, inicia sesión y agrega "
+        "tu Maxi Server a tu cuenta.");
+    v_label_subtitulo.set_css_classes({"dim-label"});
+    v_label_subtitulo.set_wrap(true);
+    v_label_subtitulo.set_max_width_chars(60);
+    v_label_subtitulo.set_halign(Gtk::Align::START);
+
+    // Configuración del ListBox estilo "Tarjeta" (Agrupado)
+    v_listbox.set_css_classes({"boxed-list"});
+    v_listbox.set_valign(Gtk::Align::CENTER);
+    v_listbox.set_halign(Gtk::Align::CENTER);
+
+    // 1. Imagen QR (con tamaño sugerido para que no ocupe toda la pantalla)
+    v_picture.set_size_request(200, 200);
+    v_picture.set_margin(12);
+    Gtk::ListBoxRow *row_qr = Gtk::make_managed<Gtk::ListBoxRow>();
+    row_qr->set_child(v_picture);
+    row_qr->set_activatable(false);
+    v_listbox.append(*row_qr);
+
+    // 2. UUID del Server
+    v_label_uuid.set_text("UUID: Cargando...");
+    v_label_uuid.set_css_classes({"monospace"});
+    v_label_uuid.set_margin(12);
+    Gtk::ListBoxRow *row_uuid = Gtk::make_managed<Gtk::ListBoxRow>();
+    row_uuid->set_child(v_label_uuid);
+    row_uuid->set_activatable(false);
+    v_listbox.append(*row_uuid);
+
+    // 3. Estado de la conexión
+    v_label_status.set_text("Estado: Desconectado");
+    v_label_status.set_margin(12);
+    Gtk::ListBoxRow *row_status = Gtk::make_managed<Gtk::ListBoxRow>();
+    row_status->set_child(v_label_status);
+    row_status->set_activatable(false);
+    v_listbox.append(*row_status);
+
+    // 4. PIN de vinculación
+    v_label_pin.set_text("PIN: ----");
+    v_label_pin.set_css_classes({"heading"});
+    v_label_pin.set_margin(12);
+    Gtk::ListBoxRow *row_pin = Gtk::make_managed<Gtk::ListBoxRow>();
+    row_pin->set_child(v_label_pin);
+    row_pin->set_activatable(false);
+    v_listbox.append(*row_pin);
+
+    // Agregar todo al contenedor principal
+    append(v_label_titulo);
+    append(v_label_subtitulo);
+
+    // Contenedor centrado para la lista para que luzca como tarjeta flotante
+    Gtk::Box *box_center = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL);
+    box_center->append(v_listbox);
+    box_center->set_halign(Gtk::Align::CENTER);
+    box_center->set_margin_top(12);
+
+    append(*box_center);
 }
 
 VQrCloud::~VQrCloud()
@@ -25,11 +92,9 @@ void VQrCloud::actualizar_qr(const std::string &url)
     if (url.empty())
         return;
 
-    auto texture = crear_qr_estilizado(url, 15); // 15 = tamaño en píxeles de cada puntito del QR
+    auto texture = crear_qr_estilizado(url, 15);
     if (texture)
-    {
         v_picture.set_paintable(texture);
-    }
 }
 
 Glib::RefPtr<Gdk::Texture> VQrCloud::crear_qr_estilizado(const std::string &texto, int module_size)

@@ -183,12 +183,13 @@ bool iniciar_vinculacion_qr(const std::string &server_url)
         return false;
     }
 
+    std::lock_guard<std::mutex> lock(Cloud::cloud_mutex);
     auto json_res = crow::json::load(response.text);
-    std::string pairing_code = json_res["pairingCode"].s();
+    Cloud::pairing_code = json_res["pairingCode"].s();
     Cloud::qr_url = json_res["qrUrl"].s();
 
     std::cout << "\n=======================================================" << std::endl;
-    std::cout << " CÓDIGO DE VINCULACIÓN: " << pairing_code << std::endl;
+    std::cout << " CÓDIGO DE VINCULACIÓN: " << Cloud::pairing_code << std::endl;
     std::cout << " Escanea o ingresa este enlace en el Dashboard Web:" << std::endl;
     std::cout << " " << Cloud::qr_url << std::endl;
     std::cout << "=======================================================\n"
@@ -200,7 +201,7 @@ bool iniciar_vinculacion_qr(const std::string &server_url)
         std::this_thread::sleep_for(std::chrono::seconds(3));
 
         auto poll_res = cpr::Get(
-            cpr::Url{server_url + "/api/devices/pair-status/" + pairing_code},
+            cpr::Url{server_url + "/api/devices/pair-status/" + Cloud::pairing_code},
             cpr::Timeout{3000});
 
         if (poll_res.status_code == 200)
