@@ -379,6 +379,7 @@ private:
                                    "(102,'Cloud Device UUID',''),"
                                    "(103,'Cloud API Key',''),"
                                    "(104,'Cloud Status',''),"
+                                   "(105,'Channel update','lts'),"
                                    // nip 100
                                    "(100,'Nip','123456')");
         }
