@@ -7,6 +7,7 @@ void CloudWorker::process_queue()
         try
         {
             sincronizar_logs_pendientes();
+            checkAndApplyUpdate();
         }
         catch (const std::exception &e)
         {
@@ -55,7 +56,7 @@ void CloudWorker::start()
     {
         m_running = true;
         m_worker_thread = std::thread(&CloudWorker::process_queue, this);
-        std::cout << "Worker de sincronización en la nube iniciado." << std::endl;
+        g_message("Worker de sincronización en la nube iniciado.");
     }
 }
 
@@ -68,6 +69,6 @@ void CloudWorker::stop()
         {
             m_worker_thread.join();
         }
-        std::cout << "Worker de sincronización detenido." << std::endl;
+        g_message("Worker de sincronización detenido.");
     }
 }

@@ -6,6 +6,7 @@
 
 #include "model/log.hpp"
 #include "controller/cloud/cloud.h"
+#include "controller/cloud/updaper.hpp"
 
 class CloudWorker
 {

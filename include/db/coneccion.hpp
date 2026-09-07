@@ -375,7 +375,7 @@ private:
                                    "(null,'Iniciar Proceso en','1'),"
                                    "(null,'Permite diferir','1'),"
                                    // Cloud Services
-                                   "(101,'Cloud Server URL','http://localhost:3000'),"
+                                   "(101,'Cloud Server URL','https://www.maxi-cajero.com'),"
                                    "(102,'Cloud Device UUID',''),"
                                    "(103,'Cloud API Key',''),"
                                    "(104,'Cloud Status',''),"

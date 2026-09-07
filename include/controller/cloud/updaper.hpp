@@ -11,13 +11,13 @@
 #include "config/version.hpp"
 #include "coneccion.hpp"
 
-void checkAndApplyUpdate()
+inline void checkAndApplyUpdate()
 {
     auto &database = Database::getInstance();
-    auto result = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 101 && id = 105");
+    auto result = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 101 OR id = 105 ORDER BY id ASC");
     const std::string CHANNEL = result->at("valor")[1];
     const std::string URL = result->at("valor")[0];
-    std::string url_manifest = "https://" + URL + "/updates/" + CHANNEL + "/latest.json";
+    std::string url_manifest = URL + "/updates/" + CHANNEL + "/latest.json";
 
     auto response = cpr::Get(cpr::Url{url_manifest});
     if (response.status_code != 200)
@@ -45,7 +45,7 @@ void checkAndApplyUpdate()
 
     if (!hay_actualizacion)
     {
-        g_info("El sistema está actualizado.");
+        // g_info("El sistema está actualizado.");
         return;
     }
 
