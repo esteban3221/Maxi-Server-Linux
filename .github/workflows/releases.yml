@@ -29,7 +29,6 @@ jobs:
       # 2. Preparar el binario resultante
       - name: Prepare binary
         run: |
-          # Reemplaza 'tu-ejecutable' con el nombre real que genera tu CMakeLists.txt
           mv build/Maxicajero-Server-aarch64 ./Maxicajero-Server-aarch64
 
       # 3. Subir automáticamente a GitHub Releases
