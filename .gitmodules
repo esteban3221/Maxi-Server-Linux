@@ -1,0 +1,3 @@
+[submodule "lib/Sqlit3-cpp-lib"]
+	path = lib/Sqlit3-cpp-lib
+	url = https://github.com/esteban3221/Sqlit3-cpp-lib.git
