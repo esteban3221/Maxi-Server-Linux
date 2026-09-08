@@ -112,5 +112,8 @@
             "database": "/home/esteban/Documentos/backend_vue_c--/build/maxicajero.db"
         }
     ],
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "enabled",
+    "github-actions.workflows.pinned.workflows": [
+        ".github/workflows/releases.yml"
+    ]
 }
