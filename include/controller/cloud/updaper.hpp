@@ -17,7 +17,7 @@ inline void checkAndApplyUpdate()
     auto result = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 101 OR id = 105 ORDER BY id ASC");
     const std::string CHANNEL = result->at("valor")[1];
     const std::string URL = result->at("valor")[0];
-    std::string url_manifest = URL + "/updates/" + CHANNEL + "/latest.json";
+    std::string url_manifest = URL + "/updates/" + CHANNEL + "/linux-arm/latest.json";
 
     auto response = cpr::Get(cpr::Url{url_manifest});
     if (response.status_code != 200)

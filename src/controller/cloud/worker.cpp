@@ -14,7 +14,7 @@ void CloudWorker::process_queue()
             g_warning("Error en el worker de sincronización: %s", e.what());
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(15));
+        std::this_thread::sleep_for(std::chrono::minutes(15));
     }
 }
 
