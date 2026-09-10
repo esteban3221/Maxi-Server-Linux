@@ -84,7 +84,8 @@ VConfig::VConfig(/* args */) : ui(R"(<?xml version='1.0' encoding='UTF-8'?>
   auto detalles_validadores = Gtk::manage(new DetallesValidador);
   v_stack.add(*detalles_validadores, "6", "Detalle Validadores");
 
-  auto qr_cloud = Gtk::manage(new QrCloud);
+  builder = Gtk::Builder::create_from_string(View::ui_qr_cloud);
+  auto qr_cloud = Gtk::Builder::get_widget_derived<QrCloud>(builder, "view_qr_cloud");
   v_stack.add(*qr_cloud, "7", "Cloud");
 
   v_stack.set_interpolate_size(true);

@@ -1,76 +1,13 @@
 #include "view/config/qr_cloud.hpp"
 
-VQrCloud::VQrCloud()
+VQrCloud::VQrCloud(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder)
+    : Gtk::Box(cobject), m_builder(refBuilder)
 {
-    // Configuración del contenedor principal
-    set_orientation(Gtk::Orientation::VERTICAL);
-    set_spacing(18);
-    set_margin(24);
-
-    // Textos principales
-    v_label_titulo.set_text("Maxi Cloud");
-    v_label_titulo.set_css_classes({"title-1"});
-    v_label_titulo.set_halign(Gtk::Align::START);
-
-    v_label_subtitulo.set_text(
-        "Para tener tu Maxi Server en la nube, escanea el siguiente código QR con tu celular "
-        "y sigue los pasos. Si ya tenes tu cuenta de Maxi Cloud, inicia sesión y agrega "
-        "tu Maxi Server a tu cuenta.");
-    v_label_subtitulo.set_css_classes({"dim-label"});
-    v_label_subtitulo.set_wrap(true);
-    v_label_subtitulo.set_max_width_chars(60);
-    v_label_subtitulo.set_halign(Gtk::Align::START);
-
-    // Configuración del ListBox estilo "Tarjeta" (Agrupado)
-    v_listbox.set_css_classes({"boxed-list"});
-    v_listbox.set_valign(Gtk::Align::CENTER);
-    v_listbox.set_halign(Gtk::Align::CENTER);
-
-    // 1. Imagen QR (con tamaño sugerido para que no ocupe toda la pantalla)
-    v_picture.set_size_request(200, 200);
-    v_picture.set_margin(12);
-    Gtk::ListBoxRow *row_qr = Gtk::make_managed<Gtk::ListBoxRow>();
-    row_qr->set_child(v_picture);
-    row_qr->set_activatable(false);
-    v_listbox.append(*row_qr);
-
-    // 2. UUID del Server
-    v_label_uuid.set_text("UUID: Cargando...");
-    v_label_uuid.set_css_classes({"monospace"});
-    v_label_uuid.set_margin(12);
-    Gtk::ListBoxRow *row_uuid = Gtk::make_managed<Gtk::ListBoxRow>();
-    row_uuid->set_child(v_label_uuid);
-    row_uuid->set_activatable(false);
-    v_listbox.append(*row_uuid);
-
-    // 3. Estado de la conexión
-    v_label_status.set_text("Estado: Desconectado");
-    v_label_status.set_margin(12);
-    Gtk::ListBoxRow *row_status = Gtk::make_managed<Gtk::ListBoxRow>();
-    row_status->set_child(v_label_status);
-    row_status->set_activatable(false);
-    v_listbox.append(*row_status);
-
-    // 4. PIN de vinculación
-    v_label_pin.set_text("PIN: ----");
-    v_label_pin.set_css_classes({"heading"});
-    v_label_pin.set_margin(12);
-    Gtk::ListBoxRow *row_pin = Gtk::make_managed<Gtk::ListBoxRow>();
-    row_pin->set_child(v_label_pin);
-    row_pin->set_activatable(false);
-    v_listbox.append(*row_pin);
-
-    // Agregar todo al contenedor principal
-    append(v_label_titulo);
-    append(v_label_subtitulo);
-
-    // Contenedor centrado para la lista para que luzca como tarjeta flotante
-    Gtk::Box *box_center = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL);
-    box_center->append(v_listbox);
-    box_center->set_halign(Gtk::Align::CENTER);
-    box_center->set_margin_top(12);
-
-    append(*box_center);
+    this->v_picture_qr = m_builder->get_widget<Gtk::Picture>("v_picture");
+    this->v_label_uuid = m_builder->get_widget<Gtk::Label>("v_label_uuid");
+    this->v_label_pin = m_builder->get_widget<Gtk::Label>("v_label_pin");
+    this->v_label_status = m_builder->get_widget<Gtk::Label>("v_label_status");
+    this->v_dropdown_canal = m_builder->get_widget<Gtk::DropDown>("v_dropdown_canal");
 }
 
 VQrCloud::~VQrCloud()
@@ -94,7 +31,7 @@ void VQrCloud::actualizar_qr(const std::string &url)
 
     auto texture = crear_qr_estilizado(url, 15);
     if (texture)
-        v_picture.set_paintable(texture);
+        v_picture_qr->set_paintable(texture);
 }
 
 Glib::RefPtr<Gdk::Texture> VQrCloud::crear_qr_estilizado(const std::string &texto, int module_size)
@@ -178,4 +115,214 @@ Glib::RefPtr<Gdk::Texture> VQrCloud::crear_qr_estilizado(const std::string &text
         g_warning("Error al generar el QR: %s", e.what());
         return nullptr;
     }
+}
+
+namespace View
+{
+    const char *ui_qr_cloud = R"(<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <object class="GtkBox" id="view_qr_cloud">
+    <property name="orientation">1</property>
+    <property name="spacing">18</property>
+    <property name="margin-start">24</property>
+    <property name="margin-end">24</property>
+    <property name="margin-top">24</property>
+    <property name="margin-bottom">24</property>
+    <child>
+      <object class="GtkLabel" id="v_label_titulo">
+        <property name="label">Maxi Cloud</property>
+        <property name="halign">1</property>
+        <style>
+          <class name="title-1"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="v_label_subtitulo">
+        <property name="label">Para tener tu Maxi Server en la nube, escanea el siguiente código QR con tu celular y sigue los pasos. Si ya tenes tu cuenta de Maxi Cloud, inicia sesión y agrega tu Maxi Server a tu cuenta.</property>
+        <property name="halign">1</property>
+        <property name="wrap">true</property>
+        <property name="max-width-chars">60</property>
+        <style>
+          <class name="dim-label"/>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">1</property>
+        <property name="halign">3</property>
+        <property name="vexpand">true</property>
+        <property name="margin-top">12</property>
+        <child>
+          <object class="GtkScrolledWindow" id="v_scrolled_window">
+            <property name="hscrollbar-policy">2</property>
+            <property name="vscrollbar-policy">1</property>
+            <property name="vexpand">true</property>
+            <property name="child">
+              <object class="GtkListBox" id="v_listbox">
+                <property name="valign">3</property>
+                <property name="halign">3</property>
+                <style>
+                  <class name="boxed-list"/>
+                  <class name="rich-list"/>
+                </style>
+                <child>
+                  <object class="GtkListBoxRow">
+                    <property name="activatable">false</property>
+                    <property name="child">
+                      <object class="GtkPicture" id="v_picture">
+                        <property name="width-request">200</property>
+                        <property name="height-request">200</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBoxRow">
+                    <property name="activatable">false</property>
+                    <property name="child">
+                      <object class="GtkBox">
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">UUID:</property>
+                            <property name="halign">1</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="v_label_uuid">
+                            <property name="label">Cargando...</property>
+                            <property name="hexpand">true</property>
+                            <property name="halign">2</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">1</property>
+                            <style>
+                              <class name="monospace"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBoxRow">
+                    <property name="activatable">false</property>
+                    <property name="child">
+                      <object class="GtkBox">
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Estado</property>
+                            <property name="halign">1</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="v_label_status">
+                            <property name="label">Desconectado</property>
+                            <property name="hexpand">true</property>
+                            <property name="halign">2</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">1</property>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBoxRow">
+                    <property name="activatable">false</property>
+                    <property name="child">
+                      <object class="GtkBox">
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">PIN de vinculación</property>
+                            <property name="halign">1</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="v_label_pin">
+                            <property name="label">----</property>
+                            <property name="hexpand">true</property>
+                            <property name="halign">2</property>
+                            <property name="valign">3</property>
+                            <property name="xalign">1</property>
+                            <style>
+                              <class name="heading"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkListBoxRow">
+                    <property name="activatable">false</property>
+                    <property name="child">
+                      <object class="GtkBox">
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <property name="spacing">12</property>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label">Canal de actualizaciones</property>
+                            <property name="halign">1</property>
+                            <property name="valign">3</property>
+                            <property name="hexpand">true</property>
+                            <property name="xalign">0</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkDropDown" id="v_dropdown_canal">
+                            <property name="valign">3</property>
+                            <property name="halign">2</property>
+                            <property name="model">
+                              <object class="GtkStringList">
+                                <items>
+                                  <item>LTS (Estable)</item>
+                                  <item>Test (Pruebas)</item>
+                                </items>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
+)";
 }

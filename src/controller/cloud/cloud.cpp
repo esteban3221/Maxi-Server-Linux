@@ -84,65 +84,6 @@ void Cloud::sincronizar_con_nube_async(Glib::RefPtr<MLog> t_log)
         .detach();
 }
 
-bool registrar_dispositivo_en_nube(const std::string &server_url,
-                                   const std::string &master_key,
-                                   const std::string &nombre_sucursal)
-{
-    auto &database = Database::getInstance();
-    auto config_key = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 102");
-
-    if (config_key && !config_key->at("valor").empty() && !config_key->at("valor")[0].empty())
-    {
-        g_info("El cajero ya cuenta con API Key registrada.");
-        return true;
-    }
-
-    auto config_uuid = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 103");
-    std::string device_uuid;
-
-    if (config_uuid && !config_uuid->at("valor").empty() && !config_uuid->at("valor")[0].empty())
-        device_uuid = config_uuid->at("valor")[0];
-    else
-        device_uuid = "CAJERO-" + std::string(std::unique_ptr<gchar, void (*)(gpointer)>(g_uuid_string_random(), g_free).get());
-
-    crow::json::wvalue payload;
-    payload["uuid"] = device_uuid;
-    payload["name"] = nombre_sucursal;
-
-    auto response = cpr::Post(
-        cpr::Url{server_url + "/api/devices/register"},
-        cpr::Header{
-            {"Content-Type", "application/json"},
-            {"x-master-key", master_key}},
-        cpr::Body{payload.dump()},
-        cpr::Timeout{5000});
-
-    if (response.status_code == 201 || response.status_code == 409)
-    {
-        auto json_res = crow::json::load(response.text);
-
-        if (response.status_code == 201)
-        {
-            std::string api_key_generada = json_res["device"]["apiKey"].s();
-
-            database.sqlite3->command("UPDATE configuracion SET valor = ? WHERE id = 101", server_url.c_str());
-            database.sqlite3->command("UPDATE configuracion SET valor = ? WHERE id = 102", api_key_generada.c_str());
-            database.sqlite3->command("UPDATE configuracion SET valor = ? WHERE id = 103", device_uuid.c_str());
-
-            g_info("¡Vinculación exitosa! API Key asignada: %s", api_key_generada);
-            return true;
-        }
-        else
-        {
-            g_error("El dispositivo ya existía en la nube. Verifique su UUID.");
-            return false;
-        }
-    }
-
-    g_error("Error de registro (%d): %s", response.status_code, response.text);
-    return false;
-}
-
 #include <thread>
 #include <chrono>
 

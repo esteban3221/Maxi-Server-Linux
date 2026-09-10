@@ -3,11 +3,11 @@ name: Build Nativo Manjaro ARM
 on:
   push:
     tags:
-      - 'v*' # Se dispara al subir un tag (ej. v2.1.1)
+      - 'v*'
 
 jobs:
   build-native-arm:
-    runs-on: self-hosted # <--- Aquí le dices que corra en tu Raspberry Pi
+    runs-on: self-hosted
 
     permissions:
       contents: write
@@ -18,7 +18,6 @@ jobs:
         with:
           submodules: recursive
 
-      # 1. Compilar directamente en la Raspberry Pi (usando el CMake y Make locales)
       - name: Build project natively
         run: |
           mkdir -p build
@@ -26,16 +25,15 @@ jobs:
           cmake -DCMAKE_BUILD_TYPE=Release ..
           make -j$(nproc)
 
-      # 2. Preparar el binario resultante
       - name: Prepare binary
         run: |
           mv build/Maxicajero-Server-aarch64 ./Maxicajero-Server-aarch64
 
-      # 3. Subir automáticamente a GitHub Releases
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v1
         with:
           files: Maxicajero-Server-aarch64
+          body: "${{ github.event.head_commit.message }}"
           draft: false
           prerelease: false
         env:

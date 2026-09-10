@@ -7,7 +7,7 @@ private:
     Glib::RefPtr<Gtk::Builder> m_builder;
 
 protected:
-    Gtk::EditableLabel *v_list_info_system[5]{nullptr};
+    Gtk::EditableLabel *v_list_info_system[6]{nullptr};
 
 public:
     VInfo(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder);
@@ -16,5 +16,5 @@ public:
 
 namespace View
 {
-   extern const char *ui_info;
+    extern const char *ui_info;
 }

@@ -376,8 +376,8 @@ private:
                                    "(null,'Permite diferir','1'),"
                                    // Cloud Services
                                    "(101,'Cloud Server URL','https://www.maxi-cajero.com'),"
-                                   "(102,'Cloud Device UUID',''),"
-                                   "(103,'Cloud API Key',''),"
+                                   "(102,'Cloud API Key',''),"
+                                   "(103,'Cloud Device UUID',''),"
                                    "(104,'Cloud Status',''),"
                                    "(105,'Channel update','lts'),"
                                    // nip 100
