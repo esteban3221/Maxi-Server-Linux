@@ -43,11 +43,6 @@ if(ENABLE_PRETTY_JSON)
     add_definitions(-DMODO_DEBUG_JSON)
 endif()
 
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/config/version.hpp
-)
-
 find_package(Crow REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -57,11 +52,6 @@ pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
 find_package(SQLite3 REQUIRED)
 find_package(GTest REQUIRED)
-
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.hpp.in
-    ${CMAKE_CURRENT_BINARY_DIR}/include/config/version.hpp
-)
 
 set(SOURCES
     src/main.cpp

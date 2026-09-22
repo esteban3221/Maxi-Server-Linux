@@ -22,7 +22,7 @@ inline void checkAndApplyUpdate()
     auto response = cpr::Get(cpr::Url{url_manifest});
     if (response.status_code != 200)
     {
-        g_warning("No se pudo contactar al servidor de actualizaciones.");
+        g_warning("No se pudo contactar al servidor de actualizaciones.\n %s", response.text.c_str());
         return;
     }
 
@@ -45,11 +45,11 @@ inline void checkAndApplyUpdate()
 
     if (!hay_actualizacion)
     {
-        // g_info("El sistema está actualizado.");
+        g_info("El sistema está actualizado.");
         return;
     }
 
-    g_info("Nueva versión encontrada. Descargando...");
+    g_info("Nueva versión encontrada v%d.%d.%d+%d. Descargando...", remote_major, remote_minor, remote_patch, remote_build);
     std::string temp_path = "/tmp/Maxicajero-Server-new";
     cpr::Session session;
     session.SetUrl(cpr::Url{download_url});
