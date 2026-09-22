@@ -23,4 +23,4 @@ private:
     std::string receiveData();
 };
 
-bool iniciar_vinculacion_qr(const std::string &server_url);
+bool iniciar_vinculacion_qr(const std::string &server_url, std::function<void(std::string, std::string)> on_qr_ready = nullptr);

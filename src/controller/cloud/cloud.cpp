@@ -87,14 +87,14 @@ void Cloud::sincronizar_con_nube_async(Glib::RefPtr<MLog> t_log)
 #include <thread>
 #include <chrono>
 
-bool iniciar_vinculacion_qr(const std::string &server_url)
+bool iniciar_vinculacion_qr(const std::string &server_url, std::function<void(std::string, std::string)> on_qr_ready)
 {
     auto &database = Database::getInstance();
 
     auto config_key = database.sqlite3->command("SELECT valor FROM configuracion WHERE id = 102");
     if (config_key && !config_key->at("valor").empty() && !config_key->at("valor")[0].empty())
     {
-        g_info("El cajero ya se encuentra vinculado.");
+        g_message("El cajero ya se encuentra vinculado.");
         return true;
     }
 
@@ -136,10 +136,21 @@ bool iniciar_vinculacion_qr(const std::string &server_url)
     std::cout << "=======================================================\n"
               << std::endl;
 
-    g_info("Esperando confirmación desde la Web...");
+    if (on_qr_ready)
+        on_qr_ready(Cloud::qr_url, Cloud::pairing_code);
+
+    g_message("Esperando confirmación desde la Web...");
     while (Cloud::poll_status_pair.load())
     {
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        for (int i = 0; i < 30; ++i)
+        {
+            if (!Cloud::poll_status_pair.load())
+                return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        if (!Cloud::poll_status_pair.load())
+            return false;
 
         auto poll_res = cpr::Get(
             cpr::Url{server_url + "/api/devices/pair-status/" + Cloud::pairing_code},
@@ -157,7 +168,7 @@ bool iniciar_vinculacion_qr(const std::string &server_url)
                 database.sqlite3->command("UPDATE configuracion SET valor = ? WHERE id = 101", server_url.c_str());
                 database.sqlite3->command("UPDATE configuracion SET valor = ? WHERE id = 102", api_key.c_str());
 
-                g_info("¡Dispositivo vinculado con éxito desde la Web!");
+                g_message("¡Dispositivo vinculado con éxito desde la Web!");
                 return true;
             }
             else if (status == "EXPIRED")

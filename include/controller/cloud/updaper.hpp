@@ -7,9 +7,10 @@
 #include <string_view>
 #include <unistd.h>
 #include <glibmm.h>
-
 #include "config/version.hpp"
 #include "coneccion.hpp"
+#include <filesystem>
+#include <limits.h>
 
 inline void checkAndApplyUpdate()
 {
@@ -45,12 +46,24 @@ inline void checkAndApplyUpdate()
 
     if (!hay_actualizacion)
     {
-        g_info("El sistema está actualizado.");
+        g_message("El sistema está actualizado.");
         return;
     }
 
-    g_info("Nueva versión encontrada v%d.%d.%d+%d. Descargando...", remote_major, remote_minor, remote_patch, remote_build);
-    std::string temp_path = "/tmp/Maxicajero-Server-new";
+    char result_[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", result_, PATH_MAX);
+    std::string current_executable_path(result_, (count > 0) ? count : 0);
+
+    if (current_executable_path.empty())
+    {
+        g_critical("No se pudo determinar la ruta del ejecutable actual.");
+        return;
+    }
+
+    std::string temp_path = current_executable_path + ".new";
+
+    g_message("Nueva versión encontrada v%d.%d.%d+%d. Descargando...", remote_major, remote_minor, remote_patch, remote_build);
+
     cpr::Session session;
     session.SetUrl(cpr::Url{download_url});
     std::ofstream file(temp_path, std::ios::binary);
@@ -68,27 +81,24 @@ inline void checkAndApplyUpdate()
     }
     file.close();
 
-    std::string chmod_cmd = "chmod +x " + temp_path;
-    system(chmod_cmd.c_str());
+    std::error_code ec;
 
-    char result_[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", result_, PATH_MAX);
-    std::string current_executable_path(result_, (count > 0) ? count : 0);
+    std::filesystem::permissions(temp_path,
+                                 std::filesystem::perms::owner_all |
+                                     std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+                                     std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+                                 std::filesystem::perm_options::add, ec);
 
-    if (!current_executable_path.empty())
+    std::filesystem::rename(temp_path, current_executable_path, ec);
+
+    if (!ec)
     {
-        std::error_code ec;
-        std::filesystem::copy_file(temp_path, current_executable_path,
-                                   std::filesystem::copy_options::overwrite_existing, ec);
-
-        if (!ec)
-        {
-            std::filesystem::remove(temp_path, ec);
-
-            g_info("Actualización aplicada con éxito. Reiniciando servicio...");
-            std::exit(0);
-        }
-        else
-            g_critical("Error al reemplazar el binario actual: %s", ec.message().c_str());
+        g_message("Actualización aplicada con éxito.");
+        Global::System::showNotify("Maxicajero", "Actualización aplicada con éxito. Aplicando en el proximo reinicio", "dialog-information");
+    }
+    else
+    {
+        g_critical("Error al reemplazar el binario actual: %s", ec.message().c_str());
+        std::filesystem::remove(temp_path, ec); // Limpiar la basura si falló
     }
 }

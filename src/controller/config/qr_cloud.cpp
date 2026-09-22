@@ -6,7 +6,8 @@ QrCloud::QrCloud(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refB
     signal_map().connect(sigc::mem_fun(*this, &QrCloud::on_show_map));
     signal_unmap().connect([]()
                            { 
-        g_info("Cerrando polleo de status");
+        g_message("Cerrando polleo de status");
+        
         Cloud::poll_status_pair.store(false); });
     v_dropdown_canal->property_selected().signal_changed().connect(sigc::mem_fun(*this, &QrCloud::on_dropdown_canal_changed));
 }
@@ -73,16 +74,24 @@ void QrCloud::on_show_map(void)
 
     std::thread([this, server_url]()
                 {
-        bool is_success = iniciar_vinculacion_qr(server_url);
-
+        bool is_success = iniciar_vinculacion_qr(server_url, [this](std::string url, std::string pin) 
+        {
+            Glib::signal_idle().connect_once([this, url, pin]() 
+            {
+                actualizar_qr(url);
+                v_label_pin->set_text(pin);
+                v_label_status->set_text("Esperando confirmación desde la Web...");
+            });
+        });
         Glib::signal_idle().connect_once([this, is_success]()
         {
             if (is_success) 
             {
                 v_label_status->set_text("¡Vinculado y Conectado con éxito! 🟢");
                 Global::System::showNotify("Maxicajero", "¡Vinculación Exitosa!", "dialog-information");
-            } else 
+            } else {
                 v_label_status->set_text("Vinculación detenida o expirada 🔴");
+            }
         }); })
         .detach();
 }
