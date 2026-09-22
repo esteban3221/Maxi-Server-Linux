@@ -77,12 +77,18 @@ inline void checkAndApplyUpdate()
 
     if (!current_executable_path.empty())
     {
-        if (rename(temp_path.c_str(), current_executable_path.c_str()) == 0)
+        std::error_code ec;
+        std::filesystem::copy_file(temp_path, current_executable_path,
+                                   std::filesystem::copy_options::overwrite_existing, ec);
+
+        if (!ec)
         {
+            std::filesystem::remove(temp_path, ec);
+
             g_info("Actualización aplicada con éxito. Reiniciando servicio...");
-            // std::exit(0);
+            std::exit(0);
         }
         else
-            g_warning("Error al reemplazar el binario actual.");
+            g_critical("Error al reemplazar el binario actual: %s", ec.message().c_str());
     }
 }
