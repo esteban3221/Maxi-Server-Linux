@@ -120,7 +120,7 @@ bool iniciar_vinculacion_qr(const std::string &server_url)
 
     if (response.status_code != 200 && response.status_code != 201)
     {
-        g_error("Error al iniciar vinculación  (%d): %s", response.status_code, response.text);
+        g_warning("Error al iniciar vinculación  (%d): %s", response.status_code, response.text.c_str());
         return false;
     }
 
