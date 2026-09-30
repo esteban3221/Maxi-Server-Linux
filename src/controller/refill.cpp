@@ -382,34 +382,42 @@ crow::response Refill::transpaso(const crow::request &req)
 
 crow::response Refill::retirada(const crow::request &req)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Retirada);
-    auto conn = hub.on_error().connect(sigc::mem_fun(*this, &Refill::on_error));
-    transaccion_terminada = false;
-    cashbox_level = 0;
-
-    hub.inicia_for_all({});
-    hub.inicia_poll_for_all();
-
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child(*this); });
-
+    try
     {
-        std::unique_lock<std::mutex> lock(mtx_espera);
+        Sesion::valida_autorizacion(req, Global::User::Rol::Retirada);
+        auto conn = hub.on_error().connect(sigc::mem_fun(*this, &Refill::on_error));
+        transaccion_terminada = false;
+        cashbox_level = 0;
 
-        cv_finalizado.wait(lock, [this]
-                           { return transaccion_terminada; });
+        hub.inicia_for_all({});
+        hub.inicia_poll_for_all();
+
+        async_gui.dispatch_to_gui([this]()
+                                  { Global::Widget::v_main_stack->set_visible_child(*this); });
+
+        {
+            std::unique_lock<std::mutex> lock(mtx_espera);
+
+            cv_finalizado.wait(lock, [this]
+                               { return transaccion_terminada; });
+            conn.disconnect();
+        }
+
+        t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, cashbox_level, "Completado", Glib::DateTime::create_now_local());
+        t_log->m_id = log.insert_log(t_log);
+
+        hub.detiene_for_all();
+        async_gui.dispatch_to_gui([this]()
+                                  { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
         conn.disconnect();
+
+        return crow::response(200, Log::json_ticket(t_log));
     }
-
-    t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", 0, 0, cashbox_level, "Completado", Glib::DateTime::create_now_local());
-    t_log->m_id = log.insert_log(t_log);
-
-    hub.detiene_for_all();
-    async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
-    conn.disconnect();
-
-    return crow::response(200, Log::json_ticket(t_log));
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << e.what();
+        return crow::response(500, std::string("Error: ") + e.what());
+    }
 }
 
 void Refill::deten()

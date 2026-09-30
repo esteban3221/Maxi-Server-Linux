@@ -46,6 +46,10 @@ const std::shared_ptr<ResultMap> Log::get_log(const std::string &tipo, const std
 
 size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
+    auto &hub = CashHub::instance();
+    if (hub.is_in_process.load())
+        throw std::runtime_error("Hub Cash está en proceso. No se puede insertar un log en este momento.");
+
     auto &database = Database::getInstance();
 
     if (list->m_uuid_cloud.empty())

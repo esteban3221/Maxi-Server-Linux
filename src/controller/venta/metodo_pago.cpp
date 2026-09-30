@@ -68,58 +68,75 @@ void MetodoPago::btn_cancelar_on_click()
 
 crow::response MetodoPago::procesa_pago(const crow::request &req)
 {
-    auto param = crow::json::load(req.body);
-    metodo_seleccionado = Metodo::NINGUNO;
-    auto db = std::make_unique<Configuracion>();
-    auto db_empresa = db->get_conf_data(15, 15);
-    bool imprimir_ticket = db_empresa->get_item(0)->m_valor == "1";
-
-    transaccion_terminada = is_mixto = false;
-    is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
-
-    is_view_ingreso ? Sesion::valida_autorizacion(req, Global::User::Rol::Ingresos) : Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
-
-    m_log = MLog::create(
-        0,
-        Global::User::id,
-        is_view_ingreso ? "Ingreso" : "Venta",
-        param["concepto"].operator std::string(),
-        0,
-        0,
-        param["value"].i(),
-        "Creacion de evento",
-        Glib::DateTime::create_now_local());
-
-    m_log->m_id = log.insert_log(m_log);
-    total_original = m_log->m_total;
-
-    switch (obtener_metodo_predeterminado())
+    try
     {
-    case Predeterminado::EFECTIVO:
-        pagar_por_metodo(Metodo::EFECTIVO);
-        break;
-    case Predeterminado::TARJETA:
-        pagar_por_metodo(Metodo::TARJETA);
-        break;
-    case Predeterminado::MIXTO:
-        Global::Widget::v_main_stack->set_visible_child(*this);
-    default:
-        break;
-    }
+        auto param = crow::json::load(req.body);
+        if (!param)
+            return crow::response(400, "Cuerpo de petición inválido (No es JSON)");
 
+        metodo_seleccionado = Metodo::NINGUNO;
+        auto db = std::make_unique<Configuracion>();
+        auto db_empresa = db->get_conf_data(15, 15);
+        bool imprimir_ticket = db_empresa->get_item(0)->m_valor == "1";
+
+        transaccion_terminada = is_mixto = false;
+        is_view_ingreso = param.has("is_view_ingreso") && param["is_view_ingreso"].b();
+
+        is_view_ingreso ? Sesion::valida_autorizacion(req, Global::User::Rol::Ingresos)
+                        : Sesion::valida_autorizacion(req, Global::User::Rol::Venta);
+
+        m_log = MLog::create(
+            0,
+            Global::User::id,
+            is_view_ingreso ? "Ingreso" : "Venta",
+            param["concepto"].operator std::string(),
+            0,
+            0,
+            param["value"].i(),
+            "Creacion de evento",
+            Glib::DateTime::create_now_local());
+
+        m_log->m_id = log.insert_log(m_log);
+        total_original = m_log->m_total;
+
+        switch (obtener_metodo_predeterminado())
+        {
+        case Predeterminado::EFECTIVO:
+            pagar_por_metodo(Metodo::EFECTIVO);
+            break;
+        case Predeterminado::TARJETA:
+            pagar_por_metodo(Metodo::TARJETA);
+            break;
+        case Predeterminado::MIXTO:
+            Global::Widget::v_main_stack->set_visible_child(*this);
+            break;
+        default:
+            throw std::runtime_error("Método de pago no soportado");
+        }
+        {
+            std::unique_lock<std::mutex> lock(mtx_espera);
+
+            bool finalizado_ok = cv_finalizado.wait_for(lock, std::chrono::minutes(5), [this]
+                                                        { return transaccion_terminada; });
+
+            if (!finalizado_ok)
+            {
+                throw std::runtime_error("Timeout: El hardware no respondió en el tiempo esperado.");
+            }
+        }
+
+        m_log->m_total = total_original;
+
+        if (imprimir_ticket)
+            Glib::signal_idle().connect_once([this]()
+                                             { Global::System::imprime_ticket(m_log); });
+
+        return crow::response(200, Log::json_ticket(m_log));
+    }
+    catch (const std::exception &e)
     {
-        std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this]
-                           { return transaccion_terminada; });
+        return crow::response(500, e.what());
     }
-
-    m_log->m_total = total_original;
-
-    if (imprimir_ticket)
-        Glib::signal_idle().connect_once([this]()
-                                         { Global::System::imprime_ticket(m_log); });
-
-    return (Log::json_ticket(m_log));
 }
 
 MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()

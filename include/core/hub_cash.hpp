@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <queue>
+#include <atomic>
 #include <glibmm.h>
 #include <cpr/cpr.h>
 
@@ -79,4 +80,6 @@ public:
     void inicia_pago(size_t t_id, std::map<std::string, std::string>);
     void detiene_poll_for_all(size_t t_id);
     void detiene_for_all(void);
+
+    std::atomic_bool is_in_process{false};
 };

@@ -2,7 +2,7 @@
 #include "pago.hpp"
 #include "carrousel.hpp"
 
-Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app) : BVentaPago(cobject, refBuilder)
+Pago::Pago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : BVentaPago(cobject, refBuilder)
 {
     v_lbl_titulo->set_text("Pago");
     v_BXRW4->set_visible(false);
@@ -51,39 +51,49 @@ crow::response Pago::inicia(const crow::request &req)
     hub.on_credito().clear();
     hub.on_error().clear();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
 }
 
 crow::response Pago::inicia_manual(const crow::request &req)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
-    auto json = crow::json::load(req.body);
-    std::map<std::string, std::string> map_val;
+    try
+    {
+        Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
+        auto json = crow::json::load(req.body);
+        std::map<std::string, std::string> map_val;
 
-    reset_log(json, "Pago Manual");
-    t_log->m_estatus = "Exito.";
+        reset_log(json, "Pago Manual");
+        t_log->m_estatus = "Exito.";
 
-    for (auto &&k : json["pago_manual"].keys())
-        map_val[k] = crow::json::wvalue(json["pago_manual"][k]).dump();
+        for (auto &&k : json["pago_manual"].keys())
+            map_val[k] = crow::json::wvalue(json["pago_manual"][k]).dump();
 
-    Conf conf;
-    conf.habilita_recolector = false;
-    conf.auto_acepta_credito = false;
-    conf.habilita_salida_credito = true;
+        Conf conf;
+        conf.habilita_recolector = false;
+        conf.auto_acepta_credito = false;
+        conf.habilita_salida_credito = true;
 
-    hub.inicia_for_all(conf);
-    hub.inicia_pago(t_log->m_id, map_val);
+        hub.inicia_for_all(conf);
+        hub.inicia_pago(t_log->m_id, map_val);
 
-    log.update_log(t_log);
-    hub.detiene_for_all();
-    hub.on_credito().clear();
-    hub.on_error().clear();
+        log.update_log(t_log);
+        hub.detiene_for_all();
+        hub.on_credito().clear();
+        hub.on_error().clear();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+        async_gui.dispatch_to_gui([this]()
+                                  { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
-    return crow::response(Log::json_ticket(t_log));
+        return crow::response(Log::json_ticket(t_log));
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << e.what();
+        return crow::response(500, std::string("Error: ") + e.what());
+    }
 }
 
 crow::response Pago::inicia_cambio(const crow::request &req)
@@ -100,17 +110,17 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
     async_gui.dispatch_to_gui([this]()
-    { 
+                              { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(Glib::ustring::format(t_log->m_total));
         v_lbl_faltante->set_text(Glib::ustring::format(t_log->m_total));
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+        cv_finalizado.wait(lock, [this]
+                           { return transaccion_terminada; });
     }
 
     hub.inicia_pago(t_log->m_ingreso, true);
@@ -119,7 +129,8 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     hub.on_credito().clear();
     hub.on_error().clear();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
 }
@@ -138,17 +149,17 @@ crow::response Pago::inicia_cambio_manual(const crow::request &req)
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
     async_gui.dispatch_to_gui([this]()
-    { 
+                              { 
         Global::Widget::v_main_stack->set_visible_child(*this); 
         v_lbl_monto_total->set_text(Glib::ustring::format(t_log->m_total));
         v_lbl_faltante->set_text(Glib::ustring::format(t_log->m_total));
         v_lbl_cambio->set_text("0");
-        v_lbl_recibido->set_text("0"); 
-    });
+        v_lbl_recibido->set_text("0"); });
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
+        cv_finalizado.wait(lock, [this]
+                           { return transaccion_terminada; });
     }
 
     return crow::response(200);
@@ -168,7 +179,8 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     log.update_log(t_log);
     hub.detiene_for_all();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
     hub.on_credito().clear();
     hub.on_error().clear();
 
@@ -183,7 +195,8 @@ crow::response Pago::cancelar_cambio_manual(const crow::request &req)
     log.update_log(t_log);
     hub.detiene_for_all();
 
-    async_gui.dispatch_to_gui([this]() { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    async_gui.dispatch_to_gui([this]()
+                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
     hub.on_credito().clear();
     hub.on_error().clear();
 
@@ -217,8 +230,7 @@ void Pago::reset_log(const crow::json::rvalue &param, const std::string &type)
     hub.on_credito().connect(sigc::mem_fun(*this, &Pago::on_credit));
     hub.on_error().connect(sigc::mem_fun(*this, &Pago::on_error));
 
-    t_log = MLog::create
-    (
+    t_log = MLog::create(
         0,
         Global::User::id,
         type,
@@ -227,8 +239,7 @@ void Pago::reset_log(const crow::json::rvalue &param, const std::string &type)
         param.has("value") ? param["value"].i() : param["total"].i(),
         0,
         "Creacion de evento",
-        Glib::DateTime::create_now_local()
-    );
+        Glib::DateTime::create_now_local());
 
     t_log->m_id = log.insert_log(t_log);
 }

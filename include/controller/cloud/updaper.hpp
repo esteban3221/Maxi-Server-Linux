@@ -61,6 +61,8 @@ inline void checkAndApplyUpdate()
     }
 
     std::string temp_path = current_executable_path + ".new";
+    std::string backup_path = current_executable_path + ".bak";
+    std::string flag_path = current_executable_path + ".update_in_progress";
 
     g_message("Nueva versión encontrada v%d.%d.%d+%d. Descargando...", remote_major, remote_minor, remote_patch, remote_build);
 
@@ -79,8 +81,8 @@ inline void checkAndApplyUpdate()
         g_warning("Error al descargar la actualización.");
         return;
     }
-    file.close();
 
+    file.close();
     std::error_code ec;
 
     std::filesystem::permissions(temp_path,
@@ -89,16 +91,23 @@ inline void checkAndApplyUpdate()
                                      std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
                                  std::filesystem::perm_options::add, ec);
 
+    std::filesystem::copy_file(current_executable_path, backup_path, std::filesystem::copy_options::overwrite_existing, ec);
+    std::ofstream flag_file(flag_path);
+
+    flag_file << "updating";
+    flag_file.close();
+
     std::filesystem::rename(temp_path, current_executable_path, ec);
 
     if (!ec)
     {
         g_message("Actualización aplicada con éxito.");
-        Global::System::showNotify("Maxicajero", "Actualización aplicada con éxito. Aplicando en el proximo reinicio", "dialog-information");
+        Global::System::showNotify("Maxicajero", "Actualización aplicada con éxito. Aplicando en el próximo reinicio.", "dialog-information");
     }
     else
     {
         g_critical("Error al reemplazar el binario actual: %s", ec.message().c_str());
-        std::filesystem::remove(temp_path, ec); // Limpiar la basura si falló
+        std::filesystem::remove(temp_path, ec);
+        std::filesystem::remove(flag_path, ec);
     }
 }

@@ -254,39 +254,54 @@ std::map<std::string, cpr::Response> CashHub::command_for_all(HttpMethod method,
 
 void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow::json::rvalue> set_routes)
 {
-    for (auto &&i : unidades)
+    bool expected = false;
+    if (is_in_process.compare_exchange_strong(expected, true))
     {
-        // por ahora todos tiene la misma configuracion de arranque
-        i->property_token() = Sesion::token;
-        i->property_conf().habilita_recolector = conf.habilita_recolector;
-        i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
-        i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
-
-        if (auto device_id = i->property_device_id(); set_routes.contains(device_id))
+        CROW_LOG_WARNING << "Hub Cash ya está en proceso. Ignorando nueva inicialización.";
+        return;
+    }
+    try
+    {
+        for (auto &&i : unidades)
         {
-            i->inicia_conecta(set_routes[device_id]);
-        }
-        else
-        {
-            CROW_LOG_WARNING << "No se especificaron rutas para el dispositivo: " << device_id << " Usando las de default.";
-            i->inicia_conecta(rutas_default(i.get()));
-        }
+            // por ahora todos tiene la misma configuracion de arranque
+            i->property_token() = Sesion::token;
+            i->property_conf().habilita_recolector = conf.habilita_recolector;
+            i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
+            i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
-        if (i->property_conf().ssp == 0)
-        {
-            m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-            auto snapshot_level = crow::json::load(i->property_ultimo_cash_level());
-
-            for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
+            if (auto device_id = i->property_device_id(); set_routes.contains(device_id))
             {
-                auto item = m_list_billetes->get_item(i);
-                for (size_t j = 0; j < snapshot_level.size(); j++)
+                i->inicia_conecta(set_routes[device_id]);
+            }
+            else
+            {
+                CROW_LOG_WARNING << "No se especificaron rutas para el dispositivo: " << device_id << " Usando las de default.";
+                i->inicia_conecta(rutas_default(i.get()));
+            }
+
+            if (i->property_conf().ssp == 0)
+            {
+                m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
+                auto snapshot_level = crow::json::load(i->property_ultimo_cash_level());
+
+                for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
                 {
-                    if ((snapshot_level[j]["value"].i() / 100) == item->m_denominacion)
-                        item->m_cant_recy = snapshot_level[j]["storedInPayout"].i();
+                    auto item = m_list_billetes->get_item(i);
+                    for (size_t j = 0; j < snapshot_level.size(); j++)
+                    {
+                        if ((snapshot_level[j]["value"].i() / 100) == item->m_denominacion)
+                            item->m_cant_recy = snapshot_level[j]["storedInPayout"].i();
+                    }
                 }
             }
         }
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "Error inicializando CashHub: " << e.what();
+        is_in_process.store(false);
+        throw;
     }
 }
 
@@ -294,6 +309,7 @@ void CashHub::detiene_for_all(void)
 {
     for (auto &&i : unidades)
         i->detiene_desconecta();
+    is_in_process.store(false);
 }
 
 void CashHub::inicia_poll_for_all()

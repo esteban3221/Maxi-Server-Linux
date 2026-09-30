@@ -16,16 +16,5 @@ void DetallesValidador::init_validadores(void)
     auto &hub = CashHub::instance();
     hub.inicializar_hardware();
 
-    // Solo para pruebas
-    
-    // Conf conf;
-    // conf.habilita_recolector = false;
-    // conf.auto_acepta_credito = false;
-    // conf.habilita_salida_credito = true;
-
-    // hub.inicia_for_all(conf,{});
-    
-    // hub.inicia_pago(5);
-
-    // hub.detiene_for_all();
+    ///@todo: Mostrar datos de información de los validadores en la GUI
 }
