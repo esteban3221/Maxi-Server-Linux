@@ -23,7 +23,7 @@ inline void checkAndApplyUpdate()
     auto response = cpr::Get(cpr::Url{url_manifest});
     if (response.status_code != 200)
     {
-        g_warning("No se pudo contactar al servidor de actualizaciones.\n %s", response.text.c_str());
+        g_warning("No se pudo contactar al servidor de actualizaciones. (HTTP %ld).", response.status_code);
         return;
     }
 
@@ -34,15 +34,12 @@ inline void checkAndApplyUpdate()
     int remote_build = json_data["build"].i();
     std::string download_url = json_data["url"].s();
 
-    bool hay_actualizacion = false;
-    if (remote_major > Maxicajero::Version::MAJOR)
-        hay_actualizacion = true;
-    else if (remote_major == Maxicajero::Version::MAJOR && remote_minor > Maxicajero::Version::MINOR)
-        hay_actualizacion = true;
-    else if (remote_major == Maxicajero::Version::MAJOR && remote_minor == Maxicajero::Version::MINOR && remote_patch > Maxicajero::Version::PATCH)
-        hay_actualizacion = true;
-    else if (remote_major == Maxicajero::Version::MAJOR && remote_minor == Maxicajero::Version::MINOR && remote_patch == Maxicajero::Version::PATCH && remote_build > Maxicajero::Version::BUILD)
-        hay_actualizacion = true;
+    auto remote = std::make_tuple(remote_major, remote_minor, remote_patch, remote_build);
+    auto local  = std::make_tuple(Maxicajero::Version::MAJOR,
+                                Maxicajero::Version::MINOR,
+                                Maxicajero::Version::PATCH,
+                                Maxicajero::Version::BUILD);
+    bool hay_actualizacion = remote > local;
 
     if (!hay_actualizacion)
     {
@@ -51,14 +48,13 @@ inline void checkAndApplyUpdate()
     }
 
     char result_[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", result_, PATH_MAX);
-    std::string current_executable_path(result_, (count > 0) ? count : 0);
-
-    if (current_executable_path.empty())
-    {
-        g_critical("No se pudo determinar la ruta del ejecutable actual.");
+    ssize_t count = readlink("/proc/self/exe", result_, PATH_MAX - 1);
+    if (count == -1) {
+        g_critical("readlink falló: %s", strerror(errno));
         return;
     }
+    result_[count] = '\0';
+    std::string current_executable_path(result_, count);
 
     std::string temp_path = current_executable_path + ".new";
     std::string backup_path = current_executable_path + ".bak";

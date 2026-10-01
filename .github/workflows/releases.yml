@@ -29,13 +29,25 @@ jobs:
       - name: Prepare binary
         run: |
           mv build/Maxicajero-Server-aarch64 ./Maxicajero-Server-aarch64
+      
+      - name: Detect prerelease
+        id: detect
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" =~ -(alpha|beta|rc|pre|dev|test) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "✅ Detectado prerelease: $TAG"
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "✅ Release estable: $TAG"
+          fi
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v1
         with:
           files: Maxicajero-Server-aarch64
-          body: "${{ github.event.head_commit.message }}"
+          generate_release_notes: true
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.detect.outputs.is_prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
