@@ -1,16 +1,13 @@
 #include "controller/venta/metodo_pago.hpp"
 
-MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : VMetodoPago(cobject, refBuilder)
+MetodoPago::MetodoPago(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : VMetodoPago(cobject, refBuilder) ,
+                                                                                                                      transaccion_terminada(true)
 {
     auto builder = Gtk::Builder::create_from_string(View::ui_vp);
     efectivo_controller = Gtk::Builder::get_widget_derived<Efectivo>(builder, "box", app);
     Global::Widget::v_main_stack->add(*efectivo_controller, "8", "Efectivo");
 
     tarjeta_controller = std::make_unique<Tarjeta>();
-
-    builder = Gtk::Builder::create_from_string(View::ui_cortinilla_carga);
-    cortinilla_carga = Gtk::Builder::get_widget_derived<ViewCarga>(builder, "cortinilla_carga");
-    Global::Widget::v_main_stack->add(*cortinilla_carga, "12", "Carga");
 
     builder = Gtk::Builder::create_from_string(View::ui_nip);
     dial_monto = Gtk::Builder::get_widget_derived<DialMonto>(builder, "box_nip");
@@ -58,11 +55,12 @@ void MetodoPago::btn_cancelar_on_click()
     v_dialog->set_secondary_text("¿Desea cancelar la transacción actual?");
 
     v_dialog->signal_response().connect([this](int response_id)
-                                        {
-            if (response_id == Gtk::ResponseType::OK)
-                cancelacion_completa();
-            
-            v_dialog->close(); });
+    {
+        if (response_id == Gtk::ResponseType::OK)
+            cancelacion_completa();
+        
+        v_dialog->close(); 
+    });
     v_dialog->show();
 }
 
@@ -72,8 +70,11 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
     {
         auto param = crow::json::load(req.body);
         if (!param)
-            return crow::response(400, "Cuerpo de petición inválido (No es JSON)");
-
+            return crow::response(crow::status::BAD_REQUEST, "Cuerpo de petición inválido (No es JSON)");
+        
+        if (!transaccion_terminada)
+            return crow::response(crow::status::NOT_ACCEPTABLE, "No se puede aceptar hasta que se termine la operacion en curso.");
+        
         metodo_seleccionado = Metodo::NINGUNO;
         auto db = std::make_unique<Configuracion>();
         auto db_empresa = db->get_conf_data(15, 15);
@@ -94,7 +95,8 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
             0,
             param["value"].i(),
             "Creacion de evento",
-            Glib::DateTime::create_now_local());
+            Glib::DateTime::create_now_local()
+        );
 
         m_log->m_id = log.insert_log(m_log);
         total_original = m_log->m_total;
@@ -128,8 +130,7 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         m_log->m_total = total_original;
 
         if (imprimir_ticket)
-            Glib::signal_idle().connect_once([this]()
-                                             { Global::System::imprime_ticket(m_log); });
+            Glib::signal_idle().connect_once([this](){ Global::System::imprime_ticket(m_log); });
 
         return crow::response(200, Log::json_ticket(m_log));
     }
@@ -168,23 +169,22 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
     if (remanente > 0)
         m_log->m_total = remanente;
 
-    Glib::signal_idle().connect_once([this, metodo]()
-                                     { Global::Widget::v_main_stack->set_visible_child(*cortinilla_carga); });
+    Glib::signal_idle().connect_once([this](){ Global::Widget::v_main_stack->set_visible_child(*Global::Widget::v_view_carga); });
 
     std::thread([this, metodo, remanente]()
-                {
+    {
         switch (metodo)
         {
             case Metodo::EFECTIVO:
             {
-                cortinilla_carga->modo(true);
+                Global::Widget::v_view_carga->modo(true);
                 efectivo_controller->inicia(m_log, is_view_ingreso);
                 if (efectivo_controller->is_cancelacion_total())
                     cancelacion_completa();
                 break;
             }
             case Metodo::TARJETA:
-                cortinilla_carga->modo();
+                Global::Widget::v_view_carga->modo();
                 tarjeta_controller->iniciar(m_log);
                 break;
             case Metodo::MIXTO:
@@ -208,8 +208,8 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
                 
             else
                 Global::Widget::v_main_stack->set_visible_child(*this);
-        }); })
-        .detach();
+        }); 
+    }).detach();
 }
 
 std::string MetodoPago::get_metodo_nombre(Metodo m)
@@ -230,7 +230,7 @@ std::string MetodoPago::get_metodo_nombre(Metodo m)
 void MetodoPago::btn_efectivo_on_click()
 {
     Glib::signal_idle().connect_once([this]()
-                                     {
+    {
         metodo_seleccionado = Metodo::EFECTIVO;
         dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
         dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
@@ -238,13 +238,14 @@ void MetodoPago::btn_efectivo_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
-            pagar_por_metodo(metodo_seleccionado); });
+            pagar_por_metodo(metodo_seleccionado); 
+    });
 }
 
 void MetodoPago::btn_tarjeta_on_click()
 {
     Glib::signal_idle().connect_once([this]()
-                                     {
+    {
         metodo_seleccionado = Metodo::TARJETA;
         dial_monto->property_monto_dial() = (total_original - m_log->m_ingreso);
         dial_monto->property_metodo_dial() = get_metodo_nombre(metodo_seleccionado);
@@ -252,7 +253,8 @@ void MetodoPago::btn_tarjeta_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
-            pagar_por_metodo(metodo_seleccionado); });
+            pagar_por_metodo(metodo_seleccionado); 
+    });
 }
 
 void MetodoPago::btn_diferido_on_click()

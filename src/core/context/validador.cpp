@@ -179,25 +179,24 @@ bool ValidadorUnit::esperar_pago_async()
     bool terminado = false;
     bool exito = true;
     int reintentos_iniciales = 0;
+    std::string state;
 
-    // --- Bucle principal de lógica ---
     while (!terminado)
     {
-        { // Scope para el lock
+        { 
             std::lock_guard<std::mutex> lock(mtx_comunicacion);
             auto resp = command_get("GetDeviceStatus");
             if (resp.status_code == cpr::status::HTTP_OK)
             {
                 auto json = crow::json::load(resp.text);
-                std::string state = json.has("deviceState") ? std::string(json["deviceState"].s()) : "";
+                state = json.has("deviceState") ? std::string(json["deviceState"].s()) : "";
 
                 if (state == "DISPENSING")
                     detecto_dispensing = true;
 
                 if (state == "IN_PROGRESS")
-                    goto sleep_and_continue; // Usamos esto para no repetir el sleep abajo
+                    goto sleep_and_continue; 
 
-                // Lógica de procesamiento de buffer (tu lógica actual)
                 for (const auto &item : json["pollBuffer"])
                 {
                     std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
@@ -215,7 +214,7 @@ bool ValidadorUnit::esperar_pago_async()
                     }
                 }
 
-                if (!detecto_dispensing && ++reintentos_iniciales > 50)
+                if (!detecto_dispensing && ++reintentos_iniciales > 100)
                 {
                     exito = false;
                     terminado = true;
@@ -227,9 +226,6 @@ bool ValidadorUnit::esperar_pago_async()
         if (!terminado)
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
-
-    // --- FASE DE LIMPIEZA (Draining) ---
-    // Seguiremos consultando por 2 segundos más para vaciar cualquier mensaje residual
     CROW_LOG_INFO << "Iniciando limpieza de buffer por 2 segundos...";
     auto inicio_limpieza = std::chrono::steady_clock::now();
 
@@ -241,12 +237,9 @@ bool ValidadorUnit::esperar_pago_async()
             if (resp.status_code == cpr::status::HTTP_OK)
             {
                 auto json = crow::json::load(resp.text);
-                // Solo consumimos el buffer, no tomamos decisiones de éxito/fallo aquí
-                // ya que la transacción principal terminó.
+                
                 if (json["pollBuffer"].size() > 0)
-                {
                     CROW_LOG_DEBUG << "Mensaje residual descartado durante limpieza: " << json["pollBuffer"].size();
-                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
@@ -333,6 +326,8 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
             CROW_LOG_INFO << "Bloqueando hilo hasta finalizar entrega física...";
             future.wait();
             CROW_LOG_INFO << "Entrega terminada. Continuando con el flujo.";
+            if(!future.get())
+                signal_error.emit(device_id, "Atasco y/o expiracion de tiempo de entrega.");
         }
         else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
         {

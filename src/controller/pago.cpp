@@ -32,9 +32,14 @@ void Pago::on_btn_cancel_click()
 
 crow::response Pago::inicia(const crow::request &req)
 {
+    try
+    {
     Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
-
     reset_log(crow::json::load(req.body), "Pago");
+    Glib::signal_idle().connect_once([]{
+        Global::Widget::v_main_stack->set_visible_child("12");
+        Global::Widget::v_view_carga->modo(true);
+    });
     t_log->m_estatus = "Exito.";
 
     Conf conf;
@@ -55,6 +60,12 @@ crow::response Pago::inicia(const crow::request &req)
                               { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << e.what();
+        return crow::response(500, std::string("Error: ") + e.what());
+    }
 }
 
 crow::response Pago::inicia_manual(const crow::request &req)
@@ -66,6 +77,12 @@ crow::response Pago::inicia_manual(const crow::request &req)
         std::map<std::string, std::string> map_val;
 
         reset_log(json, "Pago Manual");
+
+        Glib::signal_idle().connect_once([]{
+            Global::Widget::v_main_stack->set_visible_child("12");
+            Global::Widget::v_view_carga->modo(true);
+        });
+        
         t_log->m_estatus = "Exito.";
 
         for (auto &&k : json["pago_manual"].keys())
@@ -100,6 +117,10 @@ crow::response Pago::inicia_cambio(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_A);
     reset_log(crow::json::load(req.body), "Cambio");
+    Glib::signal_idle().connect_once([]{
+        Global::Widget::v_main_stack->set_visible_child("12");
+        Global::Widget::v_view_carga->modo(true);
+    });
     t_log->m_estatus = "Exito.";
 
     Conf conf;
@@ -139,6 +160,10 @@ crow::response Pago::inicia_cambio_manual(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     reset_log(crow::json::load(req.body), "Cambio Manual");
+    Glib::signal_idle().connect_once([]{
+        Global::Widget::v_main_stack->set_visible_child("12");
+        Global::Widget::v_view_carga->modo(true);
+    });
     t_log->m_estatus = "Exito.";
 
     Conf conf;
@@ -168,6 +193,10 @@ crow::response Pago::inicia_cambio_manual(const crow::request &req)
 crow::response Pago::termina_cambio_manual(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
+    Glib::signal_idle().connect_once([]{
+        Global::Widget::v_main_stack->set_visible_child("12");
+        Global::Widget::v_view_carga->modo(true);
+    });
 
     auto json = crow::json::load(req.body);
     std::map<std::string, std::string> map_val;

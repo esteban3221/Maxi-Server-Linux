@@ -2,6 +2,7 @@
 
 #include <crow.h>
 #include <libnotify/notify.h>
+#include "view/cortinilla_carga.hpp"
 #include <cpr/cpr.h>
 #include <atomic>
 #include <gtkmm.h>
@@ -44,6 +45,7 @@ namespace Global
         // manejador global de vistas
         extern Gtk::Stack *v_main_stack;
         extern Gtk::Window *v_main_window;
+        extern ViewCarga *v_view_carga;
         namespace Refill
         {
             extern Gtk::ColumnView *v_tree_reciclador_monedas, *v_tree_reciclador_billetes;

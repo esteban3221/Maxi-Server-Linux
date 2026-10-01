@@ -3,7 +3,6 @@
 #include <mutex>
 
 #include "view/metodo_pago.hpp"
-#include "view/cortinilla_carga.hpp"
 #include "model/configuracion.hpp"
 #include "model/log.hpp"
 #include "dialmonto.hpp"
@@ -41,7 +40,6 @@ private:
     Efectivo *efectivo_controller;
     std::unique_ptr<Tarjeta> tarjeta_controller;
     DialMonto *dial_monto;
-    ViewCarga *cortinilla_carga;
 
     void btn_efectivo_on_click();
     void btn_tarjeta_on_click();

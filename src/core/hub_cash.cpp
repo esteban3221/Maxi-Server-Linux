@@ -254,14 +254,14 @@ std::map<std::string, cpr::Response> CashHub::command_for_all(HttpMethod method,
 
 void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow::json::rvalue> set_routes)
 {
-    bool expected = false;
-    if (is_in_process.compare_exchange_strong(expected, true))
+    if (is_in_process.load())
     {
         CROW_LOG_WARNING << "Hub Cash ya está en proceso. Ignorando nueva inicialización.";
         return;
     }
     try
     {
+        is_in_process.store(true);
         for (auto &&i : unidades)
         {
             // por ahora todos tiene la misma configuracion de arranque

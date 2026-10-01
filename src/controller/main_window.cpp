@@ -43,6 +43,10 @@ MainWindow::MainWindow(/* args */) : contador_click(0),
     Global::Widget::v_carrousel = Gtk::manage(new VCarrousel);
     Global::Widget::v_main_stack->add(*Global::Widget::v_carrousel, "10", "Carrousel");
 
+    builder = Gtk::Builder::create_from_string(View::ui_cortinilla_carga);
+    Global::Widget::v_view_carga = Gtk::Builder::get_widget_derived<ViewCarga>(builder, "cortinilla_carga");
+    Global::Widget::v_main_stack->add(*Global::Widget::v_view_carga, "12", "Carga");
+
     Global::Widget::v_main_stack->set_transition_type(Gtk::StackTransitionType::SLIDE_LEFT_RIGHT);
 
     // inicializacion de servidor

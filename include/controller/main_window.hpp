@@ -8,10 +8,7 @@
 
 #include "controller/session.hpp"
 #include "controller/log.hpp"
-
 #include "controller/venta/metodo_pago.hpp"
-
-
 #include "controller/pago.hpp"
 #include "controller/pago_manual.hpp"
 #include "controller/refill.hpp"

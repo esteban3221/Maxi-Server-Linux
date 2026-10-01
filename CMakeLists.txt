@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project("Maxicajero Server Local" VERSION 2.1.2 LANGUAGES CXX)
+project("Maxicajero Server Local" VERSION 2.1.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,7 +37,8 @@ endif()
 
 message(STATUS "${PROJECT_NAME} v${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD}) ${ARCH_NAME}")
 
-option(ENABLE_PRETTY_JSON "Activar formato visual para JSON en logs" ON)
+#el debug json se revisa por envenged, por lo que solo se activa si se ve la salida por consola
+option(ENABLE_PRETTY_JSON "Activar formato visual para JSON en logs" OFF)
 
 if(ENABLE_PRETTY_JSON)
     add_definitions(-DMODO_DEBUG_JSON)

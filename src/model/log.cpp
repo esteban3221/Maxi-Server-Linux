@@ -46,9 +46,9 @@ const std::shared_ptr<ResultMap> Log::get_log(const std::string &tipo, const std
 
 size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
-    auto &hub = CashHub::instance();
-    if (hub.is_in_process.load())
-        throw std::runtime_error("Hub Cash está en proceso. No se puede insertar un log en este momento.");
+    auto vista_actual = Global::Widget::v_main_stack->get_visible_child_name();
+    if (CashHub::instance().is_in_process.load() ||  vista_actual == "3" || vista_actual == "12")
+        throw std::runtime_error("POS está en proceso. \nNo se pueden realizar movimientos hasta que se termine la transacción actual.");
 
     auto &database = Database::getInstance();
 
