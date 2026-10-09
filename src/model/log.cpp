@@ -48,7 +48,7 @@ size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 {
     auto vista_actual = Global::Widget::v_main_stack->get_visible_child_name();
     if (CashHub::instance().is_in_process.load() ||  vista_actual == "3" || vista_actual == "12")
-        throw std::runtime_error("POS está en proceso. \nNo se pueden realizar movimientos hasta que se termine la transacción actual.");
+        throw std::runtime_error("POS está en proceso. No se pueden realizar movimientos hasta que se termine la transacción actual.");
 
     auto &database = Database::getInstance();
 
