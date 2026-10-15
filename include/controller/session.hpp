@@ -39,4 +39,5 @@ public:
 
     static void valida_autorizacion(const crow::request &req, Global::User::Rol rol);
     static bool valida_administrador(const crow::request &req);
+    static bool tiene_permiso(const crow::request &req, Global::User::Rol rol);
 };

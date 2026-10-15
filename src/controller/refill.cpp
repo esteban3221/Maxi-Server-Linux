@@ -12,7 +12,6 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
 
     CROW_ROUTE(app, "/accion/inicia_refill").methods("POST"_method)(sigc::mem_fun(*this, &Refill::inicia));
     CROW_ROUTE(app, "/accion/deten_refill").methods("GET"_method)(sigc::mem_fun(*this, &Refill::deten_remoto));
-    CROW_ROUTE(app, "/validadores/get_dashboard").methods("GET"_method)(sigc::mem_fun(*this, &Refill::get_dashboard));
     CROW_ROUTE(app, "/validadores/update_imovilidad").methods("POST"_method)(sigc::mem_fun(*this, &Refill::update_imovilidad));
 
     CROW_ROUTE(app, "/validador/transpaso").methods("POST"_method)(sigc::mem_fun(*this, &Refill::transpaso));
@@ -50,9 +49,9 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
         auto factory = Gtk::SignalListItemFactory::create();
         factory->signal_setup().connect(sigc::mem_fun(*this, &Refill::on_setup_label));
         factory->signal_bind().connect(sigc::mem_fun(*this, &Refill::on_bind_alm));
-        auto column = Gtk::ColumnViewColumn::create("Casette", factory);
-        column->set_expand(true);
-        vcolumn->append_column(column);
+        column_cassette = Gtk::ColumnViewColumn::create("Casette", factory);
+        column_cassette->set_expand(true);
+        vcolumn->append_column(column_cassette);
     }
 
     {
@@ -300,11 +299,22 @@ crow::response Refill::inicia(const crow::request &req)
     conf.auto_acepta_credito = false;
     conf.habilita_salida_credito = true;
 
+    try
+    {
+        Sesion::valida_autorizacion(req, Global::User::Rol::Retirar_Casette);
+        async_gui.dispatch_to_gui([this](){column_cassette->set_visible(true);});
+    }
+    catch(const std::exception& e)
+    {
+        async_gui.dispatch_to_gui([this](){column_cassette->property_visible() = false;});
+        std::cerr << e.what() << '\n';
+    }
+    
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
 
     async_gui.dispatch_to_gui([this]()
-                              { Global::Widget::v_main_stack->set_visible_child(*this); });
+        { Global::Widget::v_main_stack->set_visible_child(*this); });
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
@@ -319,42 +329,6 @@ crow::response Refill::inicia(const crow::request &req)
                               { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
-}
-
-crow::response Refill::get_dashboard(const crow::request &req)
-{
-    Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
-
-    crow::json::wvalue json_final;
-    auto &hub = CashHub::instance();
-    auto map = hub.obten_ultimo_snapshot_level();
-
-    for (auto const &[device_id, valor] : map)
-    {
-        auto niveles_hw = valor["levels"];
-        auto tipo_db = (valor["type"].s() == "COIN" ? "Level_Coin" : "Level_Bill");
-        auto config_db = std::make_unique<LevelCash>(tipo_db)->get_level_cash();
-
-        crow::json::wvalue lista_hibrida = crow::json::wvalue::list();
-
-        for (size_t i = 0; i < niveles_hw.size(); i++)
-        {
-            crow::json::wvalue item = niveles_hw[i];
-
-            if (i < config_db->get_n_items())
-            {
-                auto db_item = config_db->get_item(i);
-                item["Inmovilidad_Min"] = db_item->m_nivel_inmo_min;
-                item["Inmovilidad"] = db_item->m_nivel_inmo;
-                item["Inmovilidad_Max"] = db_item->m_nivel_inmo_max;
-                // item["Ingreso"] = db_item->m_ingreso;
-            }
-            lista_hibrida[i] = std::move(item);
-        }
-        json_final[device_id]["levels"] = std::move(lista_hibrida);
-        json_final[device_id]["type"] = valor["type"].s();
-    }
-    return crow::response(json_final);
 }
 
 crow::response Refill::update_imovilidad(const crow::request &req)
@@ -384,7 +358,7 @@ crow::response Refill::retirada(const crow::request &req)
 {
     try
     {
-        Sesion::valida_autorizacion(req, Global::User::Rol::Retirada);
+        Sesion::valida_autorizacion(req, Global::User::Rol::Retirar_Casette);
         hub.on_error().connect(sigc::mem_fun(*this, &Refill::on_error));
         transaccion_terminada = false;
         cashbox_level = 0;

@@ -7,7 +7,6 @@ LogData::LogData(crow::SimpleApp &app)
     CROW_ROUTE(app, "/log/movimientos").methods("POST"_method)(sigc::mem_fun(*this, &LogData::get_log));
     CROW_ROUTE(app, "/log/corte_caja").methods("GET"_method)(sigc::mem_fun(*this, &LogData::corte_caja));
     CROW_ROUTE(app, "/log/get_levels").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels));
-    CROW_ROUTE(app, "/log/get_levels_sin_permiso").methods("GET"_method)(sigc::mem_fun(*this, &LogData::get_levels_sin_permiso));
 }
 
 LogData::~LogData()
@@ -112,27 +111,56 @@ crow::response LogData::get_log(const crow::request &req)
 
 crow::response LogData::get_levels(const crow::request &req)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Consulta_Efectivo);
+    bool tiene_pago = Sesion::tiene_permiso(req, Global::User::Rol::Pago);
+    bool tiene_consulta = Sesion::tiene_permiso(req, Global::User::Rol::Consulta_Efectivo);
+    bool tiene_carga = Sesion::tiene_permiso(req, Global::User::Rol::Carga);
+    bool tiene_retirada_cassette = Sesion::tiene_permiso(req, Global::User::Rol::Retirar_Casette);
 
-    crow::json::wvalue json;
+    if (!tiene_pago && !tiene_consulta && !tiene_carga && !tiene_retirada_cassette) 
+        return crow::response(crow::status::UNAUTHORIZED, "Denegado");
+
+    crow::json::wvalue json_final;
     auto &hub = CashHub::instance();
     auto map = hub.obten_ultimo_snapshot_level();
 
-    for (auto const &[llave, valor] : map)
-        json[llave] = valor["levels"];
+    for (auto const &[device_id, valor] : map)
+    {
+        auto niveles_hw = valor["levels"];
+        std::string tipo_dispositivo = valor["type"].s();
+        auto tipo_db = (tipo_dispositivo == "COIN" ? "Level_Coin" : "Level_Bill");
+        auto config_db = std::make_unique<LevelCash>(tipo_db)->get_level_cash();
 
-    return crow::response(json);
-}
+        std::vector<crow::json::wvalue> levels_ofuscados;
 
-crow::response LogData::get_levels_sin_permiso(const crow::request &req)
-{
-    Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
-    crow::json::wvalue json;
-    auto &hub = CashHub::instance();
-    auto map = hub.obten_ultimo_snapshot_level();
+        for (size_t i = 0; i < niveles_hw.size(); i++)
+        {
+            auto item_hw = niveles_hw[i];
+            crow::json::wvalue level_item;
 
-    for (auto const &[llave, valor] : map)
-        json[llave] = valor["levels"];
+            level_item["value"] = item_hw["value"].i();
 
-    return crow::response(json);
+            level_item["storedInPayout"] = (tiene_pago || tiene_consulta || tiene_carga) 
+                ? crow::json::wvalue(item_hw["storedInPayout"].u()) 
+                : crow::json::wvalue(nullptr);
+
+            level_item["storedInCashbox"] = tiene_retirada_cassette 
+                ? crow::json::wvalue(item_hw["storedInCashbox"].u()) 
+                : crow::json::wvalue(nullptr);
+
+            if (i < config_db->get_n_items())
+            {
+                auto db_item = config_db->get_item(i);
+                level_item["Inmovilidad_Min"] = db_item->m_nivel_inmo_min;
+                level_item["Inmovilidad"] = db_item->m_nivel_inmo;
+                level_item["Inmovilidad_Max"] = db_item->m_nivel_inmo_max;
+            }
+
+            levels_ofuscados.push_back(std::move(level_item));
+        }
+
+        json_final[device_id]["levels"] = std::move(levels_ofuscados);
+        json_final[device_id]["type"] = tipo_dispositivo;
+    }
+
+    return crow::response(crow::status::OK, json_final);
 }

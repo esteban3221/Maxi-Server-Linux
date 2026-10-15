@@ -82,9 +82,7 @@ void Sesion::valida_autorizacion(const crow::request &req, Global::User::Rol rol
     if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ")
         throw BadRequestError("Error en la peticion, no se recibieron datos / token");
 
-    std::string mycreds = auth_header.substr(7);
-
-    if (mycreds != token)
+    if (auth_header.substr(7) != token)
         throw UnauthorizedError("token invalido");
 
     UsuariosRoles u_roles;
@@ -102,6 +100,19 @@ void Sesion::valida_autorizacion(const crow::request &req, Global::User::Rol rol
     }
     else
         throw ServerError("Error al cargar roles");
+}
+
+bool Sesion::tiene_permiso(const crow::request &req, Global::User::Rol rol)
+{
+    try
+    {
+        valida_autorizacion(req, rol);
+        return true;
+    }
+    catch (const UnauthorizedError &)
+    {
+        return false;
+    }
 }
 
 void Sesion::on_websocket_open(crow::websocket::connection &conn)

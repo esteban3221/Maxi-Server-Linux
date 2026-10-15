@@ -20,7 +20,6 @@ private:
 
     crow::response inicia(const crow::request &req);
     crow::response deten_remoto(const crow::request &req);
-    crow::response get_dashboard(const crow::request &req);
     crow::response update_imovilidad(const crow::request &req);
 
     crow::response transpaso(const crow::request &req);
@@ -32,6 +31,7 @@ private:
     bool cancelado;
     size_t cashbox_level;
     std::condition_variable cv_finalizado;
+    Glib::RefPtr<Gtk::ColumnViewColumn> column_cassette;
     std::mutex mtx_espera;
     bool transaccion_terminada = false;
     void reset_log(const crow::json::rvalue &param);
