@@ -15,7 +15,6 @@ private:
     {
         sqlite3 = std::make_unique<SQLite3::SQLite>("data.db");
         this->sqlite3->open();
-
         if (not this->sqlite3->is_created())
         {
             this->sqlite3->command("CREATE TABLE usuarios (\n"
@@ -56,7 +55,7 @@ private:
                 mp_order_id                 TEXT NOT NULL UNIQUE,               -- "ORD01JSYD7XEZ2371TTHHMT5BWWTG" (el ID principal de la orden)
                 mp_payment_id               TEXT,                               -- "PAY01JSYD7XEZ2371TTHHMVWYJYG6" (dentro de transactions.payments[0].id)
                         
-                id_log                      INTEGER NOT NULL,                   -- enlace a tu log de validador/operación
+                id_log                      INTEGER NOT NULL,                   -- enlace a log de validador/operación
                         
                 monto                       REAL NOT NULL CHECK(monto > 0),     -- amount del payment
                 tipo                        TEXT NOT NULL,                      -- ej: 'credit_card', 'debit_card' (de config.payment_method.default_type o posterior)
@@ -115,7 +114,7 @@ private:
                                    "(NULL,'Apagar equipo');");
             this->sqlite3->command("insert into usuarios values (null,'admin','admin');");
 
-            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Descripcion text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , uuid_cloud TEXT , sync_status INTEGER DEFAULT 0 , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
+            this->sqlite3->command("CREATE TABLE log (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdUser INT, Tipo text, Descripcion text, Metodo text, Ingreso real, Cambio real, Total real, Estatus text, Fecha text , uuid_cloud TEXT , sync_status INTEGER DEFAULT 0 , FOREIGN KEY (IdUser) REFERENCES usuarios (id))");
 
             this->sqlite3->command("CREATE TABLE pagoPendiente (Id INTEGER PRIMARY KEY AUTOINCREMENT, IdLog int, Remanente real, Estatus text, FOREIGN KEY (IdLog) REFERENCES log (Id))");
 

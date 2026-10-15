@@ -50,7 +50,7 @@ void Impresora::activa_visualizacion(Gtk::ListBoxRow *row)
 void Impresora::activa_test(Gtk::ListBoxRow *row)
 {
     Global::System::showNotify("Impresión", "Se imprimio ticket de prueba.", "dialog-information");
-    Global::System::imprime_ticket(MLog::create(1110, 1, "Test Impresion", "Este es un ticket de prueba para verificar la funcionalidad de impresión.", 10000, 10000, 0, "Exito", Glib::DateTime::create_now_local()));
+    Global::System::imprime_ticket(MLog::create(1110, 1, "Test Impresion", "Este es un ticket de prueba para verificar la funcionalidad de impresión.", "Efectivo", 10000, 10000, 0, "Exito", Glib::DateTime::create_now_local()));
 }
 
 void Impresora::estado_checkbutton()
@@ -187,7 +187,7 @@ namespace Global
                    << std::right << std::setw(18) << "<span weight=\"bold\" size=\"large\">$" << log->m_total << "</span>\n";
 
             ticket << std::left << std::setw(18) << "Tipo de pago:"
-                   << std::right << std::setw(18) << "Efectivo\n";
+                   << std::right << std::setw(18) << log->m_metodo << '\n';
 
             ticket << std::left << std::setw(18) << "Ingreso:"
                    << "$" << log->m_ingreso << "\n";

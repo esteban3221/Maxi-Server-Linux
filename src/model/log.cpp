@@ -3,6 +3,7 @@
 
 Log::Log(/* args */)
 {
+    
 }
 
 Log::~Log()
@@ -56,11 +57,12 @@ size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
         list->m_uuid_cloud = std::unique_ptr<gchar, void (*)(gpointer)>(g_uuid_string_random(), g_free).get();
 
     database.sqlite3->command(
-        "INSERT INTO log (IdUser, Tipo, Descripcion, Ingreso, Cambio, Total, Estatus, Fecha, uuid_cloud, sync_status) "
-        "VALUES(?,?,?,?,?,?,?,?,?,0)",
+        "INSERT INTO log (IdUser, Tipo, Descripcion, Metodo, Ingreso, Cambio, Total, Estatus, Fecha, uuid_cloud, sync_status) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,0)",
         list->m_id_user,
         list->m_tipo.c_str(),
         list->m_descripcion.c_str(),
+        list->m_metodo.c_str(),
         list->m_ingreso,
         list->m_cambio,
         list->m_total,
@@ -79,10 +81,11 @@ size_t Log::insert_log(const Glib::RefPtr<MLog> &list)
 void Log::update_log(const Glib::RefPtr<MLog> &list)
 {
     auto &database = Database::getInstance();
-    auto contenedor_data = database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
+    auto contenedor_data = database.sqlite3->command("UPDATE log SET idUser = ?, Tipo = ?, Ingreso = ?, Metodo = ?, Cambio = ?, Total = ?, Estatus = ?, Fecha = ? WHERE Id = ?",
                                                      list->m_id_user,
                                                      list->m_tipo.c_str(),
                                                      list->m_ingreso,
+                                                     list->m_metodo,
                                                      list->m_cambio,
                                                      list->m_total,
                                                      list->m_estatus.c_str(),
@@ -103,6 +106,7 @@ crow::json::wvalue Log::json_ticket(Glib::RefPtr<MLog> t_log)
     data["ticket"][0]["fecha"] = t_log->m_fecha.format_iso8601();
     data["ticket"][0]["tipo"] = t_log->m_tipo;
     data["ticket"][0]["descripcion"] = t_log->m_descripcion;
+    data["ticket"][0]["metodo"] = t_log->m_metodo;
     data["ticket"][0]["total"] = t_log->m_total;
     data["ticket"][0]["cambio"] = t_log->m_cambio;
     data["ticket"][0]["ingreso"] = t_log->m_ingreso;

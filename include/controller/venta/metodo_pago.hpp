@@ -22,12 +22,7 @@ private:
         MIXTO,
         NINGUNO
     } metodo_seleccionado;
-    enum class Predeterminado
-    {
-        EFECTIVO,
-        TARJETA,
-        MIXTO
-    };
+
     std::string get_metodo_nombre(Metodo);
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
@@ -50,7 +45,7 @@ private:
     void cancelacion_completa();
     void reset_log();
 
-    Predeterminado obtener_metodo_predeterminado();
+    Metodo obtener_metodo_predeterminado();
     void pagar_por_metodo(Metodo metodo, size_t remanente = 0);
 
     crow::response procesa_pago(const crow::request &req);

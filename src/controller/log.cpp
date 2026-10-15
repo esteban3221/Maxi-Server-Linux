@@ -76,6 +76,7 @@ crow::response LogData::get_log(const crow::request &req)
         log_entry["usuario"] = user->get_usuarios(std::stoull(contenedor_log->at("IdUser")[i]))->m_usuario;
         log_entry["tipo"] = contenedor_log->at("Tipo")[i];
         log_entry["descripcion"] = contenedor_log->at("Descripcion")[i];
+        log_entry["metodo"] = contenedor_log->at("Metodo")[i];
         log_entry["ingreso"] = std::stoi(contenedor_log->at("Ingreso")[i]);
         log_entry["cambio"] = std::stoi(contenedor_log->at("Cambio")[i]);
         log_entry["total"] = std::stoi(contenedor_log->at("Total")[i]);

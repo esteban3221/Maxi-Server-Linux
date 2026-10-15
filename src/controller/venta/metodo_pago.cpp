@@ -75,7 +75,6 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         if (!transaccion_terminada)
             return crow::response(crow::status::NOT_ACCEPTABLE, "No se puede aceptar hasta que se termine la operacion en curso.");
         
-        metodo_seleccionado = Metodo::NINGUNO;
         auto db = std::make_unique<Configuracion>();
         auto db_empresa = db->get_conf_data(15, 15);
         bool imprimir_ticket = db_empresa->get_item(0)->m_valor == "1";
@@ -91,6 +90,7 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
             Global::User::id,
             is_view_ingreso ? "Ingreso" : "Venta",
             param["concepto"].operator std::string(),
+            get_metodo_nombre(obtener_metodo_predeterminado()),
             0,
             0,
             param["value"].i(),
@@ -101,24 +101,12 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
         m_log->m_id = log.insert_log(m_log);
         total_original = m_log->m_total;
 
-        switch (obtener_metodo_predeterminado())
-        {
-        case Predeterminado::EFECTIVO:
-            pagar_por_metodo(Metodo::EFECTIVO);
-            break;
-        case Predeterminado::TARJETA:
-            pagar_por_metodo(Metodo::TARJETA);
-            break;
-        case Predeterminado::MIXTO:
-            Global::Widget::v_main_stack->set_visible_child(*this);
-            break;
-        default:
-            throw std::runtime_error("Método de pago no soportado");
-        }
+        pagar_por_metodo(obtener_metodo_predeterminado());
+
         {
             std::unique_lock<std::mutex> lock(mtx_espera);
 
-            bool finalizado_ok = cv_finalizado.wait_for(lock, std::chrono::minutes(5), [this]
+            bool finalizado_ok = cv_finalizado.wait_for(lock, std::chrono::minutes(15), [this]
                                                         { return transaccion_terminada; });
 
             if (!finalizado_ok)
@@ -140,7 +128,7 @@ crow::response MetodoPago::procesa_pago(const crow::request &req)
     }
 }
 
-MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()
+MetodoPago::Metodo MetodoPago::obtener_metodo_predeterminado()
 {
     /*id 24 = 0/1 permite diferir*/
     auto config = std::make_unique<Configuracion>();
@@ -154,13 +142,13 @@ MetodoPago::Predeterminado MetodoPago::obtener_metodo_predeterminado()
     switch (metodo)
     {
     case 0:
-        return Predeterminado::EFECTIVO;
+        return Metodo::EFECTIVO;
     case 1:
-        return Predeterminado::TARJETA;
+        return Metodo::TARJETA;
     case 2:
-        return Predeterminado::MIXTO;
+        return Metodo::MIXTO;
     default:
-        return Predeterminado::EFECTIVO;
+        return Metodo::NINGUNO;
     }
 }
 
@@ -223,7 +211,7 @@ std::string MetodoPago::get_metodo_nombre(Metodo m)
     case Metodo::MIXTO:
         return "MIXTO";
     default:
-        return "NO_SELECCIONADO";
+        return "NO SELECCIONADO";
     }
 }
 
@@ -238,7 +226,11 @@ void MetodoPago::btn_efectivo_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
+        {
+            m_log->m_metodo = get_metodo_nombre(metodo_seleccionado);
+            log.update_log(m_log);
             pagar_por_metodo(metodo_seleccionado); 
+        }
     });
 }
 
@@ -253,12 +245,20 @@ void MetodoPago::btn_tarjeta_on_click()
         if (is_mixto)
             Global::Widget::v_main_stack->set_visible_child("11");
         else
+        {
             pagar_por_metodo(metodo_seleccionado); 
+            m_log->m_metodo = get_metodo_nombre(metodo_seleccionado);
+            log.update_log(m_log);
+        }
     });
 }
 
 void MetodoPago::btn_diferido_on_click()
 {
+    
+    m_log->m_metodo = get_metodo_nombre(Metodo::MIXTO);
+    log.update_log(m_log);
+
     metodo_seleccionado = Metodo::MIXTO;
     is_mixto = true;
     btn_tarjeta_on_click();

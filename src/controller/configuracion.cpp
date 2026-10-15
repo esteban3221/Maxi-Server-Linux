@@ -214,7 +214,7 @@ crow::response CConfiguracion::test_impresion(const crow::request &req)
 {
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     {
-        Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()));
+        Global::System::imprime_ticket(MLog::create(0, 0, "Test Impresion", "Concepto", "Efectivo", 100, 0, 100, "Completado", Glib::DateTime::create_now_local()));
         Global::System::showNotify("Impresión", "Se imprimio hoja de prueba.", "dialog-information");
 
         return crow::response(crow::status::OK);

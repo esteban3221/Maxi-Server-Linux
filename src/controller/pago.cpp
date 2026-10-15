@@ -263,6 +263,7 @@ void Pago::reset_log(const crow::json::rvalue &param, const std::string &type)
         0,
         Global::User::id,
         type,
+        "Efectivo",
         param["concepto"].operator std::string(),
         0,
         param.has("value") ? param["value"].i() : param["total"].i(),

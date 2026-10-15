@@ -21,7 +21,7 @@ void CloudWorker::process_queue()
 void CloudWorker::sincronizar_logs_pendientes()
 {
     auto &database = Database::getInstance();
-    auto result = database.sqlite3->command("SELECT Id, IdUser, Tipo, Descripcion, Ingreso, Cambio, Total, Estatus, Fecha, uuid_cloud FROM log WHERE sync_status = 0");
+    auto result = database.sqlite3->command("SELECT Id, IdUser, Tipo, Descripcion, Metodo, Ingreso, Cambio, Total, Estatus, Fecha, uuid_cloud FROM log WHERE sync_status = 0");
 
     if (!result || result->empty())
     {
@@ -39,6 +39,7 @@ void CloudWorker::sincronizar_logs_pendientes()
             std::stoi(result->at("IdUser")[i]),
             result->at("Tipo")[i],
             result->at("Descripcion")[i],
+            result->at("Metodo")[i],
             std::stod(result->at("Ingreso")[i]),
             std::stod(result->at("Cambio")[i]),
             std::stod(result->at("Total")[i]),
