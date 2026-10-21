@@ -165,7 +165,7 @@ void Tarjeta::iniciar(Glib::RefPtr<MLog> t_log)
     }
     else
     {
-        t_log->m_estatus += '\n' + pago_actual->m_estado + " - " + pago_actual->m_estado_detalle;
+        t_log->m_estatus += '\n' + pago_actual->m_id_order + " - " + pago_actual->m_estado_detalle;
         Global::System::showNotify("Tarjeta","El pago con tarjeta no se pudo procesar. Por favor, intente nuevamente o contacte al soporte.", "dialog-error");
     }
 
