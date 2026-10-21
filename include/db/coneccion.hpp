@@ -84,7 +84,7 @@ private:
                 CREATE TABLE detalle_movimientos_dinero (
                 id                INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_log            INTEGER NOT NULL,
-                tipo_movimiento   TEXT NOT NULL CHECK(tipo_movimiento IN ('entrada', 'salida')),
+                tipo_movimiento   TEXT NOT NULL),
                 denominacion      INTEGER NOT NULL,
                 cantidad          INTEGER NOT NULL DEFAULT 0,
                 creado_en         DATETIME DEFAULT (datetime('now','localtime')),

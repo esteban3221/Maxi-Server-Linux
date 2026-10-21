@@ -288,7 +288,7 @@ void ValidadorUnit::iniciar_polling()
                         continue;
                     }
 
-                    CROW_LOG_INFO << "[Debug] " << event_name << '\n';
+                    // CROW_LOG_INFO << "[Debug] " << event_name << '\n';
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));

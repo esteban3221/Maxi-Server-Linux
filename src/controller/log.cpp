@@ -114,6 +114,7 @@ crow::response LogData::get_levels(const crow::request &req)
     bool tiene_pago = Sesion::tiene_permiso(req, Global::User::Rol::Pago);
     bool tiene_consulta = Sesion::tiene_permiso(req, Global::User::Rol::Consulta_Efectivo);
     bool tiene_carga = Sesion::tiene_permiso(req, Global::User::Rol::Carga);
+    bool tiene_fianza = Sesion::tiene_permiso(req, Global::User::Rol::Fianza);
     bool tiene_retirada_cassette = Sesion::tiene_permiso(req, Global::User::Rol::Retirar_Casette);
 
     if (!tiene_pago && !tiene_consulta && !tiene_carga && !tiene_retirada_cassette) 
@@ -147,12 +148,16 @@ crow::response LogData::get_levels(const crow::request &req)
                 ? crow::json::wvalue(item_hw["storedInCashbox"].u()) 
                 : crow::json::wvalue(nullptr);
 
-            if (i < config_db->get_n_items())
+            if (i < config_db->get_n_items() && (tiene_fianza || tiene_carga))
             {
                 auto db_item = config_db->get_item(i);
-                level_item["Inmovilidad_Min"] = db_item->m_nivel_inmo_min;
+                level_item["Inmovilidad_Min"] = tiene_fianza 
+                    ? crow::json::wvalue(db_item->m_nivel_inmo_min) 
+                    : crow::json::wvalue(nullptr);
                 level_item["Inmovilidad"] = db_item->m_nivel_inmo;
-                level_item["Inmovilidad_Max"] = db_item->m_nivel_inmo_max;
+                level_item["Inmovilidad_Max"] = tiene_fianza 
+                    ? crow::json::wvalue(db_item->m_nivel_inmo_max) 
+                    : crow::json::wvalue(nullptr);
             }
 
             levels_ofuscados.push_back(std::move(level_item));

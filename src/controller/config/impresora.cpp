@@ -50,7 +50,7 @@ void Impresora::activa_visualizacion(Gtk::ListBoxRow *row)
 void Impresora::activa_test(Gtk::ListBoxRow *row)
 {
     Global::System::showNotify("Impresión", "Se imprimio ticket de prueba.", "dialog-information");
-    Global::System::imprime_ticket(MLog::create(1110, 1, "Test Impresion", "Este es un ticket de prueba para verificar la funcionalidad de impresión.", "Efectivo", 10000, 10000, 0, "Exito", Glib::DateTime::create_now_local()));
+    Global::System::imprime_ticket(MLog::create(1110, 1, "Test Impresion", "Este es un ticket de prueba para verificar la funcionalidad de impresión.", "EFECTIVO", 10000, 10000, 0, "Exito", Glib::DateTime::create_now_local()));
 }
 
 void Impresora::estado_checkbutton()

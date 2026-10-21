@@ -28,7 +28,7 @@ cpr::Response Tarjeta::create_order()
     payment["amount"] = std::to_string(t_log->m_total);
     json_params["transactions"]["payments"] = crow::json::wvalue::list({payment});
     json_params["config"]["point"]["terminal_id"] = terminal ? terminal->m_id : "";
-    json_params["config"]["point"]["print_on_terminal"] = "no_ticket";
+    json_params["config"]["point"]["print_on_terminal"] = "seller_ticket";
     json_params["config"]["payment_method"]["default_type"] = "credit_card";
 
     CROW_LOG_INFO << "Mercado Pago: Creando orden..." /*<< json_params.dump()*/;
@@ -60,8 +60,6 @@ cpr::Response Tarjeta::get_order_status(const std::string &order_id)
     bool termino = false;
     cpr::Response response;
 
-    // std::thread([this, terminal, order_id, &termino, &response]()
-    // {
         while (!termino)
         {
             response = cpr::Get(cpr::Url{MP_BASE_URL, "/", order_id},
@@ -82,9 +80,20 @@ cpr::Response Tarjeta::get_order_status(const std::string &order_id)
                     pago_actual->m_estado == "refunded" ||
                     pago_actual->m_estado == "action_required") 
                 {
-                    termino = true;
+                    auto payment = json_response["transactions"]["payments"][0];
+                    
+                    try
+                    {
+                        pago_actual->m_tipo = payment["payment_method"]["id"].s();
+                        pago_actual->m_last_four_digits = payment["card"]["last_digits"].s();
+                        termino = true;
+                    }
+                    catch(const std::exception& e)
+                    {
+                        termino = true;
+                        g_warning("%s", e);
+                    }
                 }
-                
             }
             else
             {
@@ -96,7 +105,6 @@ cpr::Response Tarjeta::get_order_status(const std::string &order_id)
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
         } 
-    // }).detach();
     return response;
 }
 
@@ -145,14 +153,13 @@ void Tarjeta::iniciar(Glib::RefPtr<MLog> t_log)
         "",                                                       // ultimo_error
         reponse.text                                             // mp_json_response (CORREGIDO typo y coma)
     );
-
-    pago_terminal.insertar(pago_actual);
+    
     auto response_status = get_order_status(pago_actual->m_id_order);
 
     if (pago_actual->m_estado == "processed")
     {
         t_log->m_ingreso += t_log->m_total;
-        t_log->m_estatus = pago_actual->m_estado;
+        t_log->m_estatus = "Completado";
         log.update_log(t_log);
         Global::System::showNotify("Tarjeta","Pago con tarjeta aprobado exitosamente.", "dialog-information");
     }
@@ -161,4 +168,16 @@ void Tarjeta::iniciar(Glib::RefPtr<MLog> t_log)
         t_log->m_estatus += '\n' + pago_actual->m_estado + " - " + pago_actual->m_estado_detalle;
         Global::System::showNotify("Tarjeta","El pago con tarjeta no se pudo procesar. Por favor, intente nuevamente o contacte al soporte.", "dialog-error");
     }
+
+    pago_terminal.insertar(pago_actual);
+
+    DetalleMovimiento detalle;
+    detalle.insertar_detalle_movimiento(t_log->m_id, MDetalleMovimiento::create(
+        0,
+        t_log->m_id,
+        pago_actual->m_estado + "|" + pago_actual->m_tipo + "|**** " + pago_actual->m_last_four_digits,
+        pago_actual->m_monto,
+        1,
+        Glib::DateTime::create_now_local()
+    ));
 }

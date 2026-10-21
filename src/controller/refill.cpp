@@ -333,7 +333,7 @@ crow::response Refill::inicia(const crow::request &req)
 
 crow::response Refill::update_imovilidad(const crow::request &req)
 {
-    Sesion::valida_autorizacion(req, Global::User::Rol::Configuracion);
+    Sesion::valida_autorizacion(req, Global::User::Rol::Fianza);
     auto data = crow::json::load(req.body);
 
     auto denominacion = data["denominacion"].i();
@@ -363,7 +363,7 @@ crow::response Refill::retirada(const crow::request &req)
         transaccion_terminada = false;
         cashbox_level = 0;
 
-        t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", "Efectivo", 0, 0, cashbox_level, "Creacion de evento", Glib::DateTime::create_now_local());
+        t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", "EFECTIVO", 0, 0, cashbox_level, "Creacion de evento", Glib::DateTime::create_now_local());
         t_log->m_id = log.insert_log(t_log);
 
         async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("12"); });
@@ -423,7 +423,7 @@ void Refill::reset_log(const crow::json::rvalue &param)
         Global::User::id,
         "Refill",
         "",
-        "Efectivo",
+        "EFECTIVO",
         0,
         0,
         0,

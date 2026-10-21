@@ -1,13 +1,13 @@
 #pragma once
 #include "global.hpp"
-#include "model/terminales.hpp" // Potencialmente para integration_id
-#include "model/log.hpp"           // Para registrar transacciones
-#include "model/pago_terminal.hpp" // Para guardar detalles del pago
+#include "model/terminales.hpp" 
+#include "model/log.hpp" 
+#include "model/pago_terminal.hpp"
+#include "model/detalle_movimiento.hpp"
 
 class Tarjeta
 {
 private:
-    // La URL base para Point requiere el integration_id en la ruta
     const std::string MP_BASE_URL = "https://api.mercadopago.com/v1/orders";
 
     Glib::RefPtr<MLog> t_log;
