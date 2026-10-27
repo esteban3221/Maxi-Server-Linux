@@ -74,28 +74,25 @@ void CashHub::inicializar_hardware()
 
     for (const auto &entry : fs::directory_iterator("/dev"))
     {
-        // std::thread([this, path = entry.path().string()]() // se pidio que forzozamente se ordenara
-        //             {
-        auto path = entry.path().string();
-        if (path.find("/dev/ttyUSB") != std::string::npos)
+        std::thread([this, path = entry.path().string()]() // se comienzan con las optimizaciones
         {
-            int ssp_sugerido = obtener_ssp_por_magia_negra(path);
-            if (ssp_sugerido != -1)
+            if (path.find("/dev/ttyUSB") != std::string::npos)
             {
-                CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
-                                 << (ssp_sugerido == 16 ? "COIN" : "Bill")
-                                 << ". Usando SSP " << ssp_sugerido;
-                intentar_registrar(path, ssp_sugerido);
+                int ssp_sugerido = obtener_ssp_por_magia_negra(path);
+                if (ssp_sugerido != -1)
+                {
+                    CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
+                                    << (ssp_sugerido == 16 ? "COIN" : "Bill")
+                                    << ". Usando SSP " << ssp_sugerido;
+                    intentar_registrar(path, ssp_sugerido);
+                }
+                else
+                {
+                    Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
+                }
             }
-            else
-            {
-                Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
-            }
-        }
+        }).detach();
     }
-    // )
-    //     .detach();
-    // }
 }
 
 bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
@@ -104,15 +101,26 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
     v->property_token() = autentica();
 
-    v->property_conf().puerto = puerto;
-    v->property_conf().ssp = ssp;
-    v->property_conf().habilita_recolector = false;
-    v->property_conf().auto_acepta_credito = false;
-    v->property_conf().habilita_salida_credito = false;
+    auto json = crow::json::wvalue
+    {
+        {"ComPort", v->property_conf().puerto = puerto},
+        {"SspAddress", v->property_conf().ssp = ssp},
+        {"LogFilePath", v->property_conf().log_ruta},
+        {"SetInhibits", crow::json::wvalue::list()}, // Hasta el momento no hay ninguna necesidad de inhibir denominaciones, pero se puede agregar fácilmente aquí
+        {"EnableAcceptor", v->property_conf().habilita_recolector = false},
+        {"EnableAutoAcceptEscrow", v->property_conf().auto_acepta_credito = false},
+        {"EnablePayout", v->property_conf().habilita_salida_credito = false}
+    };
 
-    if (v->inicia_conecta(crow::json::load("[]")))
+    if (auto response = v->command_post("OpenConnection", json.dump());
+             response.status_code == cpr::status::HTTP_OK)
     {
         ValidadorUnit *raw_v = v.get();
+
+        auto response_json = crow::json::load(response.text);
+        v->property_device_id() = response_json["deviceID"].s();
+        v->property_device_model() = response_json["deviceModel"].s();
+        v->property_ultimo_cash_level() = crow::json::wvalue(response_json["allLevels"]).dump();
 
         v->signal_event_received.connect([this, raw_v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
                                          {

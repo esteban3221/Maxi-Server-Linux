@@ -4,7 +4,7 @@
 
 #include <sigc++/sigc++.h>
 #include <utility>
-#include <memory> // Necesario para unique_ptr
+#include <memory>
 #include <atomic>
 #include <string>
 #include <mutex>
@@ -61,11 +61,10 @@ public:
     Conf &property_conf() { return conf; }
     std::string &property_token() { return token; }
     std::string &property_ultimo_cash_level() { return ultimo_cash_level; }
-    const std::string &property_device_model() { return device_model; } // solo_lectura
-    const std::string &property_device_id() { return device_id; }       // solo_lectura
+    std::string &property_device_model() { return device_model; } 
+    std::string &property_device_id() { return device_id; } 
 
-    // devuelve los niveles actuales de ingreso y salida al conectar
-    const crow::json::rvalue inicia_conecta(const crow::json::rvalue &set_routes);
+    void inicia_conecta(const crow::json::rvalue &set_routes);
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);

@@ -12,7 +12,10 @@ ValidadorUnit::ValidadorUnit(/* args */) : device_id("Desconocido"),
 
 ValidadorUnit::~ValidadorUnit()
 {
-    // detiene_desconecta();
+    if (auto response = command_post("DisconnectDevice"); response.status_code == 200)
+        CROW_LOG_INFO << device_id << " → " << response.text;
+    else
+        CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
 }
 
 std::string pretty_json(const std::string &json, const std::string &indent_prefix)
@@ -129,33 +132,32 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 "En
 */
 
-const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
+void ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
 {
-    auto json = crow::json::wvalue{
-        {"ComPort", conf.puerto},
-        {"SspAddress", conf.ssp},
-        {"LogFilePath", conf.log_ruta},
-        {"SetInhibits", crow::json::wvalue::list()}, // Hasta el momento no hay ninguna necesidad de inhibir denominaciones, pero se puede agregar fácilmente aquí
-        {"SetRoutes", set_routes.has("SetRoutes") ? set_routes["SetRoutes"] : set_routes},
-        {"EnableAcceptor", conf.habilita_recolector},
-        {"EnableAutoAcceptEscrow", conf.auto_acepta_credito},
-        {"EnablePayout", conf.habilita_salida_credito}};
-
-    auto response = command_post("OpenConnection", json.dump());
+    auto response = command_post("StartDevice");
     auto json_response = crow::json::load(response.text);
     if (response.status_code == 200)
     {
-        device_id = json_response["deviceID"].s();
-        device_model = json_response["deviceModel"].s();
+        auto ejecutar_si = [this](bool condicion, const std::string &comando) 
+        {
+            if (condicion) 
+            {
+                auto res = command_post(comando);
+                if (res.status_code == crow::status::OK) 
+                    CROW_LOG_INFO << device_id << " Comando ejecutado exitosamente: " << comando;
+                else 
+                    CROW_LOG_WARNING << device_id << " Fallo al ejecutar comando " << comando << " (Código: " << res.status_code << ")";
+                std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+            }
+        };
 
-        CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
-        return json_response["allLevels"];
+        ejecutar_si(conf.habilita_recolector, "EnableAcceptor");
+        ejecutar_si(conf.habilita_salida_credito, "EnablePayout");
+        ejecutar_si(conf.auto_acepta_credito, "SetAutoAccept");
+
     }
     else
         CROW_LOG_ERROR << "Error al conectar al validador: " << device_id;
-
-    return {};
 }
 
 void ValidadorUnit::detiene_desconecta()
@@ -165,12 +167,11 @@ void ValidadorUnit::detiene_desconecta()
         poll = false;                                                       // Detiene el polling
         std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
     }
-    auto response = command_post("DisconnectDevice");
 
-    if (response.status_code == 200)
+    if (auto response = command_post("StopDevice"); response.status_code == 200)
         CROW_LOG_INFO << device_id << " → " << response.text;
     else
-        CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
+        CROW_LOG_ERROR << "Error al detener del validador: " << response.text;
 }
 
 bool ValidadorUnit::esperar_pago_async()
@@ -301,8 +302,6 @@ uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const std::string
 {
     uint cambio = monto;
     std::map<int, int> levels;
-    CROW_LOG_CRITICAL << "String actual_level: \n"
-                      << actual_level;
     auto json_levels = crow::json::load(actual_level);
 
     for (auto &&i : json_levels)
@@ -383,7 +382,7 @@ cpr::Response ValidadorUnit::get_nivel_actual()
 
     while (intentos < max_intentos)
     {
-        json = command_get("GetAllLevels", true);
+        json = command_get("GetAllLevels");
 
         if (json.status_code == 200 && json.text.size() > 2)
         {
