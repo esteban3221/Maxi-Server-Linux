@@ -333,9 +333,9 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         }
         else
         {
-            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["reason"].s();
+            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << (json.has("reason") ? ", Razon: " + std::string(json["reason"].s()) : "") ;
             signal_error.emit(device_id, json["message"].operator std::string());
-            if (json["reason"].s() == "BUSY")
+            if (json.has("reason") || json["message"].s() == "Failed to initiate PAYOUT operation: BUSY")
             {
                 CROW_LOG_INFO << "Reintentando pago.";
                 std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -345,7 +345,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
     }
     catch (const std::exception &e)
     {
-        CROW_LOG_CRITICAL << device_id << " → " << e.what();
+        CROW_LOG_CRITICAL << "Exepcion: " << device_id << " → " << e.what();
     }
 }
 
