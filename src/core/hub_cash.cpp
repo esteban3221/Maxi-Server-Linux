@@ -139,7 +139,6 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
                             json_rutas["countryCode"] = "MXN";
                             json_rutas["route"] = 0;
                             
-                            std::this_thread::sleep_for(std::chrono::milliseconds(200));
                             raw_v->command_post("SetDenominationRoute", json_rutas.dump(), true);
                         }
                     }

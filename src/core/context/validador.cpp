@@ -83,6 +83,7 @@ void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Respons
 
 const cpr::Response ValidadorUnit::command_get(const std::string &command, bool debug) const
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     auto response = cpr::Get(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
                              cpr::Header{{"Content-Type", "application/json"},
                                          {"Authorization", "Bearer " + token}});
@@ -97,6 +98,7 @@ const cpr::Response ValidadorUnit::command_get(const std::string &command, bool 
 
 const cpr::Response ValidadorUnit::command_post(const std::string &command, const std::string &json, bool debug) const
 {
+    std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     auto response = cpr::Post(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
                               cpr::Header{{"Content-Type", "application/json"},
                                           {"Authorization", "Bearer " + token}},
@@ -135,7 +137,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 void ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
 {
     auto response = command_post("StartDevice");
-    std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
+    
     auto json_response = crow::json::load(response.text);
     if (response.status_code == 200)
     {
@@ -148,7 +150,6 @@ void ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
                     CROW_LOG_INFO << device_id << " Comando ejecutado exitosamente: " << comando;
                 else 
                     CROW_LOG_WARNING << device_id << " Fallo al ejecutar comando " << comando << " (Código: " << res.status_code << ")";
-                std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
             }
         };
 
@@ -244,7 +245,6 @@ bool ValidadorUnit::esperar_pago_async()
                     CROW_LOG_DEBUG << "Mensaje residual descartado durante limpieza: " << json["pollBuffer"].size();
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
 
     return exito;
@@ -293,7 +293,6 @@ void ValidadorUnit::iniciar_polling()
                     // CROW_LOG_INFO << "[Debug] " << event_name << '\n';
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
         } 
         CROW_LOG_INFO << "Terminando Polleo para el dispositivo " << device_id; })
         .detach();
@@ -334,7 +333,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
         }
         else
         {
-            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["message"].s();
+            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["reason"].s();
             signal_error.emit(device_id, json["message"].operator std::string());
             if (json["reason"].s() == "BUSY")
             {

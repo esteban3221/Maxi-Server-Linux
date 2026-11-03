@@ -72,10 +72,8 @@ void Cloud::sincronizar_con_nube_async(Glib::RefPtr<MLog> t_log)
                 {
                     auto r = async.get();
                     if (r.error)
-                    {
-                        g_warning("Error al sincronizar con la nube: %d - %s", (uint16_t)r.error.code, r.error.message);
+                        // g_warning("Error al sincronizar con la nube: %d - %s", r.status_code, r.error.message);
                         return;
-                    }
 
                     if (r.status_code == 200 || r.status_code == 201)
                         Cloud::marcar_como_sincronizado(id, uuid);
