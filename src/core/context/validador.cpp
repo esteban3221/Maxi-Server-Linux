@@ -135,6 +135,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 void ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
 {
     auto response = command_post("StartDevice");
+    std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     auto json_response = crow::json::load(response.text);
     if (response.status_code == 200)
     {
@@ -321,6 +322,7 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
             return;
 
         auto response = command_post("PayoutMultipleDenominations", denom, true);
+        auto json = crow::json::load(response.text);
         if (response.status_code == cpr::status::HTTP_OK)
         {
             auto future = std::async(std::launch::async, &ValidadorUnit::esperar_pago_async, this);
@@ -330,20 +332,16 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
             if(!future.get())
                 signal_error.emit(device_id, "Atasco y/o expiracion de tiempo de entrega.");
         }
-        else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
+        else
         {
+            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["message"].s();
+            signal_error.emit(device_id, json["message"].operator std::string());
             if (json["reason"].s() == "BUSY")
             {
                 CROW_LOG_INFO << "Reintentando pago.";
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 iniciar_pago(denom);
             }
-        }
-        else
-        {
-            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["message"].s();
-            signal_error.emit(device_id, json["message"].operator std::string());
-            detiene_desconecta();
         }
     }
     catch (const std::exception &e)

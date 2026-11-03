@@ -112,7 +112,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
         t_log->m_estatus = "Finalizado";
         log.update_log(t_log);
 
-        hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
+        hub.command_for_all(HttpMethod::POST, "DisableAcceptor", "", true);
         std::this_thread::sleep_for(std::chrono::seconds(1));
         hub.detiene_poll_for_all(t_log->m_id);
         {
