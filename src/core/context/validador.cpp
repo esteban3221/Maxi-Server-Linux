@@ -134,7 +134,7 @@ const cpr::Response ValidadorUnit::command_post(const std::string &command, cons
 "En
 */
 
-void ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
+void ValidadorUnit::inicia_conecta()
 {
     auto response = command_post("StartDevice");
     
@@ -337,8 +337,13 @@ void ValidadorUnit::iniciar_pago(const std::string &denom)
             signal_error.emit(device_id, json["message"].operator std::string());
             if (json.has("reason") || json["message"].s() == "Failed to initiate PAYOUT operation: BUSY")
             {
+                detiene_desconecta();
                 CROW_LOG_INFO << "Reintentando pago.";
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                conf.habilita_salida_credito = true;
+                conf.habilita_recolector = false;
+                conf.auto_acepta_credito = false;
+                inicia_conecta();
                 iniciar_pago(denom);
             }
         }

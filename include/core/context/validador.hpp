@@ -64,7 +64,7 @@ public:
     std::string &property_device_model() { return device_model; } 
     std::string &property_device_id() { return device_id; } 
 
-    void inicia_conecta(const crow::json::rvalue &set_routes);
+    void inicia_conecta();
     void detiene_desconecta();
     void iniciar_polling();
     void iniciar_pago(const std::string &);

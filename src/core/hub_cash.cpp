@@ -277,15 +277,9 @@ void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow:
             i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
             i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
-            if (auto device_id = i->property_device_id(); set_routes.contains(device_id))
-            {
-                i->inicia_conecta(set_routes[device_id]);
-            }
-            else
-            {
-                CROW_LOG_WARNING << "No se especificaron rutas para el dispositivo: " << device_id << " Usando las de default.";
-                i->inicia_conecta(rutas_default(i.get()));
-            }
+
+            CROW_LOG_WARNING << "Iniciando dispositivo: " << i->property_device_id();
+            i->inicia_conecta();
 
             if (i->property_conf().ssp == 0)
             {
