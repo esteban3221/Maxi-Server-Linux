@@ -14,36 +14,34 @@ protected:
     void on_error(const std::string &device, const std::string &error); // este es el canal para escuchar cuando se remueva el cashbox
 
 private:
-    Global::Async async_gui;
     CashHub &hub = CashHub::instance();
     Log log;
-
-    crow::response inicia(const crow::request &req);
-    crow::response deten_remoto(const crow::request &req);
-    crow::response update_imovilidad(const crow::request &req);
-
-    crow::response transpaso(const crow::request &req);
-    crow::response retirada(const crow::request &req);
-
-    void deten();
     Glib::RefPtr<MLog> t_log;
-    
-    bool cancelado;
+    bool cancelado, transaccion_terminada = false;
     size_t cashbox_level;
     std::condition_variable cv_finalizado;
     Glib::RefPtr<Gtk::ColumnViewColumn> column_cassette;
     std::mutex mtx_espera;
-    bool transaccion_terminada = false;
+    
+    void deten();
     void reset_log(const crow::json::rvalue &param);
-
     void init_data(Gtk::ColumnView *vcolumn, const std::string &tabla);
+    void on_cancela_retirada();
     size_t calcula_total(const std::string &type, const std::shared_ptr<Gio::ListStore<MLevelCash>> &list_store);
+
     // websocket
     void on_wb_socket_open(crow::websocket::connection &conn);
     void on_wb_socket_close(crow::websocket::connection &conn, const std::string &reason, uint16_t code);
     void on_wb_socket_message(crow::websocket::connection &conn, const std::string &data, bool is_binary);
     crow::websocket::connection *conn_ = nullptr;
     void envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLevelCash> &item);
+        
+    crow::response inicia(const crow::request &req);
+    crow::response deten_remoto(const crow::request &req);
+    crow::response update_imovilidad(const crow::request &req);
+
+    crow::response transpaso(const crow::request &req);
+    crow::response retirada(const crow::request &req);
 
 public:
     Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp& app);

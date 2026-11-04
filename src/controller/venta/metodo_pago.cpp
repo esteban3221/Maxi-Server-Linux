@@ -165,14 +165,14 @@ void MetodoPago::pagar_por_metodo(Metodo metodo, size_t remanente)
         {
             case Metodo::EFECTIVO:
             {
-                Global::Widget::v_view_carga->modo(true);
+                Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
                 efectivo_controller->inicia(m_log, is_view_ingreso);
                 if (efectivo_controller->is_cancelacion_total())
                     cancelacion_completa();
                 break;
             }
             case Metodo::TARJETA:
-                Global::Widget::v_view_carga->modo();
+                Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Tarjeta);
                 tarjeta_controller->iniciar(m_log);
                 break;
             case Metodo::MIXTO:

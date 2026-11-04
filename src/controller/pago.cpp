@@ -36,9 +36,10 @@ crow::response Pago::inicia(const crow::request &req)
     {
     Sesion::valida_autorizacion(req, Global::User::Rol::Pago);
     reset_log(crow::json::load(req.body), "Pago");
-    Glib::signal_idle().connect_once([]{
+    Glib::signal_idle().connect_once([]
+    {
         Global::Widget::v_main_stack->set_visible_child("12");
-        Global::Widget::v_view_carga->modo(true);
+        Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
     });
     t_log->m_estatus = "Exito.";
 
@@ -80,7 +81,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
 
         Glib::signal_idle().connect_once([]{
             Global::Widget::v_main_stack->set_visible_child("12");
-            Global::Widget::v_view_carga->modo(true);
+            Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
         });
         
         t_log->m_estatus = "Exito.";
@@ -119,7 +120,7 @@ crow::response Pago::inicia_cambio(const crow::request &req)
     reset_log(crow::json::load(req.body), "Cambio");
     Glib::signal_idle().connect_once([]{
         Global::Widget::v_main_stack->set_visible_child("12");
-        Global::Widget::v_view_carga->modo(true);
+        Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
     });
     t_log->m_estatus = "Exito.";
 
@@ -162,7 +163,7 @@ crow::response Pago::inicia_cambio_manual(const crow::request &req)
     reset_log(crow::json::load(req.body), "Cambio Manual");
     Glib::signal_idle().connect_once([]{
         Global::Widget::v_main_stack->set_visible_child("12");
-        Global::Widget::v_view_carga->modo(true);
+        Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
     });
     t_log->m_estatus = "Exito.";
 
@@ -195,7 +196,7 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     Sesion::valida_autorizacion(req, Global::User::Rol::Cambio_M);
     Glib::signal_idle().connect_once([]{
         Global::Widget::v_main_stack->set_visible_child("12");
-        Global::Widget::v_view_carga->modo(true);
+        Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Efectivo);
     });
 
     auto json = crow::json::load(req.body);

@@ -69,19 +69,11 @@ void Cloud::sincronizar_con_nube_async(Glib::RefPtr<MLog> t_log)
         cpr::Timeout{3000});
 
     std::thread([async = std::move(request_async), id = t_log->m_id, uuid = t_log->m_uuid_cloud.raw()]() mutable
-                {
-                    auto r = async.get();
-                    if (r.error)
-                    {
-                        g_warning("Error al sincronizar con la nube: %d - %s", (uint16_t)r.error.code, r.error.message);
-                        return;
-                    }
-
-                    if (r.status_code == 200 || r.status_code == 201)
-                        Cloud::marcar_como_sincronizado(id, uuid);
-                    else
-                        g_warning("Error al sincronizar con la nube, código de estado: %d", r.status_code); })
-        .detach();
+    {
+        auto r = async.get();
+        if (r.status_code == 200 || r.status_code == 201)
+            Cloud::marcar_como_sincronizado(id, uuid);
+    }).detach();
 }
 
 #include <thread>

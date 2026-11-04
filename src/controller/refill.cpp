@@ -2,8 +2,6 @@
 
 Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder, crow::SimpleApp &app) : VRefill(cobject, refBuilder)
 {
-    async_gui.dispatcher.connect(sigc::mem_fun(async_gui, &Global::Async::on_dispatcher_emit));
-
     init_data(v_tree_reciclador_monedas, "Level_Coin");
     init_data(v_tree_reciclador_billetes, "Level_Bill");
 
@@ -21,6 +19,8 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
         .onopen(sigc::mem_fun(*this, &Refill::on_wb_socket_open))
         .onclose(sigc::mem_fun(*this, &Refill::on_wb_socket_close))
         .onmessage(sigc::mem_fun(*this, &Refill::on_wb_socket_message));
+
+
 }
 
 Refill::~Refill()
@@ -88,7 +88,7 @@ void Refill::on_show_map()
     // ahora se generalizara por tipo
 
     Glib::signal_idle().connect_once([this]()
-                                     {
+    {
         auto map = hub.command_for_all(HttpMethod::GET, "GetAllLevels");
         size_t total = 0;
 
@@ -130,6 +130,16 @@ void Refill::on_show_map()
         v_lbl_total->set_text(Glib::ustring::format(total)); });
 }
 
+void Refill::on_cancela_retirada()
+{
+    Global::Widget::v_view_carga->v_btn_cancel->set_sensitive(false);
+    {
+        std::lock_guard<std::mutex> lock(mtx_espera);
+        transaccion_terminada = true;
+    }
+    cv_finalizado.notify_one();
+}
+
 size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio::ListStore<MLevelCash>> &list_store)
 {
     size_t total = 0;
@@ -148,10 +158,11 @@ size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio:
         parcial += m_list->m_ingreso * m_list->m_denominacion;
     }
 
-    async_gui.dispatch_to_gui([this, total, parcial, label_total, label_parcial]()
-                              {
+    Glib::signal_idle().connect_once([this, total, parcial, label_total, label_parcial]()
+    {
         label_total->set_text(Glib::ustring::format(total));
-        label_parcial->set_text(Glib::ustring::format(parcial)); });
+        label_parcial->set_text(Glib::ustring::format(parcial)); 
+    });
 
     return total;
 }
@@ -213,21 +224,22 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
             envia_mensaje_wb(type, item_encontrado);
         }
 
-        async_gui.dispatch_to_gui([this, item_encontrado, index_encontrado, list_store, single, type]()
-                                  {
+        Glib::signal_idle().connect_once([this, item_encontrado, index_encontrado, list_store, single, type]()
+        {
             list_store->remove(index_encontrado);
             list_store->insert(index_encontrado, item_encontrado);
             single->select_item(index_encontrado, true);
             
             size_t total = calcula_total(type, list_store);
-            v_lbl_total->set_text(Glib::ustring::format(total)); });
+            v_lbl_total->set_text(Glib::ustring::format(total)); 
+        });
     }
     else if (type == "COIN")
     {
         t_log->m_ingreso += credito;
         log.update_log(t_log);
 
-        async_gui.dispatch_to_gui([credito]()
+        Glib::signal_idle().connect_once([credito]()
                                   { Global::System::showNotify("Denominación apilada", ("La denominación " + std::to_string(credito) + " no es posible contabilizar.").c_str(), "dialog-warning"); });
     }
 }
@@ -302,18 +314,18 @@ crow::response Refill::inicia(const crow::request &req)
     try
     {
         Sesion::valida_autorizacion(req, Global::User::Rol::Retirar_Casette);
-        async_gui.dispatch_to_gui([this](){column_cassette->set_visible(true);});
+        Glib::signal_idle().connect_once([this](){column_cassette->set_visible(true);});
     }
     catch(const std::exception& e)
     {
-        async_gui.dispatch_to_gui([this](){column_cassette->property_visible() = false;});
+        Glib::signal_idle().connect_once([this](){column_cassette->property_visible() = false;});
         std::cerr << e.what() << '\n';
     }
     
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
 
-    async_gui.dispatch_to_gui([this]()
+    Glib::signal_idle().connect_once([this]()
         { Global::Widget::v_main_stack->set_visible_child(*this); });
 
     {
@@ -325,7 +337,7 @@ crow::response Refill::inicia(const crow::request &req)
     hub.on_credito().clear();
     hub.on_error().clear();
 
-    async_gui.dispatch_to_gui([this]()
+    Glib::signal_idle().connect_once([this]()
                               { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
 
     return crow::response(Log::json_ticket(t_log));
@@ -356,6 +368,17 @@ crow::response Refill::transpaso(const crow::request &req)
 sigc::connection conn;
 crow::response Refill::retirada(const crow::request &req)
 {
+    static bool boton_conectado = false;
+
+    if (!boton_conectado)
+    {
+        
+        Global::Widget::v_view_carga->v_btn_cancel->signal_clicked().connect(
+            sigc::mem_fun(*this, &Refill::on_cancela_retirada)
+        );
+        boton_conectado = true;
+    }
+
     try
     {
         Sesion::valida_autorizacion(req, Global::User::Rol::Retirar_Casette);
@@ -366,7 +389,10 @@ crow::response Refill::retirada(const crow::request &req)
         t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", "EFECTIVO", 0, 0, cashbox_level, "Creacion de evento", Glib::DateTime::create_now_local());
         t_log->m_id = log.insert_log(t_log);
 
-        async_gui.dispatch_to_gui([this](){ Global::Widget::v_main_stack->set_visible_child("12"); });
+        Glib::signal_idle().connect_once([this](){ 
+            Global::Widget::v_main_stack->set_visible_child("12"); 
+            Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Retirada);
+        });
 
         hub.inicia_for_all({});
         hub.inicia_poll_for_all();
@@ -383,7 +409,7 @@ crow::response Refill::retirada(const crow::request &req)
         log.update_log(t_log);
 
         hub.detiene_for_all();
-        async_gui.dispatch_to_gui([this]()
+        Glib::signal_idle().connect_once([this]()
                                   { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
         conn.disconnect();
 
@@ -392,7 +418,7 @@ crow::response Refill::retirada(const crow::request &req)
     catch (const std::exception &e)
     {
         hub.detiene_for_all();
-        async_gui.dispatch_to_gui([this]()
+        Glib::signal_idle().connect_once([this]()
                                   { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
         conn.disconnect();
         CROW_LOG_ERROR << e.what();

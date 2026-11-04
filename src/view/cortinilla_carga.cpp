@@ -1,32 +1,43 @@
 #include "view/cortinilla_carga.hpp"
 
-ViewCarga::ViewCarga(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : Gtk::Box(cobject)
+ViewCarga::ViewCarga(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBuilder) : Gtk::Box(cobject) , m_builder(refBuilder)
 {
   // Mapeo de widgets desde el Blueprint/XML
-  v_img_main = refBuilder->get_widget<Gtk::Image>("img_main");
-  v_lbl_main = refBuilder->get_widget<Gtk::Label>("lbl_main");
-  v_lbl_sub = refBuilder->get_widget<Gtk::Label>("lbl_sub");
-  v_spinner = refBuilder->get_widget<Gtk::Spinner>("spinner");
-  v_btn_cancel_tarjeta = refBuilder->get_widget<Gtk::Button>("btn_cancel_tarjeta");
+  v_img_main = m_builder->get_widget<Gtk::Image>("img_main");
+  v_lbl_main = m_builder->get_widget<Gtk::Label>("lbl_main");
+  v_lbl_sub = m_builder->get_widget<Gtk::Label>("lbl_sub");
+  v_spinner = m_builder->get_widget<Gtk::Spinner>("spinner");
+  v_btn_cancel = m_builder->get_widget<Gtk::Button>("btn_cancel");
+
+  signal_map().connect([this]{v_btn_cancel->set_sensitive(true);});
 }
 
 ViewCarga::~ViewCarga() {}
 
-void ViewCarga::modo(bool is_efectivo)
+void ViewCarga::modo(Modo modo)
 {
-  if (is_efectivo)
+  switch (modo)
   {
+  case Efectivo:
     v_img_main->set_from_icon_name("usb-hub-symbolic");
     v_lbl_main->set_text("Espere un momento");
     v_lbl_sub->set_text("Cargando información de pago en efectivo...");
-    v_btn_cancel_tarjeta->hide();
-  }
-  else
-  {
+    v_btn_cancel->hide();
+    break;
+  case Tarjeta:
     v_img_main->set_from_icon_name("phonelink-symbolic");
     v_lbl_main->set_text("Terminal de Pago Activa");
     v_lbl_sub->set_text("Por favor, siga las instrucciones en la pantalla de la terminal bancaria.");
-    v_btn_cancel_tarjeta->show();
+    v_btn_cancel->hide();
+    break;
+  case Retirada:
+    v_img_main->set_from_icon_name("usb-hub-symbolic");
+    v_lbl_main->set_text("Retirada de Cassette");
+    v_lbl_sub->set_text("Retire los billetes almacenados en el cassete.");
+    v_btn_cancel->show();
+    break;
+  default:
+    break;
   }
 }
 
@@ -83,8 +94,8 @@ namespace View
       </object>
     </child>
     <child>
-      <object class="GtkButton" id="btn_cancel_tarjeta">
-        <property name="label">Cancelar Transacción</property>
+      <object class="GtkButton" id="btn_cancel">
+        <property name="label">Cancelar</property>
         <property name="halign">3</property>
         <property name="visible">false</property>
         <style>

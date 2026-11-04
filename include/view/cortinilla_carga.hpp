@@ -8,7 +8,14 @@ public:
     ViewCarga(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& refBuilder);
     virtual ~ViewCarga();
 
-    void modo(bool is_efectivo = false);
+    enum Modo {
+        Tarjeta,
+        Efectivo,
+        Retirada
+    };
+
+    void modo(Modo modo);
+    Gtk::Button* v_btn_cancel;
 
 private:
     Glib::RefPtr<Gtk::Builder> m_builder;
@@ -19,8 +26,6 @@ protected:
     Gtk::Label* v_lbl_main;
     Gtk::Label* v_lbl_sub;
     Gtk::Spinner* v_spinner;
-    Gtk::Button* v_btn_cancel_tarjeta;
-
 };
 
 namespace View
