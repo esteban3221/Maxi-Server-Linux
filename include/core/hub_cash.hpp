@@ -1,85 +1,79 @@
 #pragma once
-#include <filesystem>
-#include <vector>
-#include <string>
-#include <iostream>
-#include <queue>
-#include <atomic>
-#include <glibmm.h>
-#include <cpr/cpr.h>
 
-#include "context/validador.hpp"
+#include "core/context/validador.hpp"
 #include "model/level_cash.hpp"
 #include "model/detalle_movimiento.hpp"
-#include "controller/session.hpp"
-
-extern "C"
-{
-#include "SSPComs.h"
-#include "itl_types.h"
-}
+#include "shared/global.hpp"
+#include <giomm/liststore.h>
+#include <sigc++/sigc++.h>
+#include <filesystem>
+#include <utility>
+#include <memory>
+#include <vector>
+#include <string>
+#include <atomic>
+#include <map>
 
 namespace fs = std::filesystem;
-enum class HttpMethod
+
+struct DeviceSnapshot
 {
-    GET,
-    POST,
-    PUT,
-    DELETE
+    ffi::DeviceType type;
+    std::vector<ffi::DenomLevel> levels;
 };
-enum class ValidadorType
-{
-    BILL = 0,
-    COIN = 16
-}; // referencia del ssp
 
 class CashHub
 {
 private:
     std::vector<std::unique_ptr<ValidadorUnit>> unidades;
-    Glib::RefPtr<Gio::ListStore<MLevelCash>> m_list_billetes;
-
-    friend class Sesion;
-    std::string autentica();
-    // bool modo_refill = false;
-
-    // Señales Globales
-    sigc::signal<void(const std::string &device_id, const std::string &type_val, const crow::json::rvalue &, size_t)> signal_credito;
-    sigc::signal<void(const std::string &device_id, std::string)> signal_hub_error;
-
-    CashHub() = default;
+    decltype(std::declval<LevelCash>().get_level_cash()) m_list_billetes;
     DetalleMovimiento detalle;
 
+    sigc::signal<void(const ffi::CashEvent &)> signal_credito;
+    sigc::signal<void(const std::string &, const std::string &)> signal_hub_error;
+
+    CashHub() = default;
+    ~CashHub() { detiene_for_all(); }
+
     bool intentar_registrar(const std::string &puerto, int ssp);
-    int obtener_ssp_por_magia_negra(const std::string &puerto, int ssp = 16);
-    crow::json::rvalue rutas_default(ValidadorUnit *val);
+    std::vector<ffi::RouteRule> rutas_default(const ValidadorUnit *val);
 
 public:
+    CashHub(const CashHub &) = delete;
+    CashHub &operator=(const CashHub &) = delete;
+
     static CashHub &instance()
     {
-        static CashHub instance;
-        return instance;
+        static CashHub inst;
+        return inst;
     }
 
-    // --- Escaneo Automático ---
-    void inicializar_hardware();
+    std::atomic<bool> is_in_process{false};
 
-    // Accessors para las señales centralizadas
     auto &on_credito() { return signal_credito; }
     auto &on_error() { return signal_hub_error; }
-    // bool &property_modo_refill() { return modo_refill; }
 
-    // Pass-through
-    std::map<std::string, cpr::Response> command_for_all(HttpMethod method, const std::string &command, const std::string &json = "", bool debug = false);
-    std::map<std::string, crow::json::rvalue> obten_ultimo_snapshot_level(void);
-    cpr::Response command_by_device_id(HttpMethod method, const std::string &device_id, const std::string &command, const std::string &json = "", bool debug = false);
-    cpr::Response get_nivel_actual_by_id(const std::string &device_id) const;
-    void inicia_for_all(const Conf &conf, std::map<std::string, const crow::json::rvalue> = {});
+    std::string autentica() { return "native-rust-driver"; }
+
+    void inicializar_hardware();
+
+    void inicia_for_all(const Conf &conf = {}, const std::map<std::string, std::vector<ffi::RouteRule>> &set_routes = {});
+    void detiene_for_all();
+
     void inicia_poll_for_all();
-    void inicia_pago(size_t t_id, size_t monto, bool is_cambio = false);
-    void inicia_pago(size_t t_id, std::map<std::string, std::string>);
     void detiene_poll_for_all(size_t t_id);
-    void detiene_for_all(void);
+    void reiniciar_for_all();
 
-    std::atomic_bool is_in_process{false};
+    void inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio = false);
+    void inicia_pago(size_t t_id, const std::map<std::string, std::vector<ffi::PayoutItem>> &pagos_manuales);
+    void inicia_pago_por_canales(size_t t_id, const std::map<std::string, std::vector<int32_t>> &mapa_canales);
+
+    std::map<std::string, DeviceSnapshot> obten_ultimo_snapshot_level() const;
+    std::map<std::string, DeviceSnapshot> obten_niveles_actuales_for_all();
+    std::vector<ffi::DenomLevel> get_nivel_actual_by_id(const std::string &device_id) const;
+
+    bool aceptar_escrow(const std::string &device_id);
+    bool rechazar_escrow(const std::string &device_id);
+    bool vaciar_dispositivo(const std::string &device_id, bool smart_empty);
+    void limpiar_cashbox(const std::string &device_id);
 };

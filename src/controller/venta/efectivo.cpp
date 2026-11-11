@@ -79,8 +79,10 @@ void Efectivo::on_error(const std::string &device, const std::string &error)
     log.update_log(t_log);
 }
 
-void Efectivo::on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
+void Efectivo::on_event_credit(const ffi::CashEvent &ev)
 {
+    auto credito = ev.value_pesos;
+
     ingreso_parcial += credito;
     t_log->m_ingreso += credito;
     t_log->m_cambio = (ingreso_parcial > t_log->m_total) ? (ingreso_parcial - t_log->m_total) : 0;
@@ -112,7 +114,7 @@ void Efectivo::on_event_credit(const std::string &device_id, const std::string &
         t_log->m_estatus = "Finalizado";
         log.update_log(t_log);
 
-        hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
+        // hub.command_for_all(HttpMethod::POST, "DisableAcceptor");
         std::this_thread::sleep_for(std::chrono::seconds(1));
         hub.detiene_poll_for_all(t_log->m_id);
         {

@@ -38,12 +38,7 @@ crow::response CConfiguracion::reinicia_validadores(const crow::request &req)
     auto &hub = CashHub::instance();
 
     hub.inicia_for_all({});
-    auto map = hub.command_for_all(HttpMethod::POST, "ResetDevice");
-    for (auto &&i : map)
-    {
-        if (i.second.status_code != cpr::status::HTTP_OK)
-            return (crow::status::CONFLICT, "Error al reiniciar el dispositivo: " + i.first);
-    }
+    hub.reiniciar_for_all();
     hub.detiene_for_all();
 
     return (crow::response(200));

@@ -47,7 +47,7 @@ crow::response Sesion::login(const crow::request &req)
         crow::json::wvalue json;
         Global::User::id = username.first;
 
-        json["id"] = Global::User::Current = username.first;
+        json["id"] = Global::User::id = username.first;
         json["usuario"] = Global::User::Current = username.second;
         json["token"] = token = CashHub::instance().autentica();
 

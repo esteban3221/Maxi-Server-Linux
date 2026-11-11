@@ -1,23 +1,13 @@
 #pragma once
 #include <iostream>
+#include <vector>
 #include <crow.h>
 #include <glibmm.h>
 #include <giomm.h>
 
 #include "coneccion.hpp"
 #include "model/level_cash.hpp"
-// R"(
-//                 CREATE TABLE detalle_movimientos_dinero (
-//                 id                INTEGER PRIMARY KEY AUTOINCREMENT,
-//                 id_log            INTEGER NOT NULL,
-//                 tipo_movimiento   TEXT NOT NULL CHECK(tipo_movimiento IN ('entrada', 'salida')),
-//                 denominacion      INTEGER NOT NULL,
-//                 cantidad          INTEGER NOT NULL DEFAULT 0,
-//                 creado_en         DATETIME DEFAULT (datetime('now','localtime')),
-
-//                 FOREIGN KEY (id_log) REFERENCES log(id),
-
-//             );)
+#include "essp_driver/src/lib.rs.h"
 
 class MDetalleMovimiento : public Glib::Object
 {
@@ -29,13 +19,26 @@ public:
     uint32_t m_cantidad;
     Glib::DateTime m_creado_en;
 
-    static Glib::RefPtr<MDetalleMovimiento> create(uint32_t id, uint32_t id_log, const Glib::ustring &tipo_movimiento, uint32_t denominacion, uint32_t cantidad, const Glib::DateTime &creado_en = Glib::DateTime::create_now_local())
+    static Glib::RefPtr<MDetalleMovimiento> create(
+        uint32_t id,
+        uint32_t id_log,
+        const Glib::ustring &tipo_movimiento,
+        uint32_t denominacion,
+        uint32_t cantidad,
+        const Glib::DateTime &creado_en = Glib::DateTime::create_now_local())
     {
-        return Glib::make_refptr_for_instance<MDetalleMovimiento>(new MDetalleMovimiento(id, id_log, tipo_movimiento, denominacion, cantidad, creado_en));
+        return Glib::make_refptr_for_instance<MDetalleMovimiento>(
+            new MDetalleMovimiento(id, id_log, tipo_movimiento, denominacion, cantidad, creado_en));
     }
 
 protected:
-    MDetalleMovimiento(uint32_t id, uint32_t id_log, const Glib::ustring &tipo_movimiento, uint32_t denominacion, uint32_t cantidad, const Glib::DateTime &creado_en)
+    MDetalleMovimiento(
+        uint32_t id,
+        uint32_t id_log,
+        const Glib::ustring &tipo_movimiento,
+        uint32_t denominacion,
+        uint32_t cantidad,
+        const Glib::DateTime &creado_en)
         : m_id(id),
           m_id_log(id_log),
           m_tipo_movimiento(tipo_movimiento),
@@ -48,15 +51,15 @@ protected:
 
 class DetalleMovimiento
 {
-private:
-    /* data */
 public:
+    DetalleMovimiento() = default;
+    ~DetalleMovimiento() = default;
+
     void insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<MDetalleMovimiento> &detalle);
     const std::shared_ptr<ResultMap> get_detalle_movimiento(uint32_t id_log);
-    DetalleMovimiento(/* args */);
-    ~DetalleMovimiento();
 
-    void registrar_diferencias(size_t t_id,
-                                        const crow::json::rvalue& inicial, 
-                                        const crow::json::rvalue& final_);
+    uint32_t registrar_diferencias(
+        size_t t_id,
+        const std::vector<ffi::DenomLevel> &inicial,
+        const std::vector<ffi::DenomLevel> &final_);
 };

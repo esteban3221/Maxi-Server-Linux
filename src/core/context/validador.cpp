@@ -1,403 +1,401 @@
 #include "core/context/validador.hpp"
-#include "core/states/svalidador.hpp"
+#include <crow/logging.h>
+#include <algorithm>
+#include <chrono>
 
-ValidadorUnit::ValidadorUnit(/* args */) : device_id("Desconocido"),
-                                           ingreso_credito(0),
-                                           salida_credito(0),
-                                           poll_milli(200),
-                                           poll(false)
+ValidadorUnit::ValidadorUnit()
+    : device_id("Desconocido"),
+      device_model("ITL-eSSP"),
+      rust_unit(ffi::new_essp_unit("/dev/ttyUSB0", 0))
 {
-    // crow::logger::setLogLevel(crow::LogLevel::Debug);
 }
 
 ValidadorUnit::~ValidadorUnit()
 {
-    // detiene_desconecta();
+    detiene_desconecta();
 }
 
-std::string pretty_json(const std::string &json, const std::string &indent_prefix)
+bool ValidadorUnit::inicia_conecta(const std::vector<ffi::RouteRule> &rutas)
 {
-    if (json.empty() || json[0] != '{' && json[0] != '[')
-        return json;
-
-    std::string out;
-    out.reserve(json.length() * 2); // Evita realocaciones constantes
-    int level = 0;
-    bool in_quotes = false;
-
-    for (size_t i = 0; i < json.length(); ++i)
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
     {
-        char c = json[i];
-        if (c == '"' && (i == 0 || json[i - 1] != '\\'))
-            in_quotes = !in_quotes;
-        if (in_quotes)
-        {
-            out += c;
-            continue;
-        }
+        rust_unit = ffi::new_essp_unit(conf.puerto, static_cast<uint8_t>(conf.ssp));
+        rust::Slice<const ffi::RouteRule> slice_rutas(rutas.data(), rutas.size());
 
-        if (c == '{' || c == '[')
+        auto niveles_rust = rust_unit->iniciar_y_conectar(conf.habilita_recolector, slice_rutas);
+
+        device_id = std::string(rust_unit->get_serial_id());
+        device_model = (conf.ssp == 16) ? "ITL-Coin-Hopper" : "ITL-Bill-Recycler";
+
+        ultimo_cash_level.assign(niveles_rust.begin(), niveles_rust.end());
+        CROW_LOG_INFO << "Conectado nativamente a " << device_model << " [ID: " << device_id << "]";
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "Error al conectar en " << conf.puerto << ": " << e.what();
+        return false;
+    }
+}
+
+bool ValidadorUnit::reiniciar()
+{
+    detener_polling();
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
+    {
+        rust_unit->reiniciar();
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "Error reiniciando unidad " << device_id << ": " << e.what();
+        return false;
+    }
+}
+
+
+void ValidadorUnit::detener_polling()
+{
+    poll.store(false, std::memory_order_release);
+    cv_poll.notify_all();
+
+    if (poll_thread.joinable())
+    {
+        poll_thread.request_stop();
+        if (poll_thread.get_id() != std::this_thread::get_id())
         {
-            out += c;
-            out += "\n" + indent_prefix + std::string(++level * 4, ' ');
-        }
-        else if (c == '}' || c == ']')
-        {
-            out += "\n" + indent_prefix + std::string(--level * 4, ' ');
-            out += c;
-        }
-        else if (c == ',')
-        {
-            out += ",\n" + indent_prefix + std::string(level * 4, ' ');
-        }
-        else if (c == ':')
-        {
-            out += ": ";
-        }
-        else if (!std::isspace(c))
-        {
-            out += c;
+            poll_thread.join();
         }
     }
-    return out;
-}
-
-void ValidadorUnit::imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body) const
-{
-    std::string prefix = "\t\t\t\t ";
-    std::puts("\n==================== [Debug Interno] ====================");
-    CROW_LOG_INFO << "Validador:" << device_id << '\n'
-                  << prefix << "Comando: " << command << '\n'
-                  << prefix << "Enviado: " << body << '\n'
-                  << prefix << "Tiempo: " << r.elapsed << '\n'
-                  << prefix << "Codigo: " << r.status_code << '\n'
-#ifdef MODO_DEBUG_JSON
-                  << prefix << "Respuesta (pretty): " << pretty_json(r.text, prefix) << '\n';
-#else
-                  << prefix << "Respuesta: " << r.text << '\n';
-#endif
-}
-
-const cpr::Response ValidadorUnit::command_get(const std::string &command, bool debug) const
-{
-    auto response = cpr::Get(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
-                             cpr::Header{{"Content-Type", "application/json"},
-                                         {"Authorization", "Bearer " + token}});
-
-    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN" : "BILL";
-
-    if (debug)
-        imprime_debug(command, response);
-
-    return response;
-}
-
-const cpr::Response ValidadorUnit::command_post(const std::string &command, const std::string &json, bool debug) const
-{
-    auto response = cpr::Post(cpr::Url{BASE_URL, command, "?deviceID=", device_id},
-                              cpr::Header{{"Content-Type", "application/json"},
-                                          {"Authorization", "Bearer " + token}},
-                              cpr::Body{json});
-
-    response.header["X-Device-Type"] = conf.ssp == 16 ? "COIN" : "BILL";
-
-    if (debug)
-        imprime_debug(command, response, json);
-    return response;
-}
-
-/*
-{
-"ComPort": "{{ComPort}}",
-"SspAddress": {{SspAddress}},
-"LogFilePath": "C:\\Temp\\",
-"SetInhibits": [
-{ "Denomination": "500 {{Currency}}", "Inhibit": false },
-{ "Denomination": "1000 {{Currency}}", "Inhibit": false },
-{ "Denomination": "2000 {{Currency}}", "Inhibit": false },
-{ "Denomination": "5000 {{Currency}}", "Inhibit": false },
-{ "Denomination": "10000 {{Currency}}", "Inhibit": false }
-],
-"SetRoutes": [
-{ "Denomination": "500 {{Currency}}", "Route": 1 },
-{ "Denomination": "1000 {{Currency}}", "Route": 1 },
-{ "Denomination": "2000 {{Currency}}", "Route": 1 },
-{ "Denomination": "5000 {{Currency}}", "Route": 0 }
-],
-"EnableAcceptor": true,
-"EnableAutoAcceptEscrow": true,
-"En
-*/
-
-const crow::json::rvalue ValidadorUnit::inicia_conecta(const crow::json::rvalue &set_routes)
-{
-    auto json = crow::json::wvalue{
-        {"ComPort", conf.puerto},
-        {"SspAddress", conf.ssp},
-        {"LogFilePath", conf.log_ruta},
-        {"SetInhibits", crow::json::wvalue::list()}, // Hasta el momento no hay ninguna necesidad de inhibir denominaciones, pero se puede agregar fácilmente aquí
-        {"SetRoutes", set_routes.has("SetRoutes") ? set_routes["SetRoutes"] : set_routes},
-        {"EnableAcceptor", conf.habilita_recolector},
-        {"EnableAutoAcceptEscrow", conf.auto_acepta_credito},
-        {"EnablePayout", conf.habilita_salida_credito}};
-
-    auto response = command_post("OpenConnection", json.dump());
-    auto json_response = crow::json::load(response.text);
-    if (response.status_code == 200)
-    {
-        device_id = json_response["deviceID"].s();
-        device_model = json_response["deviceModel"].s();
-
-        CROW_LOG_INFO << "Conectado al validador con ID: " << device_id;
-        ultimo_cash_level = crow::json::wvalue(json_response["allLevels"]).dump();
-        return json_response["allLevels"];
-    }
-    else
-        CROW_LOG_ERROR << "Error al conectar al validador: " << device_id;
-
-    return {};
 }
 
 void ValidadorUnit::detiene_desconecta()
 {
-    if (poll.load())
-    {
-        poll = false;                                                       // Detiene el polling
-        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli)); // Espera a que el hilo de polling termine
-    }
-    auto response = command_post("DisconnectDevice");
-
-    if (response.status_code == 200)
-        CROW_LOG_INFO << device_id << " → " << response.text;
-    else
-        CROW_LOG_ERROR << "Error al desconectar del validador: " << response.text;
+    detener_polling();
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    rust_unit->detener_y_desconectar();
 }
 
-bool ValidadorUnit::esperar_pago_async()
+std::vector<ffi::DenomLevel> ValidadorUnit::get_nivel_actual()
 {
-    bool detecto_dispensing = false;
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
+    {
+        auto niveles_rust = rust_unit->obtener_niveles();
+        ultimo_cash_level.assign(niveles_rust.begin(), niveles_rust.end());
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "No se pudieron leer niveles de " << device_id << ": " << e.what();
+    }
+    return ultimo_cash_level;
+}
+
+bool ValidadorUnit::cambiar_ruta(int32_t valor_pesos, bool a_reciclador)
+{
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
+    {
+        rust_unit->cambiar_ruta(valor_pesos * 100, a_reciclador);
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "Error cambiando ruta en " << device_id << ": " << e.what();
+        return false;
+    }
+}
+
+bool ValidadorUnit::vaciar_reciclador(bool smart_empty)
+{
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
+    {
+        rust_unit->vaciar_reciclador(smart_empty);
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        CROW_LOG_ERROR << "Error vaciando reciclador en " << device_id << ": " << e.what();
+        return false;
+    }
+}
+
+void ValidadorUnit::detener_pago()
+{
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try
+    {
+        rust_unit->detener_pago();
+    }
+    catch (...) {}
+}
+
+void ValidadorUnit::iniciar_polling()
+{
+    if (poll.load(std::memory_order_acquire))
+        return;
+
+    poll.store(true, std::memory_order_release);
+    poll_thread = std::jthread([this](std::stop_token stoken)
+    {
+        std::mutex mtx_sleep;
+
+        while (!stoken.stop_requested() && poll.load(std::memory_order_acquire))
+        {
+            rust::Vec<ffi::CashEvent> eventos;
+            bool error_comm = false;
+
+            {
+                std::lock_guard<std::mutex> lock(mtx_comunicacion);
+                try
+                {
+                    eventos = rust_unit->hacer_poll();
+                }
+                catch (const std::exception &e)
+                {
+                    CROW_LOG_ERROR << "Error serial en poll (" << device_id << "): " << e.what();
+                    error_comm = true;
+                }
+            }
+
+            if (error_comm)
+            {
+                signal_error.emit(device_id, "Perdida de comunicacion serial con el validador");
+            }
+            else
+            {
+                for (const auto &ev : eventos)
+                {
+                    switch (ev.kind)
+                    {
+                    case ffi::EventKind::Credit:
+                        CROW_LOG_INFO << "Credito recibido en " << device_id << ": $" << ev.value_pesos;
+                        signal_event_received.emit(ev);
+                        break;
+                    case ffi::EventKind::FraudAttempt:
+                        signal_error.emit(device_id, "Intento de fraude detectado");
+                        break;
+                    case ffi::EventKind::Jammed:
+                        signal_error.emit(device_id, "Billete o moneda atascada");
+                        break;
+                    case ffi::EventKind::CashboxRemoved:
+                        signal_error.emit(device_id, "CASHBOX_REMOVED");
+                        break;
+                    case ffi::EventKind::CashboxReplaced:
+                        signal_error.emit(device_id, "CASHBOX_REPLACED");
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+
+            std::unique_lock<std::mutex> ulock(mtx_sleep);
+            cv_poll.wait_for(ulock, stoken, std::chrono::milliseconds(poll_milli), [this]() {
+                return !poll.load(std::memory_order_acquire);
+            });
+        }
+        CROW_LOG_INFO << "Polling finalizado limpiamente para " << device_id;
+    });
+}
+
+bool ValidadorUnit::esperar_pago_fisico()
+{
+    auto inicio = std::chrono::steady_clock::now();
+    const auto timeout_max = std::chrono::seconds(25);
+    bool exito = false;
     bool terminado = false;
-    bool exito = true;
-    int reintentos_iniciales = 0;
-    std::string state;
 
     while (!terminado)
     {
-        { 
-            std::lock_guard<std::mutex> lock(mtx_comunicacion);
-            auto resp = command_get("GetDeviceStatus");
-            if (resp.status_code == cpr::status::HTTP_OK)
+        if (std::chrono::steady_clock::now() - inicio > timeout_max)
+        {
+            CROW_LOG_WARNING << "Timeout de software alcanzado en entrega de " << device_id << ". Deteniendo motor (0x38)...";
+            detener_pago();
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
             {
-                auto json = crow::json::load(resp.text);
-                state = json.has("deviceState") ? std::string(json["deviceState"].s()) : "";
+                std::lock_guard<std::mutex> lock(mtx_comunicacion);
+                try { rust_unit->hacer_poll(); } catch (...) {}
+            }
+            return false;
+        }
 
-                if (state == "DISPENSING")
-                    detecto_dispensing = true;
-
-                if (state == "IN_PROGRESS")
-                    goto sleep_and_continue; 
-
-                for (const auto &item : json["pollBuffer"])
+        {
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
+            try
+            {
+                auto eventos = rust_unit->hacer_poll();
+                for (const auto &ev : eventos)
                 {
-                    std::string event = item.has("eventTypeAsString") ? std::string(item["eventTypeAsString"].s()) : "";
-                    event = item.has("stateAsString") ? std::string(item["stateAsString"].s()) : event;
-
-                    if (event == "TIME_OUT" || event == "JAMMED" || event == "ERROR")
-                    {
-                        exito = false;
-                        terminado = true;
-                    }
-                    else if (event == "COMPLETED")
+                    if (ev.kind == ffi::EventKind::Dispensed)
                     {
                         exito = true;
                         terminado = true;
                     }
-                }
-
-                if (!detecto_dispensing && ++reintentos_iniciales > 100)
-                {
-                    exito = false;
-                    terminado = true;
+                    else if (ev.kind == ffi::EventKind::Timeout ||
+                             ev.kind == ffi::EventKind::IncompletePayout ||
+                             ev.kind == ffi::EventKind::Jammed ||
+                             ev.kind == ffi::EventKind::Error)
+                    {
+                        exito = false;
+                        terminado = true;
+                    }
                 }
             }
+            catch (...) {}
         }
 
-    sleep_and_continue:
         if (!terminado)
             std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
     }
-    CROW_LOG_INFO << "Iniciando limpieza de buffer por 2 segundos...";
-    auto inicio_limpieza = std::chrono::steady_clock::now();
-
-    while (std::chrono::steady_clock::now() - inicio_limpieza < std::chrono::seconds(2))
-    {
-        {
-            std::lock_guard<std::mutex> lock(mtx_comunicacion);
-            auto resp = command_get("GetDeviceStatus");
-            if (resp.status_code == cpr::status::HTTP_OK)
-            {
-                auto json = crow::json::load(resp.text);
-                
-                if (json["pollBuffer"].size() > 0)
-                    CROW_LOG_DEBUG << "Mensaje residual descartado durante limpieza: " << json["pollBuffer"].size();
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
-    }
-
     return exito;
 }
-void ValidadorUnit::iniciar_polling()
+
+std::vector<ffi::PayoutItem> ValidadorUnit::calcular_cambio(
+    uint32_t &cambio_restante,
+    const std::vector<ffi::DenomLevel> &niveles,
+    bool is_cambio) const
 {
-    poll = true;
+    std::vector<ffi::PayoutItem> a_dispensar;
+    const uint32_t monto_original = cambio_restante;
 
-    std::thread([this]()
-                {
-        while (poll) {
-            std::lock_guard<std::mutex> lock(mtx_comunicacion);
-            auto resp = command_get("GetDeviceStatus");
-            if (resp.status_code == cpr::status::HTTP_OK) 
-            {
-                auto json = crow::json::load(resp.text);
-                for (const auto &item : json["pollBuffer"]) 
-                {
-                    std::string event_name;
-                    if (item.has("stateAsString")) event_name = item["stateAsString"].s();
-                    else if (item.has("eventTypeAsString")) event_name = item["eventTypeAsString"].s();
+    auto niveles_ordenados = niveles;
+    std::sort(niveles_ordenados.begin(), niveles_ordenados.end(),
+              [](const ffi::DenomLevel &a, const ffi::DenomLevel &b) {
+                  return a.value_pesos > b.value_pesos;
+              });
 
-                    if (event_name == "ESCROW" || event_name == "COIN_CREDIT" || event_name == "VALUE_ADDED") 
-                    {
-                        CROW_LOG_INFO << "Crédito detectado en Estado Activo: " << event_name << " - " << item["value"].i() / 100;
-                        signal_event_received.emit(device_id, conf.ssp == 0 ? "BILL" : "COIN", event_name, item);
-                    } 
-                    else if (event_name == "FRAUD_ATTEMPT")
-                        signal_error.emit(device_id, "Posible intento de fraude detectado");
-                    else if (event_name == "JAMMED") 
-                    {
-                        signal_error.emit(device_id,"Dispositivo atascado");
-                    }
-                    else if (event_name == "ERROR")
-                    {
-                        signal_error.emit(device_id, "Error genérico detectado");
-                        break;
-                    }
-                    else if (event_name == "CASHBOX_REPLACED" || event_name == "CASHBOX_REMOVED")
-                        signal_error.emit(device_id, event_name);
-                    else if (event_name == "IN_PROGRESS")
-                    {
-                        continue;
-                    }
+    for (auto &denom : niveles_ordenados)
+    {
+        if (denom.value_pesos <= 0 || denom.stored_in_payout <= 0)
+            continue;
 
-                    // CROW_LOG_INFO << "[Debug] " << event_name << '\n';
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(poll_milli));
-        } 
-        CROW_LOG_INFO << "Terminando Polleo para el dispositivo " << device_id; })
-        .detach();
+        uint32_t valor = static_cast<uint32_t>(denom.value_pesos);
+        int32_t disponibles = denom.stored_in_payout;
+        int32_t piezas_usar = 0;
+
+        while (cambio_restante >= valor &&
+               (!is_cambio || valor < monto_original) &&
+               disponibles > 0)
+        {
+            cambio_restante -= valor;
+            disponibles--;
+            piezas_usar++;
+        }
+
+        if (piezas_usar > 0)
+        {
+            a_dispensar.push_back(ffi::PayoutItem{
+                .value_cents = denom.value_cents,
+                .count = piezas_usar
+            });
+        }
+    }
+    return a_dispensar;
 }
 
-uint ValidadorUnit::iniciar_pago(size_t monto, bool is_cambio, const std::string &actual_level)
+uint32_t ValidadorUnit::iniciar_pago_automatico(uint32_t monto_pesos, bool is_cambio)
 {
-    uint cambio = monto;
-    std::map<int, int> levels;
-    CROW_LOG_CRITICAL << "String actual_level: \n"
-                      << actual_level;
-    auto json_levels = crow::json::load(actual_level);
+    uint32_t remanente = monto_pesos;
+    auto niveles = get_nivel_actual();
+    auto piezas = calcular_cambio(remanente, niveles, is_cambio);
 
-    for (auto &&i : json_levels)
-        levels[i["value"].i() / 100] = i["storedInPayout"].i();
-    auto json_pago = obten_cambio(cambio, levels, is_cambio);
-
-    iniciar_pago(json_pago.dump());
-
-    return cambio;
+    if (!piezas.empty())
+    {
+        iniciar_pago_manual(piezas);
+    }
+    return remanente;
 }
 
-void ValidadorUnit::iniciar_pago(const std::string &denom)
+bool ValidadorUnit::iniciar_pago_manual(const std::vector<ffi::PayoutItem> &piezas)
 {
+    if (piezas.empty())
+        return true;
+
     try
     {
-        if (denom.size() == 0 || denom == "[0,0,0,0,0,0]" || denom == "[0,0,0,0]")
-            return;
+        {
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
+            rust::Slice<const ffi::PayoutItem> slice(piezas.data(), piezas.size());
+            rust_unit->dispensar_piezas(slice);
+        }
 
-        auto response = command_post("PayoutMultipleDenominations", denom, true);
-        if (response.status_code == cpr::status::HTTP_OK)
+        bool ok = esperar_pago_fisico();
+        // Siempre actualizamos los niveles reales para registrar salidas parciales si hubo timeout/atasco
+        get_nivel_actual();
+
+        if (!ok)
         {
-            auto future = std::async(std::launch::async, &ValidadorUnit::esperar_pago_async, this);
-            CROW_LOG_INFO << "Bloqueando hilo hasta finalizar entrega física...";
-            future.wait();
-            CROW_LOG_INFO << "Entrega terminada. Continuando con el flujo.";
-            if(!future.get())
-                signal_error.emit(device_id, "Atasco y/o expiracion de tiempo de entrega.");
+            signal_error.emit(device_id, "Atasco o tiempo agotado durante la entrega de efectivo.");
+            return false;
         }
-        else if (auto json = crow::json::load(response.text); response.status_code == cpr::status::HTTP_BAD_REQUEST)
-        {
-            if (json["reason"].s() == "BUSY")
-            {
-                CROW_LOG_INFO << "Reintentando pago.";
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                iniciar_pago(denom);
-            }
-        }
-        else
-        {
-            CROW_LOG_ERROR << device_id << " → " << json["message"].s() << ", Razon: " << json["message"].s();
-            signal_error.emit(device_id, json["message"].operator std::string());
-            detiene_desconecta();
-        }
+        return true;
     }
     catch (const std::exception &e)
     {
-        CROW_LOG_CRITICAL << device_id << " → " << e.what();
+        CROW_LOG_CRITICAL << device_id << " -> Error al dispensar: " << e.what();
+        get_nivel_actual();
+        signal_error.emit(device_id, e.what());
+        return false;
     }
 }
 
-crow::json::wvalue ValidadorUnit::obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio)
+bool ValidadorUnit::aceptar_escrow()
 {
-    std::vector<int> billsToReturn(reciclador.size(), 0); // Vector para almacenar la cantidad de billetes a devolver
-    auto cambio_original = cambio;                        // Guardamos el valor original del cambio
-    int index = reciclador.size() - 1;                    // Índice para insertar en el vector
-    for (auto it = reciclador.rbegin(); it != reciclador.rend(); ++it, --index)
-    {
-        int denominacion = it->first;         // Denominación del billete
-        int &cantidadDisponible = it->second; // Cantidad disponible en el reciclado
-        while ((is_cambio ? denominacion < cambio_original && cambio > 0 : cambio >= denominacion) && cantidadDisponible > 0)
-        {
-            cambio -= denominacion; // Reducir el cambio
-            cantidadDisponible--;   // Usar un billete del reciclador
-            billsToReturn[index]++; // Incrementar el contador de billetes devueltos
-        }
-    }
-    // Convertimos el vector a JSON
-    crow::json::wvalue response;
-    response = billsToReturn;
-    return response; // Retornamos el JSON con el array
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try { rust_unit->aceptar_escrow(); return true; }
+    catch (...) { return false; }
 }
 
-cpr::Response ValidadorUnit::get_nivel_actual()
+bool ValidadorUnit::rechazar_escrow()
 {
-    cpr::Response json;
-    int intentos = 0;
-    const int max_intentos = 15;
-
-    while (intentos < max_intentos)
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    try { rust_unit->rechazar_escrow(); return true; }
+    catch (const std::exception &e)
     {
-        json = command_get("GetAllLevels", true);
+        CROW_LOG_ERROR << "Error rechazando billete en " << device_id << ": " << e.what();
+        return false;
+    }
+}
 
-        if (json.status_code == 200 && json.text.size() > 2)
+void ValidadorUnit::limpiar_niveles_cashbox()
+{
+    std::lock_guard<std::mutex> lock(mtx_comunicacion);
+    rust_unit->limpiar_niveles_cashbox();
+}
+
+bool ValidadorUnit::iniciar_pago_por_canales(const std::vector<int32_t> &cantidades)
+{
+    bool tiene_piezas = std::any_of(cantidades.begin(), cantidades.end(), [](int32_t c) { return c > 0; });
+    if (!tiene_piezas)
+        return true;
+
+    try
+    {
         {
-            ultimo_cash_level = json.text;
-            return json;
+            std::lock_guard<std::mutex> lock(mtx_comunicacion);
+            rust::Slice<const int32_t> slice(cantidades.data(), cantidades.size());
+            rust_unit->dispensar_por_canales(slice);
         }
 
-        intentos++;
-        CROW_LOG_WARNING << "Niveles no listos para unidad " << device_id
-                         << ". Reintentando en 500ms... (Intento " << intentos << ")";
+        bool ok = esperar_pago_fisico();
+        get_nivel_actual();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        if (!ok)
+        {
+            signal_error.emit(device_id, "Atasco o tiempo agotado durante la entrega de efectivo.");
+            return false;
+        }
+        return true;
     }
-
-    CROW_LOG_ERROR << "Niveles no disponibles después de reintentos para unidad " << device_id;
-    return json; // Retornamos el último resultado, aunque sea un error
+    catch (const std::exception &e)
+    {
+        CROW_LOG_CRITICAL << device_id << " -> Error al dispensar por canales: " << e.what();
+        get_nivel_actual();
+        signal_error.emit(device_id, e.what());
+        return false;
+    }
 }

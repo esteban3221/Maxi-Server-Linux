@@ -1,297 +1,157 @@
 #include "core/hub_cash.hpp"
+#include <crow/logging.h>
 
-std::string CashHub::autentica()
-{
-    auto r = cpr::Post(cpr::Url{"http://localhost:5000/api/Users/Authenticate"},
-                       cpr::Header{{"Content-Type", "application/json"}},
-                       cpr::Body{R"({
-                        "Username": "admin",
-                        "Password": "password"
-                        })"});
-
-    if (r.status_code == crow::status::OK)
-    {
-        auto rcb = crow::json::load(r.text);
-        return rcb["token"].s();
-    }
-    else if (r.status_code == 0)
-    {
-        Global::System::showNotify("Servicio", "Servicio API REST no iniciado o en error", "dialog-error");
-        throw std::runtime_error("Servicio API REST no iniciado o en error");
-    }
-    else
-        CROW_LOG_ERROR << "Error de autenticación con la API REST : " << r.status_code << " - " << r.text;
-
-    return "";
-}
-
-#include <cstring> // Para memset
-
-int CashHub::obtener_ssp_por_magia_negra(const std::string &puerto_dev, int ssp_address)
-{
-    CROW_LOG_INFO << "Intentando sincronizar SSP en dirección: " << ssp_address;
-
-    SSP_PORT port_handle = OpenSSPPort(puerto_dev.c_str());
-    if (port_handle == -1)
-    {
-        CROW_LOG_ERROR << "No se pudo abrir el puerto " << puerto_dev;
-        return -1;
-    }
-
-    SSP_COMMAND_SETUP ssp_setup;
-    std::memset(&ssp_setup, 0, sizeof(SSP_COMMAND_SETUP));
-
-    ssp_setup.port = port_handle;
-    ssp_setup.Timeout = 1000;
-    ssp_setup.RetryLevel = 3;
-    ssp_setup.SSPAddress = ssp_address;
-    ssp_setup.EncryptionStatus = 0;
-
-    if (ssp_sync(ssp_setup) == SSP_RESPONSE_OK)
-    {
-        CROW_LOG_INFO << "¡Sincronización exitosa en dirección " << ssp_address << "!";
-        return ssp_address;
-    }
-
-    if (ssp_address == 16)
-    {
-        CROW_LOG_WARNING << "Fallo en 0, intentando dirección 16...";
-        CloseSSPPort(port_handle);
-        return obtener_ssp_por_magia_negra(puerto_dev, 0);
-    }
-
-    CROW_LOG_ERROR << "No se encontró ningún dispositivo SSP en " << puerto_dev;
-    CloseSSPPort(port_handle);
-    return -1;
-}
-
-// --- Escaneo Automático ---
 void CashHub::inicializar_hardware()
 {
-    CROW_LOG_INFO << "Iniciando escaneo de puertos USB...";
+    CROW_LOG_INFO << "Iniciando escaneo nativo de puertos USB...";
     unidades.clear();
-    bool ultimo_registro;
 
     for (const auto &entry : fs::directory_iterator("/dev"))
     {
-        // std::thread([this, path = entry.path().string()]() // se pidio que forzozamente se ordenara
-        //             {
         auto path = entry.path().string();
         if (path.find("/dev/ttyUSB") != std::string::npos)
         {
-            int ssp_sugerido = obtener_ssp_por_magia_negra(path);
+            // Rust detecta si responde 16 (Monedero) o 0 (Billetero)
+            int32_t ssp_sugerido = ffi::detectar_ssp_en_puerto(path);
             if (ssp_sugerido != -1)
             {
-                CROW_LOG_WARNING << "Puerto " << path << " detectado como Validador tipo "
-                                 << (ssp_sugerido == 16 ? "COIN" : "Bill")
-                                 << ". Usando SSP " << ssp_sugerido;
+                CROW_LOG_INFO << "Puerto " << path << " detectado como Validador tipo "
+                              << (ssp_sugerido == 16 ? "COIN" : "BILL")
+                              << ". Usando SSP " << ssp_sugerido;
                 intentar_registrar(path, ssp_sugerido);
             }
             else
             {
-                Global::System::showNotify("Init System", ("No se pudo registra el validador con puerto " + path).c_str(), "dialog-information");
+                Global::System::showNotify("Init System", ("No se pudo registrar el validador en " + path).c_str(), "dialog-error");
             }
         }
     }
-    // )
-    //     .detach();
-    // }
 }
 
 bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 {
     auto v = std::make_unique<ValidadorUnit>();
 
-    v->property_token() = autentica();
-
     v->property_conf().puerto = puerto;
-    v->property_conf().ssp = ssp;
+    v->property_conf().ssp = static_cast<uint32_t>(ssp);
     v->property_conf().habilita_recolector = false;
     v->property_conf().auto_acepta_credito = false;
     v->property_conf().habilita_salida_credito = false;
 
-    if (v->inicia_conecta(crow::json::load("[]")))
+    if (v->inicia_conecta())
     {
         ValidadorUnit *raw_v = v.get();
 
-        v->signal_event_received.connect([this, raw_v](std::string device_id, std::string type_val, std::string tipo, const crow::json::rvalue &data)
-                                         {
-            int monto = data["value"].i() / 100;
-
-            if(type_val == "BILL")
+        v->signal_event_received.connect([this, raw_v](const ffi::CashEvent &ev)
+        {
+            if (ev.device_type == ffi::DeviceType::Bill && m_list_billetes)
+            {
                 for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
                 {
                     auto item = m_list_billetes->get_item(i);
-                    if (monto == item->m_denominacion)
+                    if (ev.value_pesos == (item->m_denominacion))
                     {
-                        if(++item->m_cant_recy >= item->m_nivel_inmo_max)
+                        if (++item->m_cant_recy >= item->m_nivel_inmo_max)
                         {
-                            crow::json::wvalue json_rutas;
-                            json_rutas["value"] = monto * 100;
-                            json_rutas["countryCode"] = "MXN";
-                            json_rutas["route"] = 0;
-                            
-                            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-                            raw_v->command_post("SetDenominationRoute", json_rutas.dump(), true);
+                            raw_v->cambiar_ruta(ev.value_pesos, false);
                         }
                     }
                 }
-            
-            signal_credito.emit(device_id, type_val, data, monto); });
+            }
+            signal_credito.emit(ev);
+        });
 
-        v->signal_error.connect([this](std::string device_id, std::string error_msg)
-                                { signal_hub_error.emit(device_id, error_msg); });
+        v->signal_error.connect([this](const std::string &device_id, const std::string &error_msg)
+        {
+            signal_hub_error.emit(device_id, error_msg);
+        });
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
         v->detiene_desconecta();
-
         unidades.push_back(std::move(v));
         return true;
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     v->detiene_desconecta();
-
     return false;
 }
 
-crow::json::rvalue CashHub::rutas_default(ValidadorUnit *val)
+std::vector<ffi::RouteRule> CashHub::rutas_default(const ValidadorUnit *val)
 {
-    if (val->property_conf().ssp == 16)
-        return crow::json::load("[]");
+    if (val->property_device_type() == ffi::DeviceType::Coin)
+        return {};
 
-    crow::json::wvalue json_rutas;
+    std::vector<ffi::RouteRule> reglas;
     auto m_list = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-    auto snapshot_level = crow::json::load(val->property_ultimo_cash_level());
+    const auto &snapshot_level = val->property_ultimo_cash_level();
 
-    for (size_t i = 0; i < snapshot_level.size(); i++)
+    for (size_t i = 0; i < snapshot_level.size() && i < m_list->get_n_items(); i++)
     {
-        if (!snapshot_level[i].has("storedInPayout") || !snapshot_level[i].has("value"))
-            continue;
+        bool es_payout = (snapshot_level[i].stored_in_payout <= static_cast<int32_t>(m_list->get_item(i)->m_nivel_inmo_max));
+        reglas.push_back(ffi::RouteRule{
+            .value_cents = snapshot_level[i].value_cents,
+            .to_payout = es_payout
+        });
 
-        int valor = snapshot_level[i]["value"].i();
-        std::string codigo = snapshot_level[i]["countryCode"].s();
-        int almacenado = snapshot_level[i]["storedInPayout"].i();
-
-        json_rutas["SetRoutes"][i]["Denomination"] = std::to_string(valor) + " " + codigo;
-
-        // Lógica de ruta (1 = Recycler, 0 = Cashbox)
-        bool es_payout = (almacenado <= m_list->get_item(i)->m_nivel_inmo_max);
-        json_rutas["SetRoutes"][i]["Route"] = es_payout ? 1 : 0;
-
-        CROW_LOG_DEBUG << "Cuadrando rutas: " << valor << " (Status: " << (es_payout ? "Recycler" : "Cashbox") << ")";
+        CROW_LOG_DEBUG << "Cuadrando rutas: $" << snapshot_level[i].value_pesos
+                       << " (Destino: " << (es_payout ? "Recycler" : "Cashbox") << ")";
     }
-
-    return crow::json::load(json_rutas.dump());
+    return reglas;
 }
 
-cpr::Response CashHub::command_by_device_id(HttpMethod method, const std::string &device_id, const std::string &command, const std::string &json, bool debug)
+std::map<std::string, DeviceSnapshot> CashHub::obten_ultimo_snapshot_level() const
 {
-    for (auto const &i : unidades)
+    std::map<std::string, DeviceSnapshot> respuestas;
+    for (const auto &u : unidades)
     {
-        if (i->property_device_id() == device_id)
-        {
-            switch (method)
-            {
-            case HttpMethod::GET:
-                return i->command_get(command, debug);
-            case HttpMethod::POST:
-                return i->command_post(command, json, debug);
-            default:
-                return {};
-            }
-        }
+        respuestas[u->property_device_id()] = DeviceSnapshot{
+            .type = u->property_device_type(),
+            .levels = u->property_ultimo_cash_level()
+        };
     }
-
-    // Si llegamos aquí, el ID no existe.
-    // Creamos una respuesta con error 404 local o status 0 para indicar "No encontrado"
-    cpr::Response error_res;
-    error_res.status_code = 0;
-    error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
-    return error_res;
-}
-
-std::map<std::string, crow::json::rvalue> CashHub::obten_ultimo_snapshot_level(void)
-{
-    std::map<std::string, crow::json::rvalue> respuestas;
-
-    for (auto &&i : unidades)
-    {
-        auto snapshot_original = crow::json::load(i->property_ultimo_cash_level());
-        crow::json::wvalue envoltorio;
-        envoltorio["levels"] = snapshot_original;
-        envoltorio["type"] = (i->property_conf().ssp == 16 ? "COIN" : "BILL");
-        respuestas[i->property_device_id()] = crow::json::load(envoltorio.dump());
-    }
-
     return respuestas;
 }
 
-std::map<std::string, cpr::Response> CashHub::command_for_all(HttpMethod method, const std::string &command, const std::string &json, bool debug)
+void CashHub::inicia_for_all(const Conf &conf, const std::map<std::string, std::vector<ffi::RouteRule>> &set_routes)
 {
-    if (command == "OpenConnection")
-        throw "Usar la funcion 'inicia_for_all' en su lugar";
-
-    std::map<std::string, cpr::Response> respuestas;
-
-    for (auto &&i : unidades)
+    if (is_in_process.exchange(true))
     {
-        switch (method)
-        {
-        case HttpMethod::GET:
-            respuestas[i->property_device_id()] = i->command_get(command, debug);
-            break;
-        case HttpMethod::POST:
-            respuestas[i->property_device_id()] = i->command_post(command, json, debug);
-            break;
-        default:
-            break;
-        }
-    }
-
-    return respuestas;
-}
-
-void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow::json::rvalue> set_routes)
-{
-    if (is_in_process.load())
-    {
-        CROW_LOG_WARNING << "Hub Cash ya está en proceso. Ignorando nueva inicialización.";
+        CROW_LOG_WARNING << "CashHub ya esta en proceso. Ignorando nueva inicializacion.";
         return;
     }
+
     try
     {
-        is_in_process.store(true);
-        for (auto &&i : unidades)
+        for (auto &u : unidades)
         {
-            // por ahora todos tiene la misma configuracion de arranque
-            i->property_token() = Sesion::token;
-            i->property_conf().habilita_recolector = conf.habilita_recolector;
-            i->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
-            i->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
+            u->property_conf().habilita_recolector = conf.habilita_recolector;
+            u->property_conf().habilita_salida_credito = conf.habilita_salida_credito;
+            u->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
-            if (auto device_id = i->property_device_id(); set_routes.contains(device_id))
+            const auto &dev_id = u->property_device_id();
+            if (auto it = set_routes.find(dev_id); it != set_routes.end())
             {
-                i->inicia_conecta(set_routes[device_id]);
+                u->inicia_conecta(it->second);
             }
             else
             {
-                CROW_LOG_WARNING << "No se especificaron rutas para el dispositivo: " << device_id << " Usando las de default.";
-                i->inicia_conecta(rutas_default(i.get()));
+                CROW_LOG_INFO << "Usando rutas default para dispositivo: " << dev_id;
+                u->inicia_conecta(rutas_default(u.get()));
             }
 
-            if (i->property_conf().ssp == 0)
+            if (u->property_device_type() == ffi::DeviceType::Bill)
             {
                 m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-                auto snapshot_level = crow::json::load(i->property_ultimo_cash_level());
+                const auto &snapshot_level = u->property_ultimo_cash_level();
 
-                for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
+                for (size_t idx = 0; idx < m_list_billetes->get_n_items(); idx++)
                 {
-                    auto item = m_list_billetes->get_item(i);
-                    for (size_t j = 0; j < snapshot_level.size(); j++)
+                    auto item = m_list_billetes->get_item(idx);
+                    for (const auto &lvl : snapshot_level)
                     {
-                        if ((snapshot_level[j]["value"].i() / 100) == item->m_denominacion)
-                            item->m_cant_recy = snapshot_level[j]["storedInPayout"].i();
+                        if (lvl.value_pesos == static_cast<int32_t>(item->m_denominacion))
+                        {
+                            item->m_cant_recy = lvl.stored_in_payout;
+                        }
                     }
                 }
             }
@@ -305,137 +165,180 @@ void CashHub::inicia_for_all(const Conf &conf, std::map<std::string, const crow:
     }
 }
 
-void CashHub::detiene_for_all(void)
+void CashHub::detiene_for_all()
 {
-    for (auto &&i : unidades)
-        i->detiene_desconecta();
+    for (auto &u : unidades)
+        u->detiene_desconecta();
     is_in_process.store(false);
 }
 
 void CashHub::inicia_poll_for_all()
 {
-    for (auto &&i : unidades)
-        i->iniciar_polling();
+    for (auto &u : unidades)
+        u->iniciar_polling();
 }
-
-#include <thread>
-#include <chrono>
 
 void CashHub::detiene_poll_for_all(size_t t_id)
 {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::vector<cpr::Response> snapshot_inicio;
-    std::vector<cpr::Response> snapshot_fin;
-
-    for (auto &&i : unidades)
+    for (auto &u : unidades)
     {
-        i->property_poll().store(false);
-        std::this_thread::sleep_for(std::chrono::milliseconds(i->property_poll_milli()));
+        auto snapshot_inicio = u->property_ultimo_cash_level();
+        u->detener_polling();
+        auto snapshot_fin = u->get_nivel_actual();
 
-        // Snapshot inicial (estado previo guardado)
-        cpr::Response r_inicio;
-        r_inicio.text = i->property_ultimo_cash_level();
-        snapshot_inicio.emplace_back(r_inicio);
-        snapshot_fin.emplace_back(i->get_nivel_actual());
-    }
-
-    // Procesar diferencias
-    for (size_t i = 0; i < snapshot_inicio.size(); i++)
-    {
-        auto j_ini = crow::json::load(snapshot_inicio[i].text);
-        auto j_fin = crow::json::load(snapshot_fin[i].text);
-
-        // Solo registramos si ambos JSON son válidos
-        if (j_ini && j_fin && j_ini.t() == crow::json::type::List && j_fin.t() == crow::json::type::List)
+        if (t_id != (-1) && !snapshot_inicio.empty() && !snapshot_fin.empty())
         {
-            detalle.registrar_diferencias(t_id, j_ini, j_fin);
+            detalle.registrar_diferencias(t_id, snapshot_inicio, snapshot_fin);
         }
-        else
+        else if (t_id != (-1))
         {
-            CROW_LOG_ERROR << "No se pudieron comparar niveles: Snapshot inválido tras reintentos.";
+            CROW_LOG_ERROR << "Snapshot vacio al comparar niveles en unidad " << u->property_device_id();
         }
     }
 }
 
-// automatico
-void CashHub::inicia_pago(size_t t_id, size_t monto, bool is_cambio)
+void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
 {
-    uint remanente = monto;
-    std::vector<cpr::Response> snapshot_inicio;
-    std::vector<cpr::Response> snapshot_fin;
+    uint32_t remanente = static_cast<uint32_t>(monto_pesos);
 
-    for (auto &&i : unidades)
+    for (auto &u : unidades)
     {
-        if (i->property_conf().ssp == 0)
+        if (u->property_device_type() == ffi::DeviceType::Bill)
         {
-            cpr::Response r_inicio;
-            r_inicio.text = i->property_ultimo_cash_level();
-            snapshot_inicio.emplace_back(r_inicio);
+            auto snap_ini = u->property_ultimo_cash_level();
             CROW_LOG_INFO << "Intentando pagar con Billetes...";
-            remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
-            snapshot_fin.emplace_back(i->get_nivel_actual());
+            remanente = u->iniciar_pago_automatico(remanente, is_cambio);
+            auto snap_fin = u->property_ultimo_cash_level();
+
+            detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
         }
     }
 
     if (remanente > 0)
     {
-        for (auto &&i : unidades)
+        for (auto &u : unidades)
         {
-            if (i->property_conf().ssp == 16)
+            if (u->property_device_type() == ffi::DeviceType::Coin)
             {
-                cpr::Response r_inicio;
-                r_inicio.text = i->property_ultimo_cash_level();
-                snapshot_inicio.emplace_back(r_inicio);
+                auto snap_ini = u->property_ultimo_cash_level();
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
-                remanente = i->iniciar_pago(remanente, is_cambio, r_inicio.text);
-                snapshot_fin.emplace_back(i->get_nivel_actual());
+                remanente = u->iniciar_pago_automatico(remanente, is_cambio);
+                auto snap_fin = u->property_ultimo_cash_level();
+
+                detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
             }
         }
     }
 
-    for (size_t i = 0; i < snapshot_inicio.size(); i++)
-        detalle.registrar_diferencias(t_id,
-                                      crow::json::load(snapshot_inicio[i].text),
-                                      crow::json::load(snapshot_fin[i].text));
-
     if (remanente > 0)
-        signal_hub_error.emit("General", "Cambio incompleto. Faltaron: " + std::to_string(remanente));
+    {
+        signal_hub_error.emit("General", "Cambio incompleto. Faltaron: $" + std::to_string(remanente));
+    }
 }
 
-// manual
-void CashHub::inicia_pago(size_t t_id, std::map<std::string, std::string> map)
+void CashHub::inicia_pago(size_t t_id, const std::map<std::string, std::vector<ffi::PayoutItem>> &pagos_manuales)
 {
-    std::vector<cpr::Response> snapshot_inicio;
-    std::vector<cpr::Response> snapshot_fin;
-
-    for (auto &&i : unidades)
-        if (map.contains(i->property_device_id()))
+    for (auto &u : unidades)
+    {
+        const auto &dev_id = u->property_device_id();
+        if (auto it = pagos_manuales.find(dev_id); it != pagos_manuales.end())
         {
-            cpr::Response r_inicio;
-            r_inicio.text = i->property_ultimo_cash_level();
-            snapshot_inicio.emplace_back(r_inicio);
-            i->iniciar_pago(map.at(i->property_device_id()));
-            snapshot_fin.emplace_back(i->get_nivel_actual());
+            auto snap_ini = u->property_ultimo_cash_level();
+            u->iniciar_pago_manual(it->second);
+            auto snap_fin = u->property_ultimo_cash_level();
+
+            detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
         }
         else
-            CROW_LOG_ERROR << "No se encontro el dispositivo " << i->property_device_id() << ", Para pago manual";
-
-    for (size_t i = 0; i < snapshot_inicio.size(); i++)
-        detalle.registrar_diferencias(t_id,
-                                      crow::json::load(snapshot_inicio[i].text),
-                                      crow::json::load(snapshot_fin[i].text));
+        {
+            CROW_LOG_WARNING << "Dispositivo " << dev_id << " omitido en pago manual.";
+        }
+    }
 }
 
-cpr::Response CashHub::get_nivel_actual_by_id(const std::string &device_id) const
+std::vector<ffi::DenomLevel> CashHub::get_nivel_actual_by_id(const std::string &device_id) const
 {
-    for (auto const &i : unidades)
+    for (const auto &u : unidades)
     {
-        if (i->property_device_id() == device_id)
-            return i->get_nivel_actual();
+        if (u->property_device_id() == device_id)
+            return u->get_nivel_actual();
     }
+    CROW_LOG_ERROR << "Dispositivo " + device_id + " no encontrado en el Hub";
+    return {};
+}
 
-    cpr::Response error_res;
-    error_res.status_code = 0;
-    error_res.error.message = "Dispositivo " + device_id + " no encontrado en el Hub";
-    return error_res;
+bool CashHub::vaciar_dispositivo(const std::string &device_id, bool smart_empty)
+{
+    for (auto &u : unidades)
+    {
+        if (u->property_device_id() == device_id)
+            return u->vaciar_reciclador(smart_empty);
+    }
+    return false;
+}
+
+
+void CashHub::inicia_pago_por_canales(size_t t_id, const std::map<std::string, std::vector<int32_t>> &mapa_canales)
+{
+    for (auto &u : unidades)
+    {
+        const auto &dev_id = u->property_device_id();
+        if (auto it = mapa_canales.find(dev_id); it != mapa_canales.end())
+        {
+            auto snap_ini = u->property_ultimo_cash_level();
+            u->iniciar_pago_por_canales(it->second);
+            auto snap_fin = u->property_ultimo_cash_level();
+
+            detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
+        }
+        else
+        {
+            CROW_LOG_WARNING << "Dispositivo " << dev_id << " omitido en pago manual por canales.";
+        }
+    }
+}
+
+bool CashHub::aceptar_escrow(const std::string &device_id)
+{
+    for (auto &u : unidades)
+        if (u->property_device_id() == device_id)
+            return u->aceptar_escrow();
+    return false;
+}
+
+bool CashHub::rechazar_escrow(const std::string &device_id)
+{
+    for (auto &u : unidades)
+        if (u->property_device_id() == device_id)
+            return u->rechazar_escrow();
+    return false;
+}
+
+void CashHub::limpiar_cashbox(const std::string &device_id)
+{
+    for (auto &u : unidades)
+        if (u->property_device_id() == device_id)
+            u->limpiar_niveles_cashbox();
+}
+
+std::map<std::string, DeviceSnapshot> CashHub::obten_niveles_actuales_for_all()
+{
+    std::map<std::string, DeviceSnapshot> respuestas;
+    for (auto &u : unidades)
+    {
+        respuestas[u->property_device_id()] = DeviceSnapshot{
+            .type = u->property_device_type(),
+            .levels = u->get_nivel_actual()
+        };
+    }
+    return respuestas;
+}
+
+void CashHub::reiniciar_for_all()
+{
+    for (auto &u : unidades)
+    {
+        u->reiniciar();
+    }
+    is_in_process.store(false);
 }
