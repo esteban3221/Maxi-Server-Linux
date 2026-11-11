@@ -1,26 +1,21 @@
-//"context/validador.hpp"
-
 #pragma once
 
 #include <sigc++/sigc++.h>
-#include <utility>
-#include <memory> // Necesario para unique_ptr
+#include <condition_variable>
 #include <atomic>
+#include <thread>
 #include <string>
 #include <mutex>
-#include <map>
-#include <crow.h>
-#include <cpr/cpr.h>
+#include <vector>
+#include "essp_driver/src/lib.rs.h"
 
 struct Conf
 {
-    std::string puerto = "/dev/ttyUSB";
+    std::string puerto = "/dev/ttyUSB0";
     uint32_t ssp = 0;
-    std::string dispositivo;
-    std::string log_ruta;
-    bool habilita_recolector;
-    bool auto_acepta_credito;
-    bool habilita_salida_credito;
+    bool habilita_recolector = false;
+    bool auto_acepta_credito = false;
+    bool habilita_salida_credito = false;
 };
 
 class ValidadorUnit
@@ -29,51 +24,53 @@ private:
     std::string device_id;
     std::string device_model;
 
-    size_t ingreso_credito;
-    size_t salida_credito;
-    size_t poll_milli;
+    size_t poll_milli = 100;
 
-    std::atomic<bool> poll;
-    std::mutex mtx_comunicacion;
-    std::string token;
+    std::atomic<bool> poll{false};
+    std::jthread poll_thread;
+    std::condition_variable_any cv_poll;
+
+    mutable std::mutex mtx_comunicacion;
+    mutable rust::Box<ffi::RustEsspUnit> rust_unit;
+
     Conf conf;
-    bool esperar_pago_async();
+    std::vector<ffi::DenomLevel> ultimo_cash_level;
 
-    // utilidades para consumir la api rest del validador
-    const std::string BASE_URL = "http://localhost:5000/api/v2/CashDevice/";
-    void imprime_debug(const std::string &command, const cpr::Response &r, const std::string &body = "") const;
-    std::string ultimo_cash_level;
+    bool esperar_pago_fisico();
 
 public:
-    ValidadorUnit(/* args */);
+    ValidadorUnit();
     ~ValidadorUnit();
 
-    sigc::signal<void(const std::string &)> signal_state_changed;                                                                        // Emite nuevo estado
-    sigc::signal<void(const std::string &, const std::string &, const std::string &, const crow::json::rvalue &)> signal_event_received; // Eventos del poll
-    sigc::signal<void(const std::string &, const std::string &)> signal_error;                                                           // Errores graves
-
-    // propertys encapsulamiento
+    sigc::signal<void(const ffi::CashEvent &)> signal_event_received;
+    sigc::signal<void(const std::string &, const std::string &)> signal_error;
 
     size_t &property_poll_milli() { return poll_milli; }
     std::atomic<bool> &property_poll() { return poll; }
-    size_t &property_ingreso_credito() { return ingreso_credito; }
-    size_t &property_salida_credito() { return salida_credito; }
     Conf &property_conf() { return conf; }
-    std::string &property_token() { return token; }
-    std::string &property_ultimo_cash_level() { return ultimo_cash_level; }
-    const std::string &property_device_model() { return device_model; } // solo_lectura
-    const std::string &property_device_id() { return device_id; }       // solo_lectura
+    const std::string &property_device_id() const { return device_id; }
+    const std::string &property_device_model() const { return device_model; }
+    ffi::DeviceType property_device_type() const { return conf.ssp == 16 ? ffi::DeviceType::Coin : ffi::DeviceType::Bill; }
+    const std::vector<ffi::DenomLevel> &property_ultimo_cash_level() const { return ultimo_cash_level; }
 
-    // devuelve los niveles actuales de ingreso y salida al conectar
-    const crow::json::rvalue inicia_conecta(const crow::json::rvalue &set_routes);
+    bool inicia_conecta(const std::vector<ffi::RouteRule> &rutas = {});
     void detiene_desconecta();
     void iniciar_polling();
-    void iniciar_pago(const std::string &);
-    uint iniciar_pago(size_t, bool is_cambio, const std::string &actual_level);
-    crow::json::wvalue obten_cambio(uint &cambio, std::map<int, int> &reciclador, bool is_cambio);
-    const std::string get_nombre_estado();
-    cpr::Response get_nivel_actual();
+    void detener_polling();
+    bool reiniciar();
 
-    const cpr::Response command_get(const std::string &command, bool debug = false) const;
-    const cpr::Response command_post(const std::string &command, const std::string &json = "", bool = false) const;
+    std::vector<ffi::DenomLevel> get_nivel_actual();
+    bool cambiar_ruta(int32_t valor_pesos, bool a_reciclador);
+    bool vaciar_reciclador(bool smart_empty = true);
+    void detener_pago();
+    
+
+    uint32_t iniciar_pago_automatico(uint32_t monto_pesos, bool is_cambio);
+    bool iniciar_pago_manual(const std::vector<ffi::PayoutItem> &piezas);
+    std::vector<ffi::PayoutItem> calcular_cambio(uint32_t &cambio_restante, const std::vector<ffi::DenomLevel> &niveles, bool is_cambio) const;
+
+    bool aceptar_escrow();
+    bool rechazar_escrow();
+    void limpiar_niveles_cashbox();
+    bool iniciar_pago_por_canales(const std::vector<int32_t> &cantidades);
 };

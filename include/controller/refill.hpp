@@ -10,7 +10,7 @@ class Refill final : public VRefill
 {
 protected:
     void on_show_map();
-    void on_credit(const std::string &, const std::string &, const crow::json::rvalue &data, size_t credito);
+    void on_credit(const ffi::CashEvent &ev);
     void on_error(const std::string &device, const std::string &error); // este es el canal para escuchar cuando se remueva el cashbox
 
 private:

@@ -126,26 +126,26 @@ crow::response LogData::get_levels(const crow::request &req)
 
     for (auto const &[device_id, valor] : map)
     {
-        auto niveles_hw = valor["levels"];
-        std::string tipo_dispositivo = valor["type"].s();
-        auto tipo_db = (tipo_dispositivo == "COIN" ? "Level_Coin" : "Level_Bill");
+        const auto &niveles_hw = valor.levels;
+        std::string tipo_dispositivo = (valor.type == ffi::DeviceType::Coin) ? "COIN" : "BILL";
+        auto tipo_db = (valor.type == ffi::DeviceType::Coin) ? "Level_Coin" : "Level_Bill";
         auto config_db = std::make_unique<LevelCash>(tipo_db)->get_level_cash();
 
-        std::vector<crow::json::wvalue> levels_ofuscados;
+        crow::json::wvalue::list levels_ofuscados;
 
         for (size_t i = 0; i < niveles_hw.size(); i++)
         {
-            auto item_hw = niveles_hw[i];
+            const auto &item_hw = niveles_hw[i];
             crow::json::wvalue level_item;
 
-            level_item["value"] = item_hw["value"].i();
+            level_item["value"] = item_hw.value_cents;
 
             level_item["storedInPayout"] = (tiene_pago || tiene_consulta || tiene_carga) 
-                ? crow::json::wvalue(item_hw["storedInPayout"].u()) 
+                ? crow::json::wvalue(static_cast<uint32_t>(item_hw.stored_in_payout)) 
                 : crow::json::wvalue(nullptr);
 
             level_item["storedInCashbox"] = tiene_retirada_cassette 
-                ? crow::json::wvalue(item_hw["storedInCashbox"].u()) 
+                ? crow::json::wvalue(static_cast<uint32_t>(item_hw.stored_in_cashbox)) 
                 : crow::json::wvalue(nullptr);
 
             if (i < config_db->get_n_items() && (tiene_fianza || tiene_carga))

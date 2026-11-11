@@ -14,7 +14,7 @@ private:
     void on_btn_retry_click() override;
     void on_btn_cancel_click() override;
     void on_error(const std::string &device, const std::string &error);
-    void on_credit(const std::string &, const std::string &, const crow::json::rvalue &data, size_t credito);
+    void on_credit(const ffi::CashEvent &ev);
 
     crow::response inicia(const crow::request &req);
     crow::response inicia_manual(const crow::request &req);

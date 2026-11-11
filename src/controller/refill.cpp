@@ -19,8 +19,6 @@ Refill::Refill(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refBui
         .onopen(sigc::mem_fun(*this, &Refill::on_wb_socket_open))
         .onclose(sigc::mem_fun(*this, &Refill::on_wb_socket_close))
         .onmessage(sigc::mem_fun(*this, &Refill::on_wb_socket_message));
-
-
 }
 
 Refill::~Refill()
@@ -83,40 +81,30 @@ void Refill::init_data(Gtk::ColumnView *vcolumn, const std::string &tabla)
 
 void Refill::on_show_map()
 {
-    // si algun dia existe la necesidad de obtener los niveles especificos
-    // en caso de haber mas de 2 validadores se realizara el cambio por
-    // ahora se generalizara por tipo
-
     Glib::signal_idle().connect_once([this]()
     {
-        auto map = hub.command_for_all(HttpMethod::GET, "GetAllLevels");
+        auto map = hub.obten_niveles_actuales_for_all();
         size_t total = 0;
 
-        for (auto const& [llave, valor] : map)
+        for (auto const &[device_id, snapshot] : map)
         {
-            if(valor.status_code != cpr::status::HTTP_OK)
-            {
-                CROW_LOG_ERROR << "No se pudieron cargar los niveles para el dispositivo " << llave << " - " << valor.error.message;
-                continue;
-            }
-
-            auto es_moneda = (valor.header.at("X-Device-Type") == "COIN");
+            bool es_moneda = (snapshot.type == ffi::DeviceType::Coin);
+            std::string type_str = es_moneda ? "COIN" : "BILL";
             auto selection = es_moneda ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
             auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
             auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
 
             list_store->remove_all();
 
-            auto json = crow::json::load(valor.text);
             auto level = std::make_unique<LevelCash>(es_moneda ? "Level_Coin" : "Level_Bill")->get_level_cash();
 
-            for (size_t i = 0; i < json.size(); i++)
+            for (size_t i = 0; i < snapshot.levels.size() && i < level->get_n_items(); i++)
             {
-                list_store->append(MLevelCash::create
-                (
-                    json[i]["value"].i() / 100,
-                    json[i]["storedInCashbox"].i(),
-                    json[i]["storedInPayout"].i(),
+                const auto &lvl = snapshot.levels[i];
+                list_store->append(MLevelCash::create(
+                    lvl.value_pesos,
+                    lvl.stored_in_cashbox,
+                    lvl.stored_in_payout,
                     level->get_item(i)->m_nivel_inmo_min,
                     level->get_item(i)->m_nivel_inmo,
                     level->get_item(i)->m_nivel_inmo_max,
@@ -124,10 +112,11 @@ void Refill::on_show_map()
                 ));
             }
 
-            total += calcula_total(valor.header.at("X-Device-Type"), list_store);
+            total += calcula_total(type_str, list_store);
         }
 
-        v_lbl_total->set_text(Glib::ustring::format(total)); });
+        v_lbl_total->set_text(Glib::ustring::format(total));
+    });
 }
 
 void Refill::on_cancela_retirada()
@@ -161,15 +150,20 @@ size_t Refill::calcula_total(const std::string &type, const std::shared_ptr<Gio:
     Glib::signal_idle().connect_once([this, total, parcial, label_total, label_parcial]()
     {
         label_total->set_text(Glib::ustring::format(total));
-        label_parcial->set_text(Glib::ustring::format(parcial)); 
+        label_parcial->set_text(Glib::ustring::format(parcial));
     });
 
     return total;
 }
 
-void Refill::on_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito)
+void Refill::on_credit(const ffi::CashEvent &ev)
 {
-    auto selection = (type == "COIN") ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
+    const std::string device_id(ev.device_id);
+    const bool es_moneda = (ev.device_type == ffi::DeviceType::Coin);
+    const std::string type = es_moneda ? "COIN" : "BILL";
+    const auto credito = ev.value_pesos;
+
+    auto selection = es_moneda ? v_tree_reciclador_monedas->get_model() : v_tree_reciclador_billetes->get_model();
     auto single = std::dynamic_pointer_cast<Gtk::SingleSelection>(selection);
     auto list_store = std::dynamic_pointer_cast<Gio::ListStore<MLevelCash>>(single->get_model());
     bool encontrado = false;
@@ -185,7 +179,7 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
             encontrado = true;
             item_encontrado = item;
             index_encontrado = i;
-            break; // Salimos del bucle rápido
+            break;
         }
     }
 
@@ -193,7 +187,7 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
     {
         if (item_encontrado->m_cant_recy < item_encontrado->m_nivel_inmo)
         {
-            hub.command_by_device_id(HttpMethod::POST, device_id, "AcceptFromEscrow");
+            hub.aceptar_escrow(device_id);
             item_encontrado->m_cant_recy++;
             item_encontrado->m_ingreso++;
             t_log->m_ingreso += credito;
@@ -202,10 +196,9 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
         }
         else if (type == "BILL")
         {
-            if (auto response = hub.command_by_device_id(HttpMethod::POST, device_id, "ReturnFromEscrow");
-                response.status_code != cpr::status::HTTP_OK)
+            if (!hub.rechazar_escrow(device_id))
             {
-                CROW_LOG_ERROR << "Error al devolver billete desde el dispositivo " << device_id << ": $ " << credito;
+                CROW_LOG_ERROR << "Error al devolver billete desde el dispositivo " << device_id << ": $" << credito;
                 Global::System::showNotify("Refill", ("No se pudo devolver el billete de " + std::to_string(credito) + " desde el dispositivo " + device_id).c_str(), "dialog-error");
 
                 item_encontrado->m_cant_alm++;
@@ -215,7 +208,7 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
                 envia_mensaje_wb(type, item_encontrado);
             }
         }
-        else // Monedas que ya superaron el límite de reciclaje
+        else
         {
             item_encontrado->m_cant_recy++;
             item_encontrado->m_ingreso++;
@@ -229,9 +222,9 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
             list_store->remove(index_encontrado);
             list_store->insert(index_encontrado, item_encontrado);
             single->select_item(index_encontrado, true);
-            
+
             size_t total = calcula_total(type, list_store);
-            v_lbl_total->set_text(Glib::ustring::format(total)); 
+            v_lbl_total->set_text(Glib::ustring::format(total));
         });
     }
     else if (type == "COIN")
@@ -240,14 +233,14 @@ void Refill::on_credit(const std::string &device_id, const std::string &type, co
         log.update_log(t_log);
 
         Glib::signal_idle().connect_once([credito]()
-                                  { Global::System::showNotify("Denominación apilada", ("La denominación " + std::to_string(credito) + " no es posible contabilizar.").c_str(), "dialog-warning"); });
+        {
+            Global::System::showNotify("Denominación apilada", ("La denominación " + std::to_string(credito) + " no es posible contabilizar.").c_str(), "dialog-warning");
+        });
     }
 }
 
 void Refill::envia_mensaje_wb(const std::string &device, const Glib::RefPtr<MLevelCash> &item)
 {
-    // Por el momento se generaliza por tipo,
-    // pero algun dia sera necesario por device_id, solo se cambia la variable de paso
     if (not conn_)
         return;
 
@@ -273,13 +266,13 @@ void Refill::on_error(const std::string &device, const std::string &error)
     {
         cashbox_level = 0;
         hub.detiene_poll_for_all(-1);
-        auto json_level = crow::json::load(hub.get_nivel_actual_by_id(device).text);
+        auto niveles = hub.get_nivel_actual_by_id(device);
 
-        for (auto &&i : json_level)
-            cashbox_level += (i["value"].i() / 100) * i["storedInCashbox"].i();
+        for (const auto &lvl : niveles)
+            cashbox_level += lvl.value_pesos * lvl.stored_in_cashbox;
 
-        hub.command_by_device_id(HttpMethod::POST, device, "ClearCashboxLevels");
-        hub.get_nivel_actual_by_id(device); // solo para poner en ceros los niveles del cashbox, no se usa el resultado
+        hub.limpiar_cashbox(device);
+        hub.get_nivel_actual_by_id(device);
 
         {
             std::lock_guard<std::mutex> lock(mtx_espera);
@@ -314,23 +307,25 @@ crow::response Refill::inicia(const crow::request &req)
     try
     {
         Sesion::valida_autorizacion(req, Global::User::Rol::Retirar_Casette);
-        Glib::signal_idle().connect_once([this](){column_cassette->set_visible(true);});
+        Glib::signal_idle().connect_once([this]() { column_cassette->set_visible(true); });
     }
-    catch(const std::exception& e)
+    catch (const std::exception &e)
     {
-        Glib::signal_idle().connect_once([this](){column_cassette->property_visible() = false;});
+        Glib::signal_idle().connect_once([this]() { column_cassette->property_visible() = false; });
         std::cerr << e.what() << '\n';
     }
-    
+
     hub.inicia_for_all(conf);
     hub.inicia_poll_for_all();
 
     Glib::signal_idle().connect_once([this]()
-        { Global::Widget::v_main_stack->set_visible_child(*this); });
+    {
+        Global::Widget::v_main_stack->set_visible_child(*this);
+    });
 
     {
         std::unique_lock<std::mutex> lock(mtx_espera);
-        cv_finalizado.wait(lock, [this]{ return transaccion_terminada; });
+        cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
     }
 
     hub.detiene_for_all();
@@ -338,7 +333,9 @@ crow::response Refill::inicia(const crow::request &req)
     hub.on_error().clear();
 
     Glib::signal_idle().connect_once([this]()
-                              { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+    {
+        Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+    });
 
     return crow::response(Log::json_ticket(t_log));
 }
@@ -360,8 +357,6 @@ crow::response Refill::update_imovilidad(const crow::request &req)
 
 crow::response Refill::transpaso(const crow::request &req)
 {
-
-    // return crow::response(status.first, data);
     return {};
 }
 
@@ -372,10 +367,8 @@ crow::response Refill::retirada(const crow::request &req)
 
     if (!boton_conectado)
     {
-        
         Global::Widget::v_view_carga->v_btn_cancel->signal_clicked().connect(
-            sigc::mem_fun(*this, &Refill::on_cancela_retirada)
-        );
+            sigc::mem_fun(*this, &Refill::on_cancela_retirada));
         boton_conectado = true;
     }
 
@@ -389,17 +382,18 @@ crow::response Refill::retirada(const crow::request &req)
         t_log = MLog::create(0, Global::User::id, "Retirada de Casette", "", "EFECTIVO", 0, 0, cashbox_level, "Creacion de evento", Glib::DateTime::create_now_local());
         t_log->m_id = log.insert_log(t_log);
 
-        Glib::signal_idle().connect_once([this](){ 
-            Global::Widget::v_main_stack->set_visible_child("12"); 
+        Glib::signal_idle().connect_once([this]()
+        {
+            Global::Widget::v_main_stack->set_visible_child("12");
             Global::Widget::v_view_carga->modo(Global::Widget::v_view_carga->Modo::Retirada);
         });
 
-        hub.inicia_for_all({});
+        hub.inicia_for_all();
         hub.inicia_poll_for_all();
 
         {
             std::unique_lock<std::mutex> lock(mtx_espera);
-            cv_finalizado.wait(lock, [this]{ return transaccion_terminada; });
+            cv_finalizado.wait(lock, [this] { return transaccion_terminada; });
             conn.disconnect();
         }
 
@@ -410,7 +404,9 @@ crow::response Refill::retirada(const crow::request &req)
 
         hub.detiene_for_all();
         Glib::signal_idle().connect_once([this]()
-                                  { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+        {
+            Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+        });
         conn.disconnect();
 
         return crow::response(200, Log::json_ticket(t_log));
@@ -419,7 +415,9 @@ crow::response Refill::retirada(const crow::request &req)
     {
         hub.detiene_for_all();
         Glib::signal_idle().connect_once([this]()
-                                  { Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home); });
+        {
+            Global::Widget::v_main_stack->set_visible_child(Global::Widget::default_home);
+        });
         conn.disconnect();
         CROW_LOG_ERROR << e.what();
         return crow::response(500, std::string("Error: ") + e.what());

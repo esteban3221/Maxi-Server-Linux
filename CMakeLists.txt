@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project("Maxicajero Server Local" VERSION 2.4.3 LANGUAGES CXX)
+project("Maxicajero Server Local" VERSION 2.4.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,13 +35,11 @@ if(CCACHE_FOUND)
     message(STATUS "Usando ccache para acelerar compilaciones")
 endif()
 
-message(STATUS "${PROJECT_NAME} v${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD}) ${ARCH_NAME}")
+message(STATUS "${PROJECT_NAME} v${PROJECT_VERSION} (Build ${PROJECT_VERSION_BUILD})${ARCH_NAME}")
 
-#el debug json se revisa por envenged, por lo que solo se activa si se ve la salida por consola
 option(ENABLE_PRETTY_JSON "Activar formato visual para JSON en logs" OFF)
-
 if(ENABLE_PRETTY_JSON)
-    add_definitions(-DMODO_DEBUG_JSON)
+    add_compile_definitions(MODO_DEBUG_JSON)
 endif()
 
 find_package(Crow REQUIRED)
@@ -53,6 +51,18 @@ pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
 find_package(SQLite3 REQUIRED)
 find_package(GTest REQUIRED)
+
+# ================= RUST INTEGRATION (CORROSION) =================
+include(FetchContent)
+FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG v0.6
+)
+FetchContent_MakeAvailable(Corrosion)
+
+# Importamos el crate ubicado en lib/essp_driver
+corrosion_import_crate(MANIFEST_PATH lib/essp_driver/Cargo.toml)
 
 set(SOURCES
     src/main.cpp
@@ -81,7 +91,6 @@ set(SOURCES
 
     src/view/config/base.validador.cpp
     src/view/config/validador.cpp
-
     src/view/config/empresa.cpp
     src/view/config/general.cpp
     src/view/config/impresora.cpp
@@ -102,7 +111,6 @@ set(SOURCES
     src/controller/log.cpp
     src/controller/config/terminal.cpp
     src/controller/config/print_operation.cpp
-
     src/controller/config/validador.cpp
     src/controller/config/empresa.cpp
     src/controller/config/general.cpp
@@ -126,41 +134,40 @@ set(SOURCES
     src/controller/cloud/worker.cpp
 )
 
-include_directories(include
-    include/core
-    include/core/context
-    include/core/interfaces
-    include/core/states
-    include/controller
-    include/controller/venta
-    include/controller/cloud
-    include/view
-    include/view/config
-    include/db
-    include/model
-    include/shared
-)
-
 add_subdirectory(lib/Sqlit3-cpp-lib/)
-add_subdirectory(lib/eSSP)
 
 add_executable(${EXECUTABLE_NAME} ${SOURCES})
 
 target_link_libraries(${EXECUTABLE_NAME}
     PUBLIC
     Sqlite-cpp
-    eSSP_lib
+    essp_driver
     ${GTKMM_LIBRARIES}
     ${LIBNOTIFY_LIBRARIES}
     cpr::cpr
     Crow::Crow
     PkgConfig::QRENCODE
 )
+
 target_include_directories(${EXECUTABLE_NAME} PRIVATE
     ${GTKMM_INCLUDE_DIRS}
     ${LIBNOTIFY_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core/context
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core/interfaces
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/core/states
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/controller
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/controller/venta
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/controller/cloud
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/view
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/view/config
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/db
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/model
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/shared
+    # Cabeceras autogeneradas por cxx-build en build.rs
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/essp_driver/generated
     lib/eSSP/inc
     lib/eSSP/lib
 )

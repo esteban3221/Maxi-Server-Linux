@@ -28,7 +28,7 @@ private:
     std::condition_variable cv_finalizado;
     std::mutex mtx_espera;
 
-    void on_event_credit(const std::string &device_id, const std::string &type, const crow::json::rvalue &data, size_t credito);
+    void on_event_credit(const ffi::CashEvent &ev);
     void on_error(const std::string &device, const std::string &error);
     Glib::RefPtr<MLog> t_log;
 
