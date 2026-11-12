@@ -21,19 +21,26 @@ const std::shared_ptr<ResultMap> DetalleMovimiento::get_detalle_movimiento(uint3
     return db.sqlite3->command("SELECT * FROM detalle_movimientos_dinero WHERE id_log = ?", id_log);
 }
 
-uint32_t DetalleMovimiento::registrar_diferencias(
+void DetalleMovimiento::registrar_diferencias(
     size_t t_id,
     const std::vector<ffi::DenomLevel> &inicial,
-    const std::vector<ffi::DenomLevel> &final_)
+    const std::vector<ffi::DenomLevel> &final_,
+    bool solo_salidas)
 {
-    uint32_t total_salida_pesos = 0;
     if (inicial.empty() || final_.empty())
-        return 0;
+    {
+        CROW_LOG_ERROR << "Diferencias abortadas: Snapshot inicial o final vacío.";
+        return;
+    }
 
     std::map<uint32_t, int32_t> niveles_inicial;
     for (const auto &item : inicial)
+    {
         if (item.value_pesos > 0)
+        {
             niveles_inicial[static_cast<uint32_t>(item.value_pesos)] = item.stored_in_payout;
+        }
+    }
 
     for (const auto &item : final_)
     {
@@ -45,23 +52,19 @@ uint32_t DetalleMovimiento::registrar_diferencias(
         int32_t cant_inicial = niveles_inicial.count(denom) ? niveles_inicial[denom] : 0;
         int32_t delta = cant_final - cant_inicial;
 
-        if (delta != 0)
-        {
-            std::string tipo = (delta > 0) ? "entrada" : "salida";
-            uint32_t piezas = static_cast<uint32_t>(std::abs(delta));
+        if (delta == 0 || (solo_salidas && delta > 0))
+            continue;
 
-            if (delta < 0)
-                total_salida_pesos += (denom * piezas);
+        std::string tipo = (delta > 0) ? "entrada" : "salida";
+        uint32_t piezas = static_cast<uint32_t>(std::abs(delta));
 
-            CROW_LOG_INFO << "Movimiento detectado (" << tipo << "): " << piezas
-                          << " piezas de $" << denom << " (ID: " << t_id << ")";
+        CROW_LOG_INFO << "Movimiento detectado (" << tipo << "): " << piezas
+                      << " piezas de $" << denom << " (ID: " << t_id << ")";
 
-            this->insertar_detalle_movimiento(
-                static_cast<uint32_t>(t_id),
-                MDetalleMovimiento::create(
-                    0, static_cast<uint32_t>(t_id), tipo, denom, piezas,
-                    Glib::DateTime::create_now_local()));
-        }
+        this->insertar_detalle_movimiento(
+            static_cast<uint32_t>(t_id),
+            MDetalleMovimiento::create(
+                0, static_cast<uint32_t>(t_id), tipo, denom, piezas,
+                Glib::DateTime::create_now_local()));
     }
-    return total_salida_pesos;
 }

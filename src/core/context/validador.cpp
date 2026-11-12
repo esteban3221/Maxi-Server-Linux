@@ -20,7 +20,7 @@ bool ValidadorUnit::inicia_conecta(const std::vector<ffi::RouteRule> &rutas)
     std::lock_guard<std::mutex> lock(mtx_comunicacion);
     try
     {
-        rust_unit = ffi::new_essp_unit(conf.puerto, static_cast<uint8_t>(conf.ssp));
+        rust_unit = ffi::new_essp_unit(conf.puerto, conf.ssp);
         rust::Slice<const ffi::RouteRule> slice_rutas(rutas.data(), rutas.size());
 
         auto niveles_rust = rust_unit->iniciar_y_conectar(conf.habilita_recolector, slice_rutas);

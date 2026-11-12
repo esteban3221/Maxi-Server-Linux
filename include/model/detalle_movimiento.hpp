@@ -58,8 +58,9 @@ public:
     void insertar_detalle_movimiento(uint32_t id_log, const Glib::RefPtr<MDetalleMovimiento> &detalle);
     const std::shared_ptr<ResultMap> get_detalle_movimiento(uint32_t id_log);
 
-    uint32_t registrar_diferencias(
-        size_t t_id,
-        const std::vector<ffi::DenomLevel> &inicial,
-        const std::vector<ffi::DenomLevel> &final_);
+    void registrar_diferencias(
+    size_t t_id,
+    const std::vector<ffi::DenomLevel> &inicial,
+    const std::vector<ffi::DenomLevel> &final_,
+    bool solo_salidas = false);
 };

@@ -48,7 +48,7 @@ crow::response Pago::inicia(const crow::request &req)
         conf.habilita_salida_credito = true;
 
         hub.inicia_for_all(conf);
-        t_log->m_cambio = hub.inicia_pago(t_log->m_id, t_log->m_cambio, false);
+        hub.inicia_pago(t_log->m_id, t_log->m_cambio, false);
 
         log.update_log(t_log);
 

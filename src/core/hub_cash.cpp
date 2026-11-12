@@ -210,7 +210,7 @@ void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
             remanente = u->iniciar_pago_automatico(remanente, is_cambio);
             auto snap_fin = u->property_ultimo_cash_level();
 
-            detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
+            detalle.registrar_diferencias(t_id, snap_ini, snap_fin, true);
         }
     }
 
@@ -225,7 +225,7 @@ void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
                 remanente = u->iniciar_pago_automatico(remanente, is_cambio);
                 auto snap_fin = u->property_ultimo_cash_level();
 
-                detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
+                detalle.registrar_diferencias(t_id, snap_ini, snap_fin, true);
             }
         }
     }
@@ -289,7 +289,7 @@ void CashHub::inicia_pago_por_canales(size_t t_id, const std::map<std::string, s
             u->iniciar_pago_por_canales(it->second);
             auto snap_fin = u->property_ultimo_cash_level();
 
-            detalle.registrar_diferencias(t_id, snap_ini, snap_fin);
+            detalle.registrar_diferencias(t_id, snap_ini, snap_fin, true);
         }
         else
         {
