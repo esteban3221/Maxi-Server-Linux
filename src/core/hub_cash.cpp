@@ -45,6 +45,7 @@ void CashHub::inicializar_hardware()
             }
             else
             {
+                CROW_LOG_CRITICAL << "No se pudo registrar el validador en " << path ;
                 Global::System::showNotify("Init System", ("No se pudo registrar el validador en " + path).c_str(), "dialog-error");
             }
         }

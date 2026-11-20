@@ -4,11 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 cxx = "1.0.205"
+aes = "0.9.4"
+
+[target.'cfg(not(target_os = "espidf"))'.dependencies]
+serialport = "4.5"
 
 [build-dependencies]
-cc = "1.11.2"
+cc = "1.11.3"
 cxx-build = "1.0"

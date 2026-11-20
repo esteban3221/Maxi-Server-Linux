@@ -42,6 +42,7 @@ if(ENABLE_PRETTY_JSON)
     add_compile_definitions(MODO_DEBUG_JSON)
 endif()
 
+
 find_package(Crow REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -49,6 +50,9 @@ find_package(cpr REQUIRED)
 pkg_check_modules(GTKMM REQUIRED gtkmm-4.0)
 pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
+if(UNIX AND NOT CMAKE_SYSTEM_NAME STREQUAL "EspIdf")
+    pkg_check_modules(UDEV REQUIRED libudev)
+endif()
 find_package(SQLite3 REQUIRED)
 find_package(GTest REQUIRED)
 
@@ -142,6 +146,7 @@ target_link_libraries(${EXECUTABLE_NAME}
     PUBLIC
     Sqlite-cpp
     essp_driver
+    ${UDEV_LIBRARIES}
     ${GTKMM_LIBRARIES}
     ${LIBNOTIFY_LIBRARIES}
     cpr::cpr
@@ -168,8 +173,6 @@ target_include_directories(${EXECUTABLE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/shared
     # Cabeceras autogeneradas por cxx-build en build.rs
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/essp_driver/generated
-    lib/eSSP/inc
-    lib/eSSP/lib
 )
 
 enable_testing()
