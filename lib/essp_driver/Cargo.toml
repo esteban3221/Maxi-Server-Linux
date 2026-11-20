@@ -1,14 +1,14 @@
 [package]
 name = "essp_driver"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["staticlib"]
 
 [dependencies]
-cxx = "1.0"
+cxx = "1.0.205"
 
 [build-dependencies]
-cc = "1.0"
+cc = "1.11.2"
 cxx-build = "1.0"

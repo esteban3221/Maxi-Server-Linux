@@ -198,13 +198,22 @@ impl Default for SSP_COMMAND {
 
 // Cuando compilas para producción, enlaza con la librería C real
 //#[cfg(not(test))]
-extern "C" {
+#[cfg(not(target_os = "espidf"))]
+unsafe extern "C" {
     fn OpenSSPPort(port: *const c_char) -> c_int;
     fn CloseSSPPort(port: c_int);
     fn SSPSendCommand(port: c_int, cmd: *mut SSP_COMMAND) -> c_int;
     fn NegotiateSSPEncryption(port: c_int, ssp_address: c_char, key: *mut SSP_FULL_KEY) -> c_int;
 }
 
+// En ESP32-P4 (ESP-IDF)
+// #[cfg(target_os = "espidf")]
+// unsafe extern "C" {
+//     fn esp_ssp_port_open(port: *const c_char) -> c_int;
+//     fn esp_ssp_port_close(port: c_int);
+//     fn esp_ssp_port_write(port: c_int, buf: *const c_uchar, len: c_int) -> c_int;
+//     fn esp_ssp_port_read(port: c_int, buf: *mut c_uchar, len: c_int, timeout_ms: c_int) -> c_int;
+// }
 // ==================== 2. PUENTE CXX HACIA C++ (ValidadorUnit / CashHub) ====================
 
 #[cxx::bridge(namespace = "ffi")]
@@ -1101,7 +1110,7 @@ mod tests {
     fn test_calculo_cambio_sin_underflow() {
         let niveles = vec![
             ffi::DenomLevel {
-                stored_in_cashbox: 0
+                stored_in_cashbox: 0,
                 value_cents: 2000,
                 value_pesos: 20,
                 country_code: "MXN".into(),
@@ -1109,7 +1118,7 @@ mod tests {
                 route_to_payout: true,
             },
             ffi::DenomLevel {
-                stored_in_cashbox: 0
+                stored_in_cashbox: 0,
                 value_cents: 5000,
                 value_pesos: 50,
                 country_code: "MXN".into(),
@@ -1221,7 +1230,7 @@ mod tests {
                             if piezas_a_devolver.is_empty() {
                                 println!("   [INFO] No entraron monedas nuevas en esta ventana; devolviendo $1 MXN de la prueba anterior...");
                                 piezas_a_devolver.push(ffi::PayoutItem {
-                                    value_cents: 1000,
+                                    value_cents: 100,
                                     count: 5,
                                 });
                             }

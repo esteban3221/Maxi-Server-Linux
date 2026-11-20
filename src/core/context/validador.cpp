@@ -273,7 +273,7 @@ std::vector<ffi::PayoutItem> ValidadorUnit::calcular_cambio(
         if (denom.value_pesos <= 0 || denom.stored_in_payout <= 0)
             continue;
 
-        uint32_t valor = static_cast<uint32_t>(denom.value_pesos);
+        uint32_t valor = denom.value_pesos;
         int32_t disponibles = denom.stored_in_payout;
         int32_t piezas_usar = 0;
 

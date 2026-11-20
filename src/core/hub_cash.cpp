@@ -1,6 +1,29 @@
 #include "core/hub_cash.hpp"
 #include <crow/logging.h>
 
+
+#ifdef ESP_PLATFORM
+void CashHub::inicializar_hardware()
+{
+    ESP_LOGI("CashHub", "Iniciando escaneo de IF17 en USB Host...");
+    unidades.clear();
+
+    for (const auto &port : UsbBridge::instance().get_ftdi_ports())
+    {
+        int32_t ssp_sugerido = ffi::detectar_ssp_en_puerto(port);
+        if (ssp_sugerido != -1)
+        {
+            ESP_LOGI("CashHub", "Puerto %s detectado como %s (SSP %d)",
+                     port.c_str(), (ssp_sugerido == 16 ? "COIN" : "BILL"), ssp_sugerido);
+            intentar_registrar(port, ssp_sugerido);
+        }
+        else
+        {
+            adw_toast_show(("No se pudo registrar validador en " + port).c_str(), 3000);
+        }
+    }
+}
+#else
 void CashHub::inicializar_hardware()
 {
     CROW_LOG_INFO << "Iniciando escaneo nativo de puertos USB...";
@@ -27,13 +50,14 @@ void CashHub::inicializar_hardware()
         }
     }
 }
+#endif
 
 bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 {
     auto v = std::make_unique<ValidadorUnit>();
 
     v->property_conf().puerto = puerto;
-    v->property_conf().ssp = static_cast<uint32_t>(ssp);
+    v->property_conf().ssp = ssp;
     v->property_conf().habilita_recolector = false;
     v->property_conf().auto_acepta_credito = false;
     v->property_conf().habilita_salida_credito = false;
@@ -67,7 +91,7 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
         });
 
         v->detiene_desconecta();
-        unidades.push_back(std::move(v));
+        unidades.emplace_back(std::move(v));
         return true;
     }
 
@@ -86,7 +110,7 @@ std::vector<ffi::RouteRule> CashHub::rutas_default(const ValidadorUnit *val)
 
     for (size_t i = 0; i < snapshot_level.size() && i < m_list->get_n_items(); i++)
     {
-        bool es_payout = (snapshot_level[i].stored_in_payout <= static_cast<int32_t>(m_list->get_item(i)->m_nivel_inmo_max));
+        bool es_payout = (snapshot_level[i].stored_in_payout <= m_list->get_item(i)->m_nivel_inmo_max);
         reglas.push_back(ffi::RouteRule{
             .value_cents = snapshot_level[i].value_cents,
             .to_payout = es_payout
@@ -148,10 +172,9 @@ void CashHub::inicia_for_all(const Conf &conf, const std::map<std::string, std::
                     auto item = m_list_billetes->get_item(idx);
                     for (const auto &lvl : snapshot_level)
                     {
-                        if (lvl.value_pesos == static_cast<int32_t>(item->m_denominacion))
-                        {
+                        if (lvl.value_pesos == item->m_denominacion)
                             item->m_cant_recy = lvl.stored_in_payout;
-                        }
+                        
                     }
                 }
             }
@@ -337,8 +360,7 @@ std::map<std::string, DeviceSnapshot> CashHub::obten_niveles_actuales_for_all()
 void CashHub::reiniciar_for_all()
 {
     for (auto &u : unidades)
-    {
         u->reiniciar();
-    }
+        
     is_in_process.store(false);
 }

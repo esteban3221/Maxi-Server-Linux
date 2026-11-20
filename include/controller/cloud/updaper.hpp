@@ -60,7 +60,12 @@ inline void checkAndApplyUpdate()
     std::string backup_path = current_executable_path + ".bak";
     std::string flag_path = current_executable_path + ".update_in_progress";
 
-    g_message("Nueva versión encontrada v%d.%d.%d+%d. Descargando...", remote_major, remote_minor, remote_patch, remote_build);
+    g_message("Nueva versión encontrada v%d.%d.%d+%d. \n\t\t\tActual: v%d.%d.%d+%d. \n\t\t\tDescargando...", 
+        remote_major, remote_minor, remote_patch, remote_build,
+        Maxicajero::Version::MAJOR,
+        Maxicajero::Version::MINOR,
+        Maxicajero::Version::PATCH,
+        Maxicajero::Version::BUILD);
 
     cpr::Session session;
     session.SetUrl(cpr::Url{download_url});

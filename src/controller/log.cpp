@@ -141,11 +141,11 @@ crow::response LogData::get_levels(const crow::request &req)
             level_item["value"] = item_hw.value_cents;
 
             level_item["storedInPayout"] = (tiene_pago || tiene_consulta || tiene_carga) 
-                ? crow::json::wvalue(static_cast<uint32_t>(item_hw.stored_in_payout)) 
+                ? crow::json::wvalue(item_hw.stored_in_payout)
                 : crow::json::wvalue(nullptr);
 
-            level_item["storedInCashbox"] = tiene_retirada_cassette 
-                ? crow::json::wvalue(static_cast<uint32_t>(item_hw.stored_in_cashbox)) 
+            level_item["storedInCashbox"] = tiene_retirada_cassette
+                ? crow::json::wvalue(item_hw.stored_in_cashbox)
                 : crow::json::wvalue(nullptr);
 
             if (i < config_db->get_n_items() && (tiene_fianza || tiene_carga))

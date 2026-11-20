@@ -38,7 +38,7 @@ void DetalleMovimiento::registrar_diferencias(
     {
         if (item.value_pesos > 0)
         {
-            niveles_inicial[static_cast<uint32_t>(item.value_pesos)] = item.stored_in_payout;
+            niveles_inicial[item.value_pesos] = item.stored_in_payout;
         }
     }
 
@@ -47,7 +47,7 @@ void DetalleMovimiento::registrar_diferencias(
         if (item.value_pesos <= 0)
             continue;
 
-        uint32_t denom = static_cast<uint32_t>(item.value_pesos);
+        uint32_t denom = item.value_pesos;
         int32_t cant_final = item.stored_in_payout;
         int32_t cant_inicial = niveles_inicial.count(denom) ? niveles_inicial[denom] : 0;
         int32_t delta = cant_final - cant_inicial;
@@ -56,15 +56,23 @@ void DetalleMovimiento::registrar_diferencias(
             continue;
 
         std::string tipo = (delta > 0) ? "entrada" : "salida";
-        uint32_t piezas = static_cast<uint32_t>(std::abs(delta));
+        uint32_t piezas = std::abs(delta);
 
         CROW_LOG_INFO << "Movimiento detectado (" << tipo << "): " << piezas
                       << " piezas de $" << denom << " (ID: " << t_id << ")";
 
-        this->insertar_detalle_movimiento(
-            static_cast<uint32_t>(t_id),
-            MDetalleMovimiento::create(
-                0, static_cast<uint32_t>(t_id), tipo, denom, piezas,
-                Glib::DateTime::create_now_local()));
+        this->insertar_detalle_movimiento
+        (
+           t_id,
+            MDetalleMovimiento::create
+            (
+                0, 
+                t_id, 
+                tipo, 
+                denom, 
+                piezas,
+                Glib::DateTime::create_now_local()
+            )
+        );
     }
 }
