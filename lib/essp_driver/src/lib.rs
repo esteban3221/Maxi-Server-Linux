@@ -1,46 +1,180 @@
-#![allow(non_snake_case, non_camel_case_types, dead_code)]
-use std::ffi::{c_char, c_int, c_uchar, c_ulong, c_ulonglong, CString};
+mod ssp_crypto;
+mod ssp_dh;
+mod ssp_wire;
+mod transport;
 
-// ==================== 1. FFI CON LA LIBRERÍA C (eSSP/inc/SSPComs.h) ====================
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct SSP_FULL_KEY {
-    pub FixedKey: c_ulonglong,
-    pub EncryptKey: c_ulonglong,
+/// Comandos de salida del protocolo eSSP (Host -> Validador)
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SspCommand {
+    Reset = 0x01,                // SSP_CMD_RESET
+    SetInhibits = 0x02,          // SSP_CMD_SET_INHIBITS
+    SetupRequest = 0x05,         // SSP_CMD_SETUP_REQUEST
+    HostProtocolVersion = 0x06,  // SSP_CMD_HOST_PROTOCOL_VERSION
+    Poll = 0x07,                 // SSP_CMD_POLL
+    RejectNote = 0x08,           // SSP_CMD_REJECT_NOTE
+    Disable = 0x09,              // SSP_CMD_DISABLE
+    Enable = 0x0A,               // SSP_CMD_ENABLE
+    GetSerialNumber = 0x0C,      // SSP_CMD_GET_SERIAL_NUMBER
+    Sync = 0x11,                 // SSP_CMD_SYNC
+    GetAllLevels = 0x22,         // SSP_CMD_GET_ALL_LEVELS
+    HaltPayout = 0x38,           // SSP_CMD_HALT_PAYOUT
+    SetDenomRoute = 0x3B,        // SSP_CMD_SET_DENOMINATION_ROUTE
+    GetDenomRoute = 0x3C,        // SSP_CMD_GET_DENOMINATION_ROUTE
+    EmptyAll = 0x3F,             // SSP_CMD_EMPTY_ALL
+    SetCoinMechInhibits = 0x40,  // SSP_CMD_SET_COIN_MECH_INHIBITS
+    PayoutByDenom = 0x46,        // SSP_CMD_PAYOUT_BY_DENOMINATION
+    SetCoinGlobalInhibit = 0x49, // SSP_CMD_SET_COIN_MECH_GLOBAL_INHIBIT
+    SmartEmpty = 0x52,           // SSP_CMD_SMART_EMPTY
+    DisablePayoutDevice = 0x5B,  // SSP_CMD_DISABLE_PAYOUT_DEVICE
+    EnablePayoutDevice = 0x5C,   // SSP_CMD_ENABLE_PAYOUT_DEVICE
 }
-
-#[repr(C)]
-pub struct SSP_COMMAND {
-    pub Key: SSP_FULL_KEY,
-    pub BaudRate: c_ulong,
-    pub Timeout: c_ulong,
-    pub PortNumber: c_uchar,
-    pub SSPAddress: c_uchar,
-    pub RetryLevel: c_uchar,
-    pub EncryptionStatus: c_uchar,
-    pub CommandDataLength: c_uchar,
-    pub CommandData: [c_uchar; 255],
-    pub ResponseStatus: c_uchar,
-    pub ResponseDataLength: c_uchar,
-    pub ResponseData: [c_uchar; 255],
-    pub IgnoreError: c_uchar,
-}
-
-impl Default for SSP_COMMAND {
-    fn default() -> Self {
-        unsafe { std::mem::zeroed() }
+impl SspCommand {
+    pub fn from_byte(b: u8) -> String {
+        match b {
+            0x01 => "Reset".into(),
+            0x02 => "SetInhibits".into(),
+            0x05 => "SetupRequest".into(),
+            0x06 => "HostProtocolVersion".into(),
+            0x07 => "Poll".into(),
+            0x08 => "RejectNote".into(),
+            0x09 => "Disable".into(),
+            0x0A => "Enable".into(),
+            0x0C => "GetSerialNumber".into(),
+            0x11 => "Sync".into(),
+            0x22 => "GetAllLevels".into(),
+            0x38 => "HaltPayout".into(),
+            0x3B => "SetDenomRoute".into(),
+            0x3C => "GetDenomRoute".into(),
+            0x3F => "EmptyAll".into(),
+            0x40 => "SetCoinMechInhibits".into(),
+            0x46 => "PayoutByDenom".into(),
+            0x49 => "SetCoinGlobalInhibit".into(),
+            0x52 => "SmartEmpty".into(),
+            0x5B => "DisablePayoutDevice".into(),
+            0x5C => "EnablePayoutDevice".into(),
+            other => format!("Unknown(0x{:02X})", other),
+        }
     }
 }
 
-// Cuando compilas para producción, enlaza con la librería C real
-//#[cfg(not(test))]
-extern "C" {
-    fn OpenSSPPort(port: *const c_char) -> c_int;
-    fn CloseSSPPort(port: c_int);
-    fn SSPSendCommand(port: c_int, cmd: *mut SSP_COMMAND) -> c_int;
-    fn NegotiateSSPEncryption(port: c_int, ssp_address: c_char, key: *mut SSP_FULL_KEY) -> c_int;
+/// Códigos de estatus de respuesta (primer byte: resp[0])
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SspStatus {
+    Ok,                       // 0xF0: SSP_RESPONSE_OK
+    SlaveReset,               // 0xF1: SSP_RESPONSE_SLAVE_RESET
+    CommandNotKnown,          // 0xF2: SSP_RESPONSE_COMMAND_NOT_KNOWN
+    WrongNoParameters,        // 0xF3: SSP_RESPONSE_WRONG_NO_PARAMETERS
+    ParameterOutOfRange,      // 0xF4: SSP_RESPONSE_PARAMETER_OUT_OF_RANGE
+    CommandCannotBeProcessed, // 0xF5: SSP_RESPONSE_COMMAND_CANNOT_BE_PROCESSED
+    SoftwareError,            // 0xF6: SSP_RESPONSE_SOFTWARE_ERROR
+    Fail,                     // 0xF8: SSP_RESPONSE_FAIL
+    KeyNotSet,                // 0xFA: SSP_RESPONSE_KEY_NOT_SET
+    Unknown(u8),
 }
 
+impl SspStatus {
+    pub fn from_byte(b: u8) -> Self {
+        match b {
+            0xF0 => Self::Ok,
+            0xF1 => Self::SlaveReset,
+            0xF2 => Self::CommandNotKnown,
+            0xF3 => Self::WrongNoParameters,
+            0xF4 => Self::ParameterOutOfRange,
+            0xF5 => Self::CommandCannotBeProcessed,
+            0xF6 => Self::SoftwareError,
+            0xF8 => Self::Fail,
+            0xFA => Self::KeyNotSet,
+            other => Self::Unknown(other),
+        }
+    }
+}
+
+/// Eventos devueltos dentro del payload de SSP_CMD_POLL (0x07)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SspPollEvent {
+    Disabled,           // 0xE8: Dispositivo deshabilitado
+    ReadNote,           // 0xEF: Billete en lectura / Escrow (2 bytes)
+    CreditNote,         // 0xEE: Billete acreditado (2 bytes)
+    NoteRejecting,      // 0xED: Rechazando billete
+    NoteRejected,       // 0xEC: Billete rechazado
+    NoteStacking,       // 0xCC: Apilando billete
+    NoteStacked,        // 0xEB: Billete apilado en Cashbox
+    SafeNoteJam,        // 0xEA: Atasco seguro
+    UnsafeNoteJam,      // 0xE9: Atasco inseguro
+    FraudAttempt,       // 0xE6: Intento de fraude
+    StackerFull,        // 0xE7: Cashbox lleno
+    CashboxRemoved,     // 0xE3: Casette retirado
+    CashboxReplaced,    // 0xE4: Casette colocado
+    NoteStoredInPayout, // 0xDB: Billete guardado en reciclador
+    Dispensing,         // 0xDA: Dispensando efectivo (9 bytes)
+    Dispensed,          // 0xD2: Efectivo dispensado (9 bytes)
+    Halted,             // 0xD6: Motor detenido por HALT_PAYOUT (9 bytes)
+    Floating,           // 0xD7: Flotando efectivo
+    Floated,            // 0xD8: Efectivo flotado
+    Timeout,            // 0xD9: Timeout dispensando (9 bytes)
+    IncompletePayout,   // 0xDC: Pago incompleto (13 bytes)
+    Jammed,             // 0xD5: Atasco en dispensador
+    CoinCredit,         // 0xDF: Moneda acreditada (8 o 9 bytes)
+    CoinFeederRunning,  // 0xC1: Motor alimentador de monedas activo
+    CoinFeeding,        // 0xBE: Leyendo moneda en tolva (9 bytes)
+    ValueAdded,         // 0xBF: Moneda ingresada en SMART Coin System (9 bytes)
+    Emptying,           // 0xC2: Vaciando a cashbox
+    Emptied,            // 0xC3: Vaciado completado
+    SmartEmptying,      // 0xB3: Vaciado inteligente en curso (9 bytes)
+    SmartEmptied,       // 0xB4: Vaciado inteligente completado (9 bytes)
+    ChannelDisable,     // 0xB5: Canales inhibidos
+    Unknown(u8),
+}
+
+impl SspPollEvent {
+    pub fn from_byte(b: u8) -> Self {
+        match b {
+            0xE8 => Self::Disabled,
+            0xEF => Self::ReadNote,
+            0xEE => Self::CreditNote,
+            0xED => Self::NoteRejecting,
+            0xEC => Self::NoteRejected,
+            0xCC => Self::NoteStacking,
+            0xEB => Self::NoteStacked,
+            0xEA => Self::SafeNoteJam,
+            0xE9 => Self::UnsafeNoteJam,
+            0xE6 => Self::FraudAttempt,
+            0xE7 => Self::StackerFull,
+            0xE3 => Self::CashboxRemoved,
+            0xE4 => Self::CashboxReplaced,
+            0xDB => Self::NoteStoredInPayout,
+            0xDA => Self::Dispensing,
+            0xD2 => Self::Dispensed,
+            0xD6 => Self::Halted,
+            0xD7 => Self::Floating,
+            0xD8 => Self::Floated,
+            0xD9 => Self::Timeout,
+            0xDC => Self::IncompletePayout,
+            0xD5 => Self::Jammed,
+            0xDF => Self::CoinCredit,
+            0xC1 => Self::CoinFeederRunning,
+            0xBE => Self::CoinFeeding,
+            0xBF => Self::ValueAdded,
+            0xC2 => Self::Emptying,
+            0xC3 => Self::Emptied,
+            0xB3 => Self::SmartEmptying,
+            0xB4 => Self::SmartEmptied,
+            0xB5 => Self::ChannelDisable,
+            other => Self::Unknown(other),
+        }
+    }
+}
+// ==================== 1. FFI CON LA LIBRERÍA C (eSSP/inc/SSPComs.h) ====================
+
+// En ESP32-P4 (ESP-IDF)
+// #[cfg(target_os = "espidf")]
+// unsafe extern "C" {
+//     fn esp_ssp_port_open(port: *const c_char) -> c_int;
+//     fn esp_ssp_port_close(port: c_int);
+//     fn esp_ssp_port_write(port: c_int, buf: *const c_uchar, len: c_int) -> c_int;
+//     fn esp_ssp_port_read(port: c_int, buf: *mut c_uchar, len: c_int, timeout_ms: c_int) -> c_int;
+// }
 // ==================== 2. PUENTE CXX HACIA C++ (ValidadorUnit / CashHub) ====================
 
 #[cxx::bridge(namespace = "ffi")]
@@ -111,7 +245,11 @@ pub mod ffi {
         ) -> Result<Vec<DenomLevel>>;
         fn detener_y_desconectar(self: &mut RustEsspUnit);
         fn obtener_niveles(self: &mut RustEsspUnit) -> Result<Vec<DenomLevel>>;
-        fn cambiar_ruta(self: &mut RustEsspUnit, valor_centavos: i32, a_reciclador: bool) -> Result<()>;
+        fn cambiar_ruta(
+            self: &mut RustEsspUnit,
+            valor_centavos: i32,
+            a_reciclador: bool,
+        ) -> Result<()>;
         fn dispensar_piezas(self: &mut RustEsspUnit, piezas: &[PayoutItem]) -> Result<()>;
         fn dispensar_por_canales(self: &mut RustEsspUnit, cantidades: &[i32]) -> Result<()>;
         fn vaciar_reciclador(self: &mut RustEsspUnit, smart_empty: bool) -> Result<()>;
@@ -125,14 +263,37 @@ pub mod ffi {
         fn reiniciar(self: &mut RustEsspUnit) -> Result<()>;
     }
 }
+
+use crate::ssp_crypto::{build_aes128_key, decrypt_ssp_payload, encrypt_ssp_payload};
+use crate::ssp_dh::negotiate_ssp_encryption;
+use crate::ssp_wire::{SspWire, SSP_STEX};
+use crate::transport::SerialTransport;
+use std::time::Duration;
+
+fn open_transport(puerto: &str) -> Result<Box<dyn SerialTransport + Send>, String> {
+    #[cfg(target_os = "espidf")]
+    {
+        Ok(Box::new(crate::transport::esp_io::EspFtdiPort::open(
+            puerto,
+        )?))
+    }
+    #[cfg(not(target_os = "espidf"))]
+    {
+        Ok(Box::new(crate::transport::pc_io::PcSerialPort::open(
+            puerto,
+        )?))
+    }
+}
 // ==================== 3. IMPLEMENTACIÓN DE HARDWARE (RustEsspUnit) ====================
 pub struct RustEsspUnit {
     puerto: String,
-    port_handle: c_int,
-    ssp_address: u8,
+    transport: Option<Box<dyn SerialTransport + Send>>,
+    wire: SspWire,
     unit_type: u8,
     serial_id: String,
-    key: SSP_FULL_KEY,
+    fixed_key: u64,
+    encrypt_key: u64,
+    pkt_count: u32,
     encrypted: bool,
     canales_centavos: Vec<i32>,
 }
@@ -140,14 +301,13 @@ pub struct RustEsspUnit {
 pub fn new_essp_unit(puerto: &str, ssp_address: u8) -> Box<RustEsspUnit> {
     Box::new(RustEsspUnit {
         puerto: puerto.to_string(),
-        port_handle: -1,
-        ssp_address,
+        transport: None,
+        wire: SspWire::new(ssp_address),
         unit_type: if ssp_address == 16 { 0x03 } else { 0x06 },
         serial_id: String::new(),
-        key: SSP_FULL_KEY {
-            FixedKey: 0x0123456701234567,
-            EncryptKey: 0,
-        },
+        fixed_key: 0x0123456701234567,
+        encrypt_key: 0,
+        pkt_count: 0,
         encrypted: false,
         canales_centavos: Vec::new(),
     })
@@ -165,62 +325,84 @@ pub fn detectar_ssp_en_puerto(puerto: &str) -> i32 {
 }
 
 impl RustEsspUnit {
+    fn send_cmd(
+        &mut self,
+        command: SspCommand,
+        args: &[u8],
+        usar_encriptacion: bool,
+    ) -> Result<Vec<u8>, String> {
+        let mut payload = Vec::with_capacity(1 + args.len());
+        payload.push(command as u8);
+        payload.extend_from_slice(args);
+        self.send_raw(&payload, usar_encriptacion)
+    }
+
     fn send_raw(&mut self, data: &[u8], usar_encriptacion: bool) -> Result<Vec<u8>, String> {
-        let mut cmd = SSP_COMMAND::default();
-        cmd.Key = self.key;
-        cmd.BaudRate = 9600;
-        cmd.Timeout = 1000;
-        cmd.PortNumber = self.port_handle as u8;
-        cmd.SSPAddress = self.ssp_address;
-        cmd.RetryLevel = 3;
-        cmd.EncryptionStatus = u8::from(usar_encriptacion && self.encrypted);
-        cmd.CommandDataLength = data.len() as u8;
-        cmd.CommandData[..data.len()].copy_from_slice(data);
+        let port = self
+            .transport
+            .as_mut()
+            .ok_or_else(|| "Puerto eSSP no abierto".to_string())?;
 
-        let ok = unsafe { SSPSendCommand(self.port_handle, &mut cmd) };
-        if ok == 0 {
-            return Err(format!(
-                "Timeout/Error serial enviando 0x{:02X} a SSP {}",
-                data[0], self.ssp_address
-            ));
+        let do_enc = usar_encriptacion && self.encrypted;
+        let tx_payload: Vec<u8> = if do_enc {
+            let key128 = build_aes128_key(self.fixed_key, self.encrypt_key);
+            encrypt_ssp_payload(&key128, self.pkt_count, data)?
+        } else {
+            data.to_vec()
+        };
+
+        let timeout = Duration::from_millis(1000);
+        let rx_raw = self.wire.transact(port.as_mut(), &tx_payload, timeout, 3)?;
+
+        if do_enc {
+            self.pkt_count = self.pkt_count.wrapping_add(1);
         }
-        self.key = cmd.Key;
 
-        let len = cmd.ResponseDataLength as usize;
-        let resp = cmd.ResponseData[..len].to_vec();
+        let resp = if !rx_raw.is_empty() && rx_raw[0] == SSP_STEX {
+            let key128 = build_aes128_key(self.fixed_key, self.encrypt_key);
+            // Nota: valida si en tu firmware el contador de respuesta va igual o incrementado
+            decrypt_ssp_payload(&key128, self.pkt_count, &rx_raw)?
+        } else {
+            rx_raw
+        };
+
         if resp.is_empty() {
             return Err("Respuesta vacía del dispositivo".into());
         }
-        if resp[0] != 0xF0 {
+
+        let status = SspStatus::from_byte(resp[0]);
+        if status != SspStatus::Ok {
             return Err(format!(
-                "Respuesta de error SSP en cmd 0x{:02X}: {:02X?}",
-                data[0], resp
+                "Error SSP {:?} en cmd {}: {:02X?}",
+                status,
+                SspCommand::from_byte(data[0]),
+                resp
             ));
         }
         Ok(resp)
     }
 
-    pub fn reiniciar(&mut self) -> Result<(), String> {
-    // 0x01 = SSP_CMD_RESET (reinicia el validador físicamente)
-    self.send_raw(&[0x01], self.encrypted)?;
-    unsafe { CloseSSPPort(self.port_handle) };
-    self.port_handle = -1;
-    self.encrypted = false;
-    Ok(())
-}
-
     pub fn sincronizar(&mut self) -> bool {
-        let Ok(c_port) = CString::new(self.puerto.as_str()) else {
-            return false;
+        let mut port = match open_transport(&self.puerto) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("[SYNC {}] error abriendo puerto: {}", self.puerto, e);
+                return false;
+            }
         };
-        self.port_handle = unsafe { OpenSSPPort(c_port.as_ptr()) };
-        if self.port_handle < 0 {
-            return false;
+        let mut wire = SspWire::new(self.wire.address);
+        match wire.transact(
+            port.as_mut(),
+            &[SspCommand::Sync as u8],
+            Duration::from_millis(1000),
+            3,
+        ) {
+            Ok(_) => true,
+            Err(e) => {
+                eprintln!("[SYNC {} addr={}] {}", self.puerto, self.wire.address, e);
+                false
+            }
         }
-        let res = self.send_raw(&[0x11], false).is_ok(); // 0x11 = SSP_CMD_SYNC
-        unsafe { CloseSSPPort(self.port_handle) };
-        self.port_handle = -1;
-        res
     }
 
     pub fn iniciar_y_conectar(
@@ -228,163 +410,207 @@ impl RustEsspUnit {
         habilitar_recolector: bool,
         rutas: &[ffi::RouteRule],
     ) -> Result<Vec<ffi::DenomLevel>, String> {
-        let c_port = CString::new(self.puerto.as_str()).map_err(|e| e.to_string())?;
-        self.port_handle = unsafe { OpenSSPPort(c_port.as_ptr()) };
-        if self.port_handle < 0 {
-            return Err(format!("No se pudo abrir {}", self.puerto));
-        }
+        let mut port = open_transport(&self.puerto)?;
+        self.wire.reset_seq();
 
-        // 1. SYNC (0x11)
-        self.send_raw(&[0x11], false)?;
+        // 1. SYNC inicial
+        let _ = self.wire.transact(
+            port.as_mut(),
+            &[SspCommand::Sync as u8],
+            Duration::from_millis(1000),
+            2,
+        )?;
 
-        // 2. Negociar Encriptación eSSP (Diffie-Hellman + AES-128)
-        self.key.FixedKey = 0x0123456701234567;
-        let enc_ok = unsafe {
-            NegotiateSSPEncryption(self.port_handle, self.ssp_address as c_char, &mut self.key)
-        };
-        if enc_ok == 0 {
-            self.detener_y_desconectar();
-            return Err("Fallo al negociar llaves AES eSSP".into());
-        }
+        // 2. Negociación Diffie-Hellman (0x4A, 0x4B, 0x4C)
+        let (enc_key, init_cnt) =
+            negotiate_ssp_encryption(&mut self.wire, port.as_mut(), Duration::from_millis(1000))?;
+        self.encrypt_key = enc_key;
+        self.pkt_count = init_cnt;
         self.encrypted = true;
+        self.transport = Some(port);
 
-        // 3. HOST_PROTOCOL_VERSION (0x06 -> v6 para soporte multimoneda MXN)
-        self.send_raw(&[0x06, 0x06], true)?;
-
-        // 4. Obtener Número de Serie (0x0C)
-        let resp_ser = self.send_raw(&[0x0C], true)?;
+        // 3. Protocolo v6 y resto de tu secuencia igual que antes...
+        self.send_cmd(SspCommand::HostProtocolVersion, &[0x06], true)?;
+        let resp_ser = self.send_cmd(SspCommand::GetSerialNumber, &[], true)?;
         if resp_ser.len() >= 5 {
             let serial = u32::from_be_bytes([resp_ser[1], resp_ser[2], resp_ser[3], resp_ser[4]]);
             self.serial_id = serial.to_string();
         }
-
-        // 5. SETUP_REQUEST (0x05)
-        let resp_setup = self.send_raw(&[0x05], true)?;
-        let (unit_type, canales) = parse_setup_request(self.ssp_address, &resp_setup)?;
+        let resp_setup = self.send_cmd(SspCommand::SetupRequest, &[], true)?;
+        let (unit_type, canales) = parse_setup_request(self.wire.address, &resp_setup)?;
         self.unit_type = unit_type;
         self.canales_centavos = canales;
 
-        // 6. Habilitar módulo reciclador si es billetero
-        if self.ssp_address == 0 {
-            if self.send_raw(&[0x5C, 0x00], true).is_err() {
-                let _ = self.send_raw(&[0x5C], true); // ENABLE_PAYOUT_DEVICE
-            }
+        if self
+            .send_cmd(SspCommand::EnablePayoutDevice, &[0x00], true)
+            .is_err()
+        {
+            let _ = self.send_cmd(SspCommand::EnablePayoutDevice, &[], true);
         }
-
-        // 7. Configurar rutas iniciales
         for regla in rutas {
             let _ = self.cambiar_ruta(regla.value_cents, regla.to_payout);
         }
-
-        // 8. Leer niveles actuales
         let niveles = self.obtener_niveles()?;
 
-        // 9. Configurar Inhibits (si habilitar_recolector es false, bloqueamos la entrada de efectivo)
         if habilitar_recolector {
-            let _ = self.send_raw(&[0x02, 0xFF, 0xFF], true);
-            if self.ssp_address == 16 {
-                let _ = self.send_raw(&[0x49, 0x01], true);
+            let _ = self.send_cmd(SspCommand::SetInhibits, &[0xFF, 0xFF], true);
+            if self.wire.address == 16 {
+                let _ = self.send_cmd(SspCommand::SetCoinGlobalInhibit, &[0x01], true);
                 for &val in &self.canales_centavos.clone() {
-                    let mut cmd_v6 = vec![0x40, 0x01];
-                    cmd_v6.extend_from_slice(&(val as u16).to_le_bytes());
-                    cmd_v6.extend_from_slice(b"MXN");
-                    if self.send_raw(&cmd_v6, true).is_err() {
-                        let mut cmd_short = vec![0x40, 0x01];
-                        cmd_short.extend_from_slice(&(val as u16).to_le_bytes());
-                        let _ = self.send_raw(&cmd_short, true);
+                    let mut args_v6 = vec![0x01];
+                    args_v6.extend_from_slice(&(val as u16).to_le_bytes());
+                    args_v6.extend_from_slice(b"MXN");
+                    if self
+                        .send_cmd(SspCommand::SetCoinMechInhibits, &args_v6, true)
+                        .is_err()
+                    {
+                        let mut args_short = vec![0x01];
+                        args_short.extend_from_slice(&(val as u16).to_le_bytes());
+                        let _ = self.send_cmd(SspCommand::SetCoinMechInhibits, &args_short, true);
                     }
                 }
             }
         } else {
-            // Modo solo dispensado: inhibimos admisión de billetes/monedas
-            let _ = self.send_raw(&[0x02, 0x00, 0x00], true);
-            if self.ssp_address == 16 {
-                let _ = self.send_raw(&[0x49, 0x00], true);
+            let _ = self.send_cmd(SspCommand::SetInhibits, &[0x00, 0x00], true);
+            if self.wire.address == 16 {
+                let _ = self.send_cmd(SspCommand::SetCoinGlobalInhibit, &[0x00], true);
             }
         }
 
-        // 10. ENABLE (0x0A) SIEMPRE al final: indispensable para que el hopper/reciclador pueda dispensar
-        self.send_raw(&[0x0A], true)?;
-
+        self.send_cmd(SspCommand::Enable, &[], true)?;
         Ok(niveles)
+    }
+
+    pub fn detener_y_desconectar(&mut self) {
+        if self.transport.is_some() {
+            if self.encrypted {
+                let _ = self.send_cmd(SspCommand::SetInhibits, &[0x00, 0x00], true);
+                if self.wire.address == 16 {
+                    let _ = self.send_cmd(SspCommand::SetCoinGlobalInhibit, &[0x00], true);
+                } else {
+                    let _ = self.send_cmd(SspCommand::DisablePayoutDevice, &[], true);
+                }
+                let _ = self.send_cmd(SspCommand::Disable, &[], true);
+            }
+            self.transport = None; // Cierra el puerto al hacer Drop
+            self.encrypted = false;
+        }
+    }
+
+    pub fn obtener_niveles(&mut self) -> Result<Vec<ffi::DenomLevel>, String> {
+        let resp = self.send_cmd(SspCommand::GetAllLevels, &[], true)?;
+        let mut niveles = parse_all_levels(&resp)?;
+
+        for item in &mut niveles {
+            let mut args = Vec::with_capacity(7);
+            args.extend_from_slice(&item.value_cents.to_le_bytes());
+            args.extend_from_slice(item.country_code.as_bytes());
+            if let Ok(r_resp) = self.send_cmd(SspCommand::GetDenomRoute, &args, true) {
+                if r_resp.len() >= 2 {
+                    item.route_to_payout = r_resp[1] == 0x00;
+                }
+            }
+        }
+        Ok(niveles)
+    }
+
+    pub fn cambiar_ruta(&mut self, valor_centavos: i32, a_reciclador: bool) -> Result<(), String> {
+        let mut args = Vec::with_capacity(8);
+        args.push(if a_reciclador { 0x00 } else { 0x01 });
+        args.extend_from_slice(&valor_centavos.to_le_bytes());
+        args.extend_from_slice(b"MXN");
+        self.send_cmd(SspCommand::SetDenomRoute, &args, true)?;
+        Ok(())
     }
 
     pub fn dispensar_piezas(&mut self, piezas: &[ffi::PayoutItem]) -> Result<(), String> {
         if piezas.is_empty() {
             return Ok(());
         }
-        // Aseguramos que el dispositivo esté en ENABLE (0x0A) antes de enviar 0x46
-        let _ = self.send_raw(&[0x0A], true);
-        eprintln!(
-            "   [DISPENSAR SSP {}]: {:?}",
-            self.ssp_address, piezas
-        );
-        let cmd = build_payout_by_denom_cmd(piezas, "MXN");
-        self.send_raw(&cmd, true)?;
-        Ok(())
-    }
-    
-    pub fn obtener_niveles(&mut self) -> Result<Vec<ffi::DenomLevel>, String> {
-        let mut niveles = Vec::new();
-        for &val_cents in &self.canales_centavos.clone() {
-            if val_cents <= 0 {
-                continue;
-            }
-            // 0x35 = GET_DENOMINATION_LEVEL
-            let mut cmd_lvl = vec![0x35];
-            cmd_lvl.extend_from_slice(&val_cents.to_le_bytes());
-            cmd_lvl.extend_from_slice(b"MXN");
 
-            let stored = match self.send_raw(&cmd_lvl, true) {
-                Ok(r) if r.len() >= 3 => u16::from_le_bytes([r[1], r[2]]) as i32,
-                _ => 0,
-            };
-
-            // 0x3C = GET_DENOMINATION_ROUTE
-            let mut cmd_rt = vec![0x3C];
-            cmd_rt.extend_from_slice(&val_cents.to_le_bytes());
-            cmd_rt.extend_from_slice(b"MXN");
-
-            let route_to_payout = match self.send_raw(&cmd_rt, true) {
-                Ok(r) if r.len() >= 2 => r[1] == 0x00,
-                _ => false,
-            };
-
-            niveles.push(ffi::DenomLevel {
-                stored_in_cashbox: 0,
-                value_cents: val_cents,
-                value_pesos: val_cents / 100,
-                country_code: "MXN".to_string(),
-                stored_in_payout: stored,
-                route_to_payout,
-            });
+        // 1. Inhibir admisión de efectivo para que el alimentador/escrow termine su ciclo
+        let _ = self.send_cmd(SspCommand::SetInhibits, &[0x00, 0x00], true);
+        if self.wire.address == 16 {
+            let _ = self.send_cmd(SspCommand::SetCoinGlobalInhibit, &[0x00], true);
         }
-        Ok(niveles)
-    }
+        let _ = self.send_cmd(SspCommand::Enable, &[], true);
 
-    pub fn cambiar_ruta(&mut self, valor_centavos: i32, a_reciclador: bool) -> Result<(), String> {
-        let cmd = build_set_route_cmd(valor_centavos, "MXN", a_reciclador);
-        self.send_raw(&cmd, true)?;
-        Ok(())
-    }
+        // 2. Si es monedero (SSP 16), esperar a que termine de girar el alimentador (0xC1 / 0xBE)
+        if self.wire.address == 16 {
+            for _ in 0..30 {
+                match self.send_cmd(SspCommand::Poll, &[], true) {
+                    Ok(resp) => {
+                        let ocupado = resp[1..].iter().any(|&b| {
+                            matches!(
+                                SspPollEvent::from_byte(b),
+                                SspPollEvent::CoinFeederRunning | SspPollEvent::CoinFeeding
+                            )
+                        });
+                        if !ocupado {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+                std::thread::sleep(std::time::Duration::from_millis(300));
+            }
+        }
 
+        // 3. Enviar PayoutByDenom (0x46) con reintentos mientras el hardware siga ocupado ([0xF5, 0x03])
+        let cmd = build_payout_by_denom_cmd(piezas, "MXN");
+        let mut ultimo_err = String::new();
 
-    pub fn detener_pago(&mut self) -> Result<(), String> {
-        // 0x38 = SSP_CMD_HALT_PAYOUT (detiene el motor del hopper inmediatamente)
-        self.send_raw(&[0x38], true)?;
-        Ok(())
+        for intento in 0..20 {
+            if intento > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(400));
+                let _ = self.send_cmd(SspCommand::Poll, &[], true);
+            }
+
+            match self.send_raw(&cmd, true) {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    ultimo_err = e;
+                    if !ultimo_err.contains("CommandCannotBeProcessed") {
+                        return Err(ultimo_err);
+                    }
+                }
+            }
+        }
+
+        Err(ultimo_err)
     }
 
     pub fn vaciar_reciclador(&mut self, smart_empty: bool) -> Result<(), String> {
-        // 0x52 = SMART_EMPTY (cuenta las piezas al vaciar), 0x3F = EMPTY_ALL
-        let opcode = if smart_empty { 0x52 } else { 0x3F };
-        self.send_raw(&[opcode], true)?;
+        let cmd = if smart_empty {
+            SspCommand::SmartEmpty
+        } else {
+            SspCommand::EmptyAll
+        };
+        self.send_cmd(cmd, &[], true)?;
+        Ok(())
+    }
+
+    pub fn detener_pago(&mut self) -> Result<(), String> {
+        self.send_cmd(SspCommand::HaltPayout, &[], true)?;
+        Ok(())
+    }
+
+    pub fn rechazar_escrow(&mut self) -> Result<(), String> {
+        self.send_cmd(SspCommand::RejectNote, &[], true)?;
+        Ok(())
+    }
+
+    pub fn reiniciar(&mut self) -> Result<(), String> {
+        let enc = self.encrypted;
+        let _ = self.send_cmd(SspCommand::Reset, &[], enc);
+        self.transport = None; // Cierra el puerto al hacer Drop
+        self.encrypted = false;
+        self.pkt_count = 0;
         Ok(())
     }
 
     pub fn hacer_poll(&mut self) -> Result<Vec<ffi::CashEvent>, String> {
-        let resp = self.send_raw(&[0x07], true)?; // 0x07 = SSP_CMD_POLL
-
+        let resp = self.send_cmd(SspCommand::Poll, &[], true)?;
         parse_poll_response(
             &resp,
             &self.serial_id,
@@ -393,26 +619,6 @@ impl RustEsspUnit {
         )
     }
 
-    pub fn detener_y_desconectar(&mut self) {
-        if self.port_handle >= 0 {
-            let _ = self.send_raw(&[0x09], self.encrypted); // 0x09 = DISABLE
-            unsafe { CloseSSPPort(self.port_handle) };
-            self.port_handle = -1;
-            self.encrypted = false;
-        }
-    }
-
-    pub fn get_serial_id(&self) -> &str {
-        &self.serial_id
-    }
-
-    pub fn get_device_type(&self) -> ffi::DeviceType {
-        if self.ssp_address == 16 {
-            ffi::DeviceType::Coin
-        } else {
-            ffi::DeviceType::Bill
-        }
-    }
     pub fn dispensar_por_canales(&mut self, cantidades: &[i32]) -> Result<(), String> {
         let mut piezas = Vec::new();
         for (idx, &cant) in cantidades.iter().enumerate() {
@@ -429,21 +635,23 @@ impl RustEsspUnit {
     }
 
     pub fn aceptar_escrow(&mut self) -> Result<(), String> {
-        // En eSSP estándar el billete en lectura se acepta automáticamente al continuar el poll
         Ok(())
     }
 
-    pub fn rechazar_escrow(&mut self) -> Result<(), String> {
-        // 0x08 = SSP_CMD_REJECT_NOTE (Devuelve el billete desde Escrow)
-        self.send_raw(&[0x08], true)?;
-        Ok(())
+    pub fn limpiar_niveles_cashbox(&mut self) {}
+
+    pub fn get_serial_id(&self) -> &str {
+        &self.serial_id
     }
 
-    pub fn limpiar_niveles_cashbox(&mut self) {
-        // Reinicia contadores locales de cashbox si se llevan en memoria
+    pub fn get_device_type(&self) -> ffi::DeviceType {
+        if self.wire.address == 16 {
+            ffi::DeviceType::Coin
+        } else {
+            ffi::DeviceType::Bill
+        }
     }
 }
-
 // ==================== 4. LÓGICA PURA DE PROTOCOLO eSSP (TESTEABLE SIN HARDWARE) ====================
 
 pub fn parse_setup_request(ssp_address: u8, resp: &[u8]) -> Result<(u8, Vec<i32>), String> {
@@ -511,26 +719,54 @@ pub fn build_set_route_cmd(valor_centavos: i32, country: &str, to_payout: bool) 
     cmd
 }
 
+pub fn parse_all_levels(resp: &[u8]) -> Result<Vec<ffi::DenomLevel>, String> {
+    if resp.len() < 2 || SspStatus::from_byte(resp[0]) != SspStatus::Ok {
+        return Err("Respuesta inválida en GET_ALL_LEVELS".into());
+    }
+
+    let count = resp[1] as usize;
+    let mut niveles = Vec::with_capacity(count);
+    let mut offset = 2;
+
+    for _ in 0..count {
+        if offset + 9 > resp.len() {
+            break;
+        }
+        let stored = u16::from_le_bytes([resp[offset], resp[offset + 1]]) as i32;
+        let value_cents = i32::from_le_bytes([
+            resp[offset + 2],
+            resp[offset + 3],
+            resp[offset + 4],
+            resp[offset + 5],
+        ]);
+        let country_code = String::from_utf8_lossy(&resp[offset + 6..offset + 9]).to_string();
+
+        niveles.push(ffi::DenomLevel {
+            value_cents,
+            value_pesos: value_cents / 100,
+            country_code,
+            stored_in_payout: stored,
+            stored_in_cashbox: 0,
+            route_to_payout: false,
+        });
+
+        offset += 9;
+    }
+
+    Ok(niveles)
+}
+
 pub fn build_payout_by_denom_cmd(piezas: &[ffi::PayoutItem], country: &str) -> Vec<u8> {
-    let mut num_denoms: u8 = 0;
-    let mut payload = Vec::new();
+    let mut cmd = Vec::with_capacity(3 + piezas.len() * 9);
+    cmd.push(SspCommand::PayoutByDenom as u8);
+    cmd.push(piezas.len() as u8);
 
     for item in piezas {
-        if item.count > 0 && item.value_cents > 0 {
-            num_denoms += 1;
-            payload.extend_from_slice(&(item.count as u16).to_le_bytes());
-            payload.extend_from_slice(&item.value_cents.to_le_bytes());
-            payload.extend_from_slice(country.as_bytes());
-        }
+        cmd.extend_from_slice(&(item.count as u16).to_le_bytes());
+        cmd.extend_from_slice(&item.value_cents.to_le_bytes());
+        cmd.extend_from_slice(country.as_bytes());
     }
-
-    if num_denoms == 0 {
-        return Vec::new();
-    }
-
-    let mut cmd = vec![0x46, num_denoms];
-    cmd.extend_from_slice(&payload);
-    cmd.push(0x58);
+    cmd.push(0x58); // 0x58 = Ejecutar pago real (0x19 = Test)
     cmd
 }
 
@@ -540,7 +776,7 @@ pub fn parse_poll_response(
     device_type: ffi::DeviceType,
     canales_centavos: &[i32],
 ) -> Result<Vec<ffi::CashEvent>, String> {
-    if resp.is_empty() || resp[0] != 0xF0 {
+    if resp.is_empty() || SspStatus::from_byte(resp[0]) != SspStatus::Ok {
         return Err("Respuesta POLL inválida".into());
     }
 
@@ -548,13 +784,12 @@ pub fn parse_poll_response(
     let mut i = 1;
 
     while i < resp.len() {
-        match resp[i] {
-            // 0xEF: SSP_POLL_READ_NOTE (2 bytes: 0xEF + canal). Canal 0 = leyendo, >0 = en Escrow
-            0xEF => {
+        let ev_code = SspPollEvent::from_byte(resp[i]);
+        match ev_code {
+            SspPollEvent::ReadNote => {
                 i += 2;
             }
-            // 0xEE: SSP_POLL_CREDIT_NOTE (Billetero: 0xEE + 1 byte de canal base 1)
-            0xEE => {
+            SspPollEvent::CreditNote => {
                 if i + 1 < resp.len() {
                     let canal = resp[i + 1] as usize;
                     if canal > 0 && canal <= canales_centavos.len() {
@@ -573,9 +808,7 @@ pub fn parse_poll_response(
                     break;
                 }
             }
-            // 0xDF: SSP_POLL_COIN_CREDIT | 0xBF: SSP_POLL_VALUE_ADDED (Monedero / SMART Coin System)
-            0xDF | 0xBF => {
-                // Formato 9 bytes con num_divisas: [cmd, num_div, v0, v1, v2, v3, 'M', 'X', 'N']
+            SspPollEvent::CoinCredit | SspPollEvent::ValueAdded => {
                 if i + 8 < resp.len() && &resp[i + 6..i + 9] == b"MXN" {
                     let num_divisas = (resp[i + 1] as usize).max(1);
                     let cents =
@@ -591,9 +824,7 @@ pub fn parse_poll_response(
                         });
                     }
                     i += 2 + (7 * num_divisas);
-                }
-                // Formato 8 bytes estándar v6: [cmd, v0, v1, v2, v3, 'M', 'X', 'N']
-                else if i + 7 < resp.len() {
+                } else if i + 7 < resp.len() {
                     let cents =
                         i32::from_le_bytes([resp[i + 1], resp[i + 2], resp[i + 3], resp[i + 4]]);
                     if cents > 0 {
@@ -611,8 +842,10 @@ pub fn parse_poll_response(
                     break;
                 }
             }
-            // 0xBE: SSP_POLL_COIN_FEEDING | 0xD6: SSP_POLL_HALTED (9 bytes)
-            0xBE | 0xD6 => {
+            SspPollEvent::CoinFeeding
+            | SspPollEvent::Halted
+            | SspPollEvent::SmartEmptying
+            | SspPollEvent::SmartEmptied => {
                 if i + 8 < resp.len() {
                     let num_divisas = (resp[i + 1] as usize).max(1);
                     i += 2 + (7 * num_divisas);
@@ -620,11 +853,10 @@ pub fn parse_poll_response(
                     i += 1;
                 }
             }
-            // 0xD2: Dispensed | 0xDA: Dispensing | 0xD9: Timeout
-            0xD2 | 0xDA | 0xD9 => {
-                let kind = match resp[i] {
-                    0xD2 => ffi::EventKind::Dispensed,
-                    0xD9 => ffi::EventKind::Timeout,
+            SspPollEvent::Dispensed | SspPollEvent::Dispensing | SspPollEvent::Timeout => {
+                let kind = match ev_code {
+                    SspPollEvent::Dispensed => ffi::EventKind::Dispensed,
+                    SspPollEvent::Timeout => ffi::EventKind::Timeout,
                     _ => ffi::EventKind::Dispensing,
                 };
                 if i + 8 < resp.len() {
@@ -652,8 +884,7 @@ pub fn parse_poll_response(
                     i += 5;
                 }
             }
-            // 0xDC: SSP_POLL_INCOMPLETE_PAYOUT (13 bytes)
-            0xDC => {
+            SspPollEvent::IncompletePayout => {
                 if i + 12 < resp.len() {
                     let num_divisas = (resp[i + 1] as usize).max(1);
                     let pagado_cents =
@@ -677,8 +908,7 @@ pub fn parse_poll_response(
                     i += 9;
                 }
             }
-            // 0xE6: Fraud Attempt
-            0xE6 => {
+            SspPollEvent::FraudAttempt => {
                 eventos.push(ffi::CashEvent {
                     device_id: device_id.into(),
                     device_type,
@@ -694,8 +924,7 @@ pub fn parse_poll_response(
                     i += 2;
                 }
             }
-            // 0xE9: Unsafe Jam | 0xEA: Safe Jam | 0xD5: Jammed
-            0xE9 | 0xEA | 0xD5 => {
+            SspPollEvent::UnsafeNoteJam | SspPollEvent::SafeNoteJam | SspPollEvent::Jammed => {
                 eventos.push(ffi::CashEvent {
                     device_id: device_id.into(),
                     device_type,
@@ -706,8 +935,7 @@ pub fn parse_poll_response(
                 });
                 i += 1;
             }
-            // 0xE3: Cashbox Removed
-            0xE3 => {
+            SspPollEvent::CashboxRemoved => {
                 eventos.push(ffi::CashEvent {
                     device_id: device_id.into(),
                     device_type,
@@ -718,8 +946,7 @@ pub fn parse_poll_response(
                 });
                 i += 1;
             }
-            // 0xE4: Cashbox Replaced
-            0xE4 => {
+            SspPollEvent::CashboxReplaced => {
                 eventos.push(ffi::CashEvent {
                     device_id: device_id.into(),
                     device_type,
@@ -730,7 +957,6 @@ pub fn parse_poll_response(
                 });
                 i += 1;
             }
-            // 0xB5: Channel Disable (1 byte) | Otros eventos de 1 byte (0xCC Stacking, 0xEB Stacked, 0xDB Stored, 0xE8 Disabled)
             _ => {
                 i += 1;
             }
@@ -739,7 +965,6 @@ pub fn parse_poll_response(
 
     Ok(eventos)
 }
-
 pub fn calcular_cambio_nativo(
     cambio_restante: &mut u32,
     niveles: &[ffi::DenomLevel],
@@ -759,9 +984,7 @@ pub fn calcular_cambio_nativo(
         let mut disponibles = denom.stored_in_payout;
         let mut usar = 0;
 
-        while *cambio_restante >= valor
-            && (!is_cambio || valor < monto_original)
-            && disponibles > 0
+        while *cambio_restante >= valor && (!is_cambio || valor < monto_original) && disponibles > 0
         {
             *cambio_restante -= valor;
             disponibles -= 1;
@@ -876,7 +1099,7 @@ mod tests {
     fn test_calculo_cambio_sin_underflow() {
         let niveles = vec![
             ffi::DenomLevel {
-                stored_in_cashbox: 0
+                stored_in_cashbox: 0,
                 value_cents: 2000,
                 value_pesos: 20,
                 country_code: "MXN".into(),
@@ -884,7 +1107,7 @@ mod tests {
                 route_to_payout: true,
             },
             ffi::DenomLevel {
-                stored_in_cashbox: 0
+                stored_in_cashbox: 0,
                 value_cents: 5000,
                 value_pesos: 50,
                 country_code: "MXN".into(),
@@ -902,7 +1125,6 @@ mod tests {
         assert_eq!(remanente, 20);
     }
 
-    
     #[test]
     #[ignore]
     fn test_hardware_real_usb() {
@@ -924,17 +1146,39 @@ mod tests {
 
             if ssp != -1 {
                 dispositivos_encontrados += 1;
-                let tipo_str = if ssp == 16 { "MONEDERO (SSP 16)" } else { "BILLETERO (SSP 0)" };
+                let tipo_str = if ssp == 16 {
+                    "MONEDERO (SSP 16)"
+                } else {
+                    "BILLETERO (SSP 0)"
+                };
                 println!("   [OK] Detectado {} en {}", tipo_str, path);
 
                 let rutas_prueba = if ssp == 0 {
                     vec![
-                        ffi::RouteRule { value_cents: 2000, to_payout: true },
-                        ffi::RouteRule { value_cents: 5000, to_payout: true },
-                        ffi::RouteRule { value_cents: 10000, to_payout: true },
-                        ffi::RouteRule { value_cents: 20000, to_payout: true },
-                        ffi::RouteRule { value_cents: 50000, to_payout: false },
-                        ffi::RouteRule { value_cents: 100000, to_payout: false },
+                        ffi::RouteRule {
+                            value_cents: 2000,
+                            to_payout: true,
+                        },
+                        ffi::RouteRule {
+                            value_cents: 5000,
+                            to_payout: true,
+                        },
+                        ffi::RouteRule {
+                            value_cents: 10000,
+                            to_payout: true,
+                        },
+                        ffi::RouteRule {
+                            value_cents: 20000,
+                            to_payout: true,
+                        },
+                        ffi::RouteRule {
+                            value_cents: 50000,
+                            to_payout: false,
+                        },
+                        ffi::RouteRule {
+                            value_cents: 100000,
+                            to_payout: false,
+                        },
                     ]
                 } else {
                     vec![]
@@ -954,7 +1198,11 @@ mod tests {
                                 lvl.value_pesos,
                                 lvl.country_code,
                                 lvl.stored_in_payout,
-                                if lvl.route_to_payout { "Reciclador" } else { "Cashbox" }
+                                if lvl.route_to_payout {
+                                    "Reciclador"
+                                } else {
+                                    "Cashbox"
+                                }
                             );
                         }
 
@@ -974,11 +1222,13 @@ mod tests {
                             }
 
                             // Leemos los nuevos niveles para saber exactamente cuántas monedas entraron
-                            let niveles_actuales = unidad.obtener_niveles().expect("Error leyendo niveles");
+                            let niveles_actuales =
+                                unidad.obtener_niveles().expect("Error leyendo niveles");
                             let mut piezas_a_devolver = Vec::new();
 
                             println!("   [OK] Niveles tras inserción:");
-                            for (ini, act) in niveles_iniciales.iter().zip(niveles_actuales.iter()) {
+                            for (ini, act) in niveles_iniciales.iter().zip(niveles_actuales.iter())
+                            {
                                 let diferencia = act.stored_in_payout - ini.stored_in_payout;
                                 println!(
                                     "        - ${:>4} {} | Antes: {:>3} -> Ahora: {:>3} (Entraron: +{})",
@@ -996,7 +1246,7 @@ mod tests {
                             if piezas_a_devolver.is_empty() {
                                 println!("   [INFO] No entraron monedas nuevas en esta ventana; devolviendo $1 MXN de la prueba anterior...");
                                 piezas_a_devolver.push(ffi::PayoutItem {
-                                    value_cents: 1000,
+                                    value_cents: 100,
                                     count: 5,
                                 });
                             }
@@ -1027,10 +1277,8 @@ mod tests {
                                             | ffi::EventKind::IncompletePayout
                                             | ffi::EventKind::Jammed
                                             | ffi::EventKind::Error => {
-                                                error_pago = Some(format!(
-                                                    "{:?}: {}",
-                                                    ev.kind, ev.message
-                                                ));
+                                                error_pago =
+                                                    Some(format!("{:?}: {}", ev.kind, ev.message));
                                             }
                                             _ => {}
                                         }
@@ -1044,7 +1292,10 @@ mod tests {
 
                             // Verificación final del estado del pago
                             if let Some(motivo) = error_pago {
-                                println!("   [ERROR DE PAGO] El hardware reportó fallo: {}", motivo);
+                                println!(
+                                    "   [ERROR DE PAGO] El hardware reportó fallo: {}",
+                                    motivo
+                                );
                             } else if !entregado {
                                 println!("   [ERROR TIMEOUT] Tiempo agotado (30s) esperando entrega física. Abortando giro de motor (0x38)...");
                                 let _ = unidad.detener_pago();
@@ -1053,7 +1304,9 @@ mod tests {
                             }
 
                             if let Ok(niveles_finales) = unidad.obtener_niveles() {
-                                println!("   [OK] Niveles finales después de devolver el efectivo:");
+                                println!(
+                                    "   [OK] Niveles finales después de devolver el efectivo:"
+                                );
                                 for lvl in &niveles_finales {
                                     println!(
                                         "        - ${:>4} {} | En Reciclador: {:>3}",
@@ -1064,7 +1317,10 @@ mod tests {
                         }
 
                         unidad.detener_y_desconectar();
-                        println!("   [OK] Dispositivo en {} desconectado limpiamente.\n", path);
+                        println!(
+                            "   [OK] Dispositivo en {} desconectado limpiamente.\n",
+                            path
+                        );
                     }
                     Err(e) => panic!("Fallo al inicializar eSSP en {}: {}", path, e),
                 }

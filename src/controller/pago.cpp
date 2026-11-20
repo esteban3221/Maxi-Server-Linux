@@ -48,7 +48,7 @@ crow::response Pago::inicia(const crow::request &req)
         conf.habilita_salida_credito = true;
 
         hub.inicia_for_all(conf);
-        t_log->m_cambio = hub.inicia_pago(t_log->m_id, t_log->m_cambio, false);
+        hub.inicia_pago(t_log->m_id, t_log->m_cambio, false);
 
         log.update_log(t_log);
 
@@ -91,7 +91,7 @@ crow::response Pago::inicia_manual(const crow::request &req)
         {
             std::vector<int32_t> cantidades;
             for (const auto &elem : json["pago_manual"][k])
-                cantidades.push_back(static_cast<int32_t>(elem.i()));
+                cantidades.push_back(elem.i());
             map_val[k] = std::move(cantidades);
         }
 
@@ -221,7 +221,7 @@ crow::response Pago::termina_cambio_manual(const crow::request &req)
     {
         std::vector<int32_t> cantidades;
         for (const auto &elem : json["pago_manual"][k])
-            cantidades.push_back(static_cast<int32_t>(elem.i()));
+            cantidades.push_back(elem.i());
         map_val[k] = std::move(cantidades);
     }
 
