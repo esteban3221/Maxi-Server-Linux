@@ -32,6 +32,11 @@ private:
 
     mutable std::mutex mtx_comunicacion;
     mutable rust::Box<ffi::RustEsspUnit> rust_unit;
+    std::mutex mtx_poll;
+    std::string ultimo_error_pago;
+    uint32_t ultimo_entregado_pesos{0};
+    std::string puerto_conectado;
+    int ssp_conectado{-1};
 
     Conf conf;
     std::vector<ffi::DenomLevel> ultimo_cash_level;
@@ -57,6 +62,7 @@ public:
     void detiene_desconecta();
     void iniciar_polling();
     void detener_polling();
+    void pausar_sesion();
     bool reiniciar();
 
     std::vector<ffi::DenomLevel> get_nivel_actual();

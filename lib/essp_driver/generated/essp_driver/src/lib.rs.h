@@ -1043,6 +1043,9 @@ struct CashEvent final {
 #ifndef CXXBRIDGE1_STRUCT_ffi$RustEsspUnit
 #define CXXBRIDGE1_STRUCT_ffi$RustEsspUnit
 struct RustEsspUnit final : public ::rust::Opaque {
+  bool esta_conectado() const noexcept;
+  ::rust::Vec<::ffi::DenomLevel> configurar_admision(bool habilitar_recolector, ::rust::Slice<::ffi::RouteRule const> rutas);
+  void pausar_sesion();
   bool sincronizar() noexcept;
   ::rust::Vec<::ffi::DenomLevel> iniciar_y_conectar(bool habilitar_recolector, ::rust::Slice<::ffi::RouteRule const> rutas);
   void detener_y_desconectar() noexcept;

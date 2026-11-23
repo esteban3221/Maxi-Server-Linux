@@ -1,12 +1,23 @@
 #include "core/hub_cash.hpp"
-#include <crow/logging.h>
 
+#include <crow/logging.h>
+#include <limits>
+#include <stdexcept>
+#include <unordered_map>
+
+namespace
+{
+constexpr size_t NO_TX = std::numeric_limits<size_t>::max();
+}
 
 #ifdef ESP_PLATFORM
 void CashHub::inicializar_hardware()
 {
     ESP_LOGI("CashHub", "Iniciando escaneo de IF17 en USB Host...");
-    unidades.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_hub_mutex);
+        unidades.clear();
+    }
 
     for (const auto &port : UsbBridge::instance().get_ftdi_ports())
     {
@@ -27,9 +38,20 @@ void CashHub::inicializar_hardware()
 void CashHub::inicializar_hardware()
 {
     CROW_LOG_INFO << "Iniciando escaneo nativo de puertos USB...";
-    unidades.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_hub_mutex);
+        unidades.clear();
+    }
 
-    for (const auto &entry : fs::directory_iterator("/dev"))
+    std::error_code ec;
+    fs::directory_iterator dir_it("/dev", ec);
+    if (ec)
+    {
+        CROW_LOG_ERROR << "Error abriendo /dev: " << ec.message();
+        return;
+    }
+
+    for (const auto &entry : dir_it)
     {
         auto path = entry.path().string();
         if (path.find("/dev/ttyUSB") != std::string::npos)
@@ -45,7 +67,7 @@ void CashHub::inicializar_hardware()
             }
             else
             {
-                CROW_LOG_CRITICAL << "No se pudo registrar el validador en " << path ;
+                CROW_LOG_CRITICAL << "No se pudo registrar el validador en " << path;
                 Global::System::showNotify("Init System", ("No se pudo registrar el validador en " + path).c_str(), "dialog-error");
             }
         }
@@ -69,20 +91,37 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
         v->signal_event_received.connect([this, raw_v](const ffi::CashEvent &ev)
         {
-            if (ev.device_type == ffi::DeviceType::Bill && m_list_billetes)
+            bool enviar_a_cashbox = false;
+
+            if (ev.kind == ffi::EventKind::Credit && ev.device_type == ffi::DeviceType::Bill)
             {
-                for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
+                std::lock_guard<std::mutex> lock(m_billetes_mutex);
+                if (m_list_billetes)
                 {
-                    auto item = m_list_billetes->get_item(i);
-                    if (ev.value_pesos == (item->m_denominacion))
+                    for (size_t i = 0; i < m_list_billetes->get_n_items(); i++)
                     {
-                        if (++item->m_cant_recy >= item->m_nivel_inmo_max)
+                        auto item = m_list_billetes->get_item(i);
+                        if (ev.value_pesos == item->m_denominacion)
                         {
-                            raw_v->cambiar_ruta(ev.value_pesos, false);
+                            if (item->m_cant_recy < item->m_nivel_inmo_max)
+                            {
+                                ++item->m_cant_recy;
+                                if (item->m_cant_recy >= item->m_nivel_inmo_max)
+                                {
+                                    enviar_a_cashbox = true;
+                                }
+                            }
+                            break;
                         }
                     }
                 }
             }
+
+            if (enviar_a_cashbox)
+            {
+                raw_v->cambiar_ruta(ev.value_pesos, false);
+            }
+
             signal_credito.emit(ev);
         });
 
@@ -91,8 +130,11 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
             signal_hub_error.emit(device_id, error_msg);
         });
 
-        v->detiene_desconecta();
-        unidades.emplace_back(std::move(v));
+        v->pausar_sesion();
+        {
+            std::lock_guard<std::mutex> lock(m_hub_mutex);
+            unidades.emplace_back(std::move(v));
+        }
         return true;
     }
 
@@ -102,29 +144,54 @@ bool CashHub::intentar_registrar(const std::string &puerto, int ssp)
 
 std::vector<ffi::RouteRule> CashHub::rutas_default(const ValidadorUnit *val)
 {
-    if (val->property_device_type() == ffi::DeviceType::Coin)
+    if (!val || val->property_device_type() == ffi::DeviceType::Coin)
         return {};
 
-    std::vector<ffi::RouteRule> reglas;
-    auto m_list = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
-    const auto &snapshot_level = val->property_ultimo_cash_level();
-
-    for (size_t i = 0; i < snapshot_level.size() && i < m_list->get_n_items(); i++)
+    auto m_list = LevelCash("Level_Bill").get_level_cash();
+    std::unordered_map<int32_t, int32_t> max_por_denom;
+    if (m_list)
     {
-        bool es_payout = (snapshot_level[i].stored_in_payout <= m_list->get_item(i)->m_nivel_inmo_max);
+        for (size_t i = 0; i < m_list->get_n_items(); i++)
+        {
+            auto item = m_list->get_item(i);
+            max_por_denom[item->m_denominacion] = item->m_nivel_inmo_max;
+        }
+    }
+
+    std::vector<ffi::RouteRule> reglas;
+    const auto &snapshot_level = val->property_ultimo_cash_level();
+    reglas.reserve(snapshot_level.size());
+
+    for (const auto &lvl : snapshot_level)
+    {
+        bool es_payout = false;
+        if (auto it = max_por_denom.find(lvl.value_pesos); it != max_por_denom.end())
+        {
+            // Estrictamente menor (<): si ya está en el tope o el tope es 0, va a Cashbox.
+            es_payout = (it->second > 0) && (lvl.stored_in_payout < it->second);
+        }
+        else
+        {
+            CROW_LOG_WARNING << "Denominacion $" << lvl.value_pesos
+                             << " sin regla en Level_Bill; enviando a Cashbox por seguridad.";
+        }
+
         reglas.push_back(ffi::RouteRule{
-            .value_cents = snapshot_level[i].value_cents,
+            .value_cents = lvl.value_cents,
             .to_payout = es_payout
         });
 
-        CROW_LOG_DEBUG << "Cuadrando rutas: $" << snapshot_level[i].value_pesos
-                       << " (Destino: " << (es_payout ? "Recycler" : "Cashbox") << ")";
+        CROW_LOG_DEBUG << "Cuadrando rutas: $" << lvl.value_pesos
+                       << " (En recy: " << lvl.stored_in_payout
+                       << ", Destino: " << (es_payout ? "Recycler" : "Cashbox") << ")";
     }
+
     return reglas;
 }
 
 std::map<std::string, DeviceSnapshot> CashHub::obten_ultimo_snapshot_level() const
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     std::map<std::string, DeviceSnapshot> respuestas;
     for (const auto &u : unidades)
     {
@@ -138,11 +205,16 @@ std::map<std::string, DeviceSnapshot> CashHub::obten_ultimo_snapshot_level() con
 
 void CashHub::inicia_for_all(const Conf &conf, const std::map<std::string, std::vector<ffi::RouteRule>> &set_routes)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
+
     if (is_in_process.exchange(true))
     {
         CROW_LOG_WARNING << "CashHub ya esta en proceso. Ignorando nueva inicializacion.";
         return;
     }
+
+    std::vector<ValidadorUnit *> iniciadas;
+    iniciadas.reserve(unidades.size());
 
     try
     {
@@ -153,37 +225,81 @@ void CashHub::inicia_for_all(const Conf &conf, const std::map<std::string, std::
             u->property_conf().auto_acepta_credito = conf.auto_acepta_credito;
 
             const auto &dev_id = u->property_device_id();
+            bool conectado = false;
+
             if (auto it = set_routes.find(dev_id); it != set_routes.end())
             {
-                u->inicia_conecta(it->second);
+                conectado = u->inicia_conecta(it->second);
             }
             else
             {
                 CROW_LOG_INFO << "Usando rutas default para dispositivo: " << dev_id;
-                u->inicia_conecta(rutas_default(u.get()));
+                conectado = u->inicia_conecta(rutas_default(u.get()));
             }
+
+            if (!conectado)
+            {
+                throw std::runtime_error("No se pudo iniciar/conectar el validador " + dev_id);
+            }
+
+            iniciadas.push_back(u.get());
 
             if (u->property_device_type() == ffi::DeviceType::Bill)
             {
-                m_list_billetes = std::make_unique<LevelCash>("Level_Bill")->get_level_cash();
+                auto nueva_lista = LevelCash("Level_Bill").get_level_cash();
                 const auto &snapshot_level = u->property_ultimo_cash_level();
 
-                for (size_t idx = 0; idx < m_list_billetes->get_n_items(); idx++)
+                if (nueva_lista)
                 {
-                    auto item = m_list_billetes->get_item(idx);
-                    for (const auto &lvl : snapshot_level)
+                    for (size_t idx = 0; idx < nueva_lista->get_n_items(); idx++)
                     {
-                        if (lvl.value_pesos == item->m_denominacion)
-                            item->m_cant_recy = lvl.stored_in_payout;
-                        
+                        auto item = nueva_lista->get_item(idx);
+                        for (const auto &lvl : snapshot_level)
+                        {
+                            if (lvl.value_pesos == item->m_denominacion)
+                            {
+                                item->m_cant_recy = lvl.stored_in_payout;
+                                break;
+                            }
+                        }
                     }
                 }
+
+                std::lock_guard<std::mutex> billetes_lock(m_billetes_mutex);
+                m_list_billetes = std::move(nueva_lista);
             }
         }
     }
     catch (const std::exception &e)
     {
-        CROW_LOG_ERROR << "Error inicializando CashHub: " << e.what();
+        CROW_LOG_ERROR << "Error inicializando CashHub: " << e.what() << ". Ejecutando rollback...";
+        for (auto *u : iniciadas)
+        {
+            try
+            {
+                u->pausar_sesion();
+            }
+            catch (const std::exception &ex_rb)
+            {
+                CROW_LOG_ERROR << "Error durante rollback en " << u->property_device_id() << ": " << ex_rb.what();
+            }
+        }
+        is_in_process.store(false);
+        throw;
+    }
+    catch (...)
+    {
+        CROW_LOG_ERROR << "Error desconocido inicializando CashHub. Ejecutando rollback...";
+        for (auto *u : iniciadas)
+        {
+            try
+            {
+                u->detiene_desconecta();
+            }
+            catch (...)
+            {
+            }
+        }
         is_in_process.store(false);
         throw;
     }
@@ -191,30 +307,48 @@ void CashHub::inicia_for_all(const Conf &conf, const std::map<std::string, std::
 
 void CashHub::detiene_for_all()
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
-        u->detiene_desconecta();
+        u->pausar_sesion();
     is_in_process.store(false);
 }
 
 void CashHub::inicia_poll_for_all()
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
         u->iniciar_polling();
 }
 
 void CashHub::detiene_poll_for_all(size_t t_id)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
+
+    // Fase 1: capturar snapshot inicial y detener el polling en TODAS las unidades primero
+    // para cerrar la admisión lo antes posible sin dejar un validador activo mientras otro consulta niveles.
+    std::vector<std::pair<ValidadorUnit *, std::vector<ffi::DenomLevel>>> snapshots_inicio;
+    snapshots_inicio.reserve(unidades.size());
+
     for (auto &u : unidades)
     {
-        auto snapshot_inicio = u->property_ultimo_cash_level();
+        snapshots_inicio.emplace_back(u.get(), u->property_ultimo_cash_level());
+    }
+
+    for (auto &u : unidades)
+    {
         u->detener_polling();
+    }
+
+    // Fase 2: leer niveles finales y conciliar diferencias por unidad.
+    for (auto &[u, snapshot_inicio] : snapshots_inicio)
+    {
         auto snapshot_fin = u->get_nivel_actual();
 
-        if (t_id != (-1) && !snapshot_inicio.empty() && !snapshot_fin.empty())
+        if (t_id != NO_TX && !snapshot_inicio.empty() && !snapshot_fin.empty())
         {
             detalle.registrar_diferencias(t_id, snapshot_inicio, snapshot_fin);
         }
-        else if (t_id != (-1))
+        else if (t_id != NO_TX)
         {
             CROW_LOG_ERROR << "Snapshot vacio al comparar niveles en unidad " << u->property_device_id();
         }
@@ -223,7 +357,10 @@ void CashHub::detiene_poll_for_all(size_t t_id)
 
 void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
 {
-    uint32_t remanente = static_cast<uint32_t>(monto_pesos);
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
+
+    const uint32_t monto_inicial = static_cast<uint32_t>(monto_pesos);
+    uint32_t remanente = monto_inicial;
 
     for (auto &u : unidades)
     {
@@ -240,13 +377,17 @@ void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
 
     if (remanente > 0)
     {
+        // Si ya se entregó una parte en billetes, no se debe bloquear en monedas
+        // el uso de una moneda igual al remanente (ej. moneda de $10 para remanente $10).
+        const bool coin_is_cambio = is_cambio && (remanente == monto_inicial);
+
         for (auto &u : unidades)
         {
             if (u->property_device_type() == ffi::DeviceType::Coin)
             {
                 auto snap_ini = u->property_ultimo_cash_level();
                 CROW_LOG_INFO << "Intentando pagar resto con Monedas...";
-                remanente = u->iniciar_pago_automatico(remanente, is_cambio);
+                remanente = u->iniciar_pago_automatico(remanente, coin_is_cambio);
                 auto snap_fin = u->property_ultimo_cash_level();
 
                 detalle.registrar_diferencias(t_id, snap_ini, snap_fin, true);
@@ -262,6 +403,8 @@ void CashHub::inicia_pago(size_t t_id, size_t monto_pesos, bool is_cambio)
 
 void CashHub::inicia_pago(size_t t_id, const std::map<std::string, std::vector<ffi::PayoutItem>> &pagos_manuales)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
+
     for (auto &u : unidades)
     {
         const auto &dev_id = u->property_device_id();
@@ -282,17 +425,19 @@ void CashHub::inicia_pago(size_t t_id, const std::map<std::string, std::vector<f
 
 std::vector<ffi::DenomLevel> CashHub::get_nivel_actual_by_id(const std::string &device_id) const
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (const auto &u : unidades)
     {
         if (u->property_device_id() == device_id)
             return u->get_nivel_actual();
     }
-    CROW_LOG_ERROR << "Dispositivo " + device_id + " no encontrado en el Hub";
+    CROW_LOG_ERROR << "Dispositivo " << device_id << " no encontrado en el Hub";
     return {};
 }
 
 bool CashHub::vaciar_dispositivo(const std::string &device_id, bool smart_empty)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
     {
         if (u->property_device_id() == device_id)
@@ -301,9 +446,10 @@ bool CashHub::vaciar_dispositivo(const std::string &device_id, bool smart_empty)
     return false;
 }
 
-
 void CashHub::inicia_pago_por_canales(size_t t_id, const std::map<std::string, std::vector<int32_t>> &mapa_canales)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
+
     for (auto &u : unidades)
     {
         const auto &dev_id = u->property_device_id();
@@ -324,6 +470,7 @@ void CashHub::inicia_pago_por_canales(size_t t_id, const std::map<std::string, s
 
 bool CashHub::aceptar_escrow(const std::string &device_id)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
         if (u->property_device_id() == device_id)
             return u->aceptar_escrow();
@@ -332,6 +479,7 @@ bool CashHub::aceptar_escrow(const std::string &device_id)
 
 bool CashHub::rechazar_escrow(const std::string &device_id)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
         if (u->property_device_id() == device_id)
             return u->rechazar_escrow();
@@ -340,6 +488,7 @@ bool CashHub::rechazar_escrow(const std::string &device_id)
 
 void CashHub::limpiar_cashbox(const std::string &device_id)
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
         if (u->property_device_id() == device_id)
             u->limpiar_niveles_cashbox();
@@ -347,6 +496,7 @@ void CashHub::limpiar_cashbox(const std::string &device_id)
 
 std::map<std::string, DeviceSnapshot> CashHub::obten_niveles_actuales_for_all()
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     std::map<std::string, DeviceSnapshot> respuestas;
     for (auto &u : unidades)
     {
@@ -360,8 +510,9 @@ std::map<std::string, DeviceSnapshot> CashHub::obten_niveles_actuales_for_all()
 
 void CashHub::reiniciar_for_all()
 {
+    std::lock_guard<std::mutex> lock(m_hub_mutex);
     for (auto &u : unidades)
         u->reiniciar();
-        
+
     is_in_process.store(false);
 }

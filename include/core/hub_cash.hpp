@@ -31,6 +31,8 @@ private:
 
     sigc::signal<void(const ffi::CashEvent &)> signal_credito;
     sigc::signal<void(const std::string &, const std::string &)> signal_hub_error;
+    mutable std::mutex m_hub_mutex;
+    std::mutex m_billetes_mutex;
 
     CashHub() = default;
     ~CashHub() { detiene_for_all(); }

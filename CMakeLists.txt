@@ -43,18 +43,18 @@ if(ENABLE_PRETTY_JSON)
 endif()
 
 
-find_package(Crow REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(cpr REQUIRED)
-pkg_check_modules(GTKMM REQUIRED gtkmm-4.0)
-pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
-pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
-if(UNIX AND NOT CMAKE_SYSTEM_NAME STREQUAL "EspIdf")
+if(NOT ESP_PLATFORM AND NOT CMAKE_SYSTEM_NAME STREQUAL "EspIdf")
+    find_package(Crow REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    find_package(OpenSSL REQUIRED)
+    find_package(cpr REQUIRED)
+    pkg_check_modules(GTKMM REQUIRED gtkmm-4.0)
+    pkg_check_modules(LIBNOTIFY REQUIRED libnotify)
+    pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
     pkg_check_modules(UDEV REQUIRED libudev)
+    find_package(SQLite3 REQUIRED)
+    find_package(GTest REQUIRED)
 endif()
-find_package(SQLite3 REQUIRED)
-find_package(GTest REQUIRED)
 
 # ================= RUST INTEGRATION (CORROSION) =================
 include(FetchContent)
@@ -142,17 +142,24 @@ add_subdirectory(lib/Sqlit3-cpp-lib/)
 
 add_executable(${EXECUTABLE_NAME} ${SOURCES})
 
-target_link_libraries(${EXECUTABLE_NAME}
-    PUBLIC
-    Sqlite-cpp
-    essp_driver
-    ${UDEV_LIBRARIES}
-    ${GTKMM_LIBRARIES}
-    ${LIBNOTIFY_LIBRARIES}
-    cpr::cpr
-    Crow::Crow
-    PkgConfig::QRENCODE
-)
+if(ESP_PLATFORM OR CMAKE_SYSTEM_NAME STREQUAL "EspIdf")
+    target_link_libraries(${EXECUTABLE_NAME}
+        PRIVATE
+        essp_driver
+    )
+else()
+    target_link_libraries(${EXECUTABLE_NAME}
+        PUBLIC
+        Sqlite-cpp
+        essp_driver
+        ${UDEV_LIBRARIES}
+        ${GTKMM_LIBRARIES}
+        ${LIBNOTIFY_LIBRARIES}
+        cpr::cpr
+        Crow::Crow
+        PkgConfig::QRENCODE
+    )
+endif()
 
 target_include_directories(${EXECUTABLE_NAME} PRIVATE
     ${GTKMM_INCLUDE_DIRS}
