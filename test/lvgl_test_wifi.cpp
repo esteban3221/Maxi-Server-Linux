@@ -1,241 +1,180 @@
-#include "lvgl.h"
 #include "adw_lvgl.h"
 
-typedef struct {
-    lv_obj_t *stack_wifi;
-    lv_obj_t *btn_redes;
-    lv_obj_t *btn_red;
-    lv_obj_t *lbl_ssid_wifi;
-    lv_obj_t *lbl_ip_wifi;
-    lv_obj_t *lbl_mac_wifi;
-    lv_obj_t *lbl_ip_eth;
-    lv_obj_t *lbl_mac_eth;
-    lv_obj_t *btn_regresar;
-    lv_obj_t *btn_refresh;
-    lv_obj_t *list_box_wifi;
-} ui_red_page_t;
+#include <array>
+#include <memory>
+#include <string>
+#include <vector>
 
-/* Instancia persistente (nunca en stack) para los callbacks */
-static ui_red_page_t g_red_ui;
+struct MockNetwork {
+    std::string ssid;
+    std::string signal;
+    std::string security;
+    bool is_connected;
+};
 
-/* Helpers locales compatibles con tu adw_lvgl.h actual */
-static lv_obj_t *make_warning_button(lv_obj_t *parent, const char *texto) {
-    lv_obj_t *btn = adw_button_create(parent, texto, ADW_BTN_DEFAULT, false);
-    lv_obj_set_style_bg_color(btn, ADW_COLOR_WARNING_TEXT, 0);
-    lv_obj_set_style_bg_opa(btn, ADW_OPA_DESTR_BG, 0);
-    lv_obj_set_style_bg_opa(btn, ADW_OPA_DESTR_ACT, LV_STATE_PRESSED);
-    lv_obj_t *lbl = lv_obj_get_child(btn, 0);
-    if (lbl) lv_obj_set_style_text_color(lbl, ADW_COLOR_WARNING_TEXT, 0);
-    return btn;
-}
-
-static lv_obj_t *make_icon_button(lv_obj_t *parent, const char *symbol) {
-    lv_obj_t *btn = adw_button_create(parent, symbol, ADW_BTN_DEFAULT, false);
-    lv_obj_set_size(btn, 38, 38);
-    lv_obj_set_style_pad_all(btn, 0, 0);
-    lv_obj_t *lbl = lv_obj_get_child(btn, 0);
-    if (lbl) lv_obj_set_style_text_font(lbl, ADW_FONT_ICONS, 0);
-    return btn;
-}
-
-static lv_obj_t *make_section_header(lv_obj_t *parent, const char *titulo,
-                                     const char *btn_txt, bool is_warning,
-                                     int32_t margin_top, lv_obj_t **out_btn) {
-    lv_obj_t *hdr = lv_obj_create(parent);
-    lv_obj_remove_style_all(hdr);
-    adw_set_scrollable(hdr, false);
-    lv_obj_set_size(hdr, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_flex_flow(hdr, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(hdr, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(hdr, 10, 0);
-    lv_obj_set_style_margin_top(hdr, margin_top, 0);
-    lv_obj_set_style_margin_bottom(hdr, 6, 0);
-
-    lv_obj_t *lbl = lv_label_create(hdr);
-    lv_label_set_text(lbl, titulo);
-    lv_obj_set_flex_grow(lbl, 1);
-    lv_obj_set_style_text_font(lbl, ADW_FONT_TITLE_2, 0);
-    lv_obj_set_style_text_color(lbl, ADW_COLOR_FG, 0);
-
-    *out_btn = is_warning
-        ? make_warning_button(hdr, btn_txt)
-        : adw_button_create(hdr, btn_txt, ADW_BTN_SUGGESTED, false);
-    return hdr;
-}
-
-static lv_obj_t *make_dim_value_row(lv_obj_t *list, const char *titulo,
-                                    const char *valor, bool divisor) {
-    lv_obj_t *lbl = adw_value_row_create(list, titulo, NULL, valor,
-                                         ADW_COLOR_FG, ADW_FONT_BODY, divisor);
-    lv_obj_set_style_text_opa(lbl, ADW_OPA_DIM, 0);
-    return lbl;
-}
-
-/* ==================== CALLBACKS DE PRUEBA INTERACTIVA ==================== */
-
-static void wifi_row_clicked_cb(lv_event_t *e) {
-    const char *ssid = (const char *)lv_event_get_user_data(e);
-    if (!ssid) return;
-
-    lv_label_set_text(g_red_ui.lbl_ssid_wifi, ssid);
-    lv_label_set_text(g_red_ui.lbl_ip_wifi, "192.168.1.48");
-    lv_tileview_set_tile_by_index(g_red_ui.stack_wifi, 0, 0, LV_ANIM_ON);
-    adw_toast_show("Conectado a la red Wi-Fi", 2200);
-}
-
-static void populate_mock_wifi_list(ui_red_page_t *ui) {
-    static const char *const ssids[] = {
-        "Maxicajero_Oficina_5G",
-        "TP-Link_Caja_02",
-        "Totalplay-9F4A",
-        "INFINITUM_2.4G",
-        "Invitados_Tienda",
-        "Red_Respaldo_LTE"
-    };
-    static const char *const rssis[] = {
-        "-48 dBm", "-56 dBm", "-67 dBm", "-72 dBm", "-79 dBm", "-84 dBm"
-    };
-
-    lv_obj_clean(ui->list_box_wifi);
-    size_t count = sizeof(ssids) / sizeof(ssids[0]);
-    for (size_t i = 0; i < count; i++) {
-        bool divisor = (i + 1 < count);
-        lv_obj_t *row = adw_nav_row_create(ui->list_box_wifi, LV_SYMBOL_WIFI,
-                                           ssids[i], "WPA2-PSK", rssis[i], divisor);
-        lv_obj_add_event_cb(row, wifi_row_clicked_cb, LV_EVENT_CLICKED, (void *)ssids[i]);
+class WifiPreview {
+public:
+    WifiPreview()
+        : scr_(lv_screen_active())
+        , header_(scr_, "Configuración de Red", false)
+        , v_stack_wifi_(scr_)
+        , v_btn_back_header_(header_, LV_SYMBOL_LEFT, adw::BtnVariant::Flat)
+    {   
+        header_.pack_start(v_btn_back_header_);
+        scr_.init_keyboard();
+        build_status_page();
+        build_networks_page();
+        connect_signals();
     }
-}
 
-static void nav_to_redes_cb(lv_event_t *e) {
-    ui_red_page_t *ui = (ui_red_page_t *)lv_event_get_user_data(e);
-    populate_mock_wifi_list(ui);
-    lv_tileview_set_tile_by_index(ui->stack_wifi, 1, 0, LV_ANIM_ON);
-}
+private:
+    void build_status_page() {
+        auto page_status = v_stack_wifi_.add_page("status_red", 14);
+        adw::ScrollView scroll(page_status, 18);
 
-static void nav_to_status_cb(lv_event_t *e) {
-    ui_red_page_t *ui = (ui_red_page_t *)lv_event_get_user_data(e);
-    lv_tileview_set_tile_by_index(ui->stack_wifi, 0, 0, LV_ANIM_ON);
-}
+        // Sección Inalámbrica
+        adw::Box hdr_wifi(scroll, adw::Orientation::Horizontal, 10);
+        hdr_wifi.set_align(LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-static void refresh_wifi_cb(lv_event_t *e) {
-    ui_red_page_t *ui = (ui_red_page_t *)lv_event_get_user_data(e);
-    populate_mock_wifi_list(ui);
-    adw_toast_show("Escaneando redes disponibles...", 1800);
-}
+        adw::Label lbl_wifi(hdr_wifi, "Inalámbrica", ADW_FONT_TITLE_2);
+        lbl_wifi.set_flex_grow(1);
+        v_btn_redes_ = adw::Button(hdr_wifi, "Conectar Wi-Fi", adw::BtnVariant::Suggested);
 
-static void eth_confirm_cb(void *user_data) {
-    LV_UNUSED(user_data);
-    lv_label_set_text(g_red_ui.lbl_ip_eth, "192.168.10.25");
-    adw_toast_show("DHCP renovado en Ethernet", 2000);
-}
+        adw::ListBox list_wifi(scroll);
+        v_lbl_red_[4] = list_wifi.add_value_row("Red", "Sucursal_5G");
+        v_lbl_red_[0] = list_wifi.add_value_row("Dirección IP", "192.168.1.48", true, ADW_COLOR_FG, ADW_FONT_MONO);
+        v_lbl_red_[1] = list_wifi.add_value_row("Dirección MAC", "DC:A6:32:1A:4F:90", false, ADW_COLOR_FG, ADW_FONT_MONO);
 
-static void btn_eth_cb(lv_event_t *e) {
-    LV_UNUSED(e);
-    adw_alert_dialog_show("Gestionar Ethernet",
-                          "¿Deseas renovar la dirección IP por DHCP en la interfaz cableada?",
-                          "Cancelar", "Renovar", ADW_BTN_SUGGESTED,
-                          eth_confirm_cb, NULL);
-}
+        // Sección Ethernet
+        adw::Box hdr_eth(scroll, adw::Orientation::Horizontal, 10);
+        hdr_eth.set_margin_top(10);
+        hdr_eth.set_align(LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-/* ==================== CONSTRUCCIÓN DE PAGE_5 ==================== */
+        adw::Label lbl_eth(hdr_eth, "Ethernet", ADW_FONT_TITLE_2);
+        lbl_eth.set_flex_grow(1);
+        v_btn_red_ = adw::Button(hdr_eth, "Gestionar conexiones", adw::BtnVariant::Warning);
 
-void ui_red_page_create(lv_obj_t *parent, ui_red_page_t *ui) {
-    /* GtkStack con transición slide izquierda/derecha */
-    ui->stack_wifi = lv_tileview_create(parent);
-    lv_obj_set_width(ui->stack_wifi, lv_pct(100));
-    lv_obj_set_flex_grow(ui->stack_wifi, 1);
-    lv_obj_set_style_bg_opa(ui->stack_wifi, LV_OPA_TRANSP, 0);
-    lv_obj_set_scrollbar_mode(ui->stack_wifi, LV_SCROLLBAR_MODE_OFF);
+        adw::ListBox list_eth(scroll);
+        v_lbl_red_[2] = list_eth.add_value_row("Dirección IP", "No conectado.");
+        v_lbl_red_[3] = list_eth.add_value_row("Dirección MAC", "DC:A6:32:1A:4F:91", false, ADW_COLOR_FG, ADW_FONT_MONO);
+    }
 
-    /* ---------- Página 1: status_red ---------- */
-    lv_obj_t *t_status = lv_tileview_add_tile(ui->stack_wifi, 0, 0, LV_DIR_NONE);
-    lv_obj_set_scroll_dir(t_status, LV_DIR_VER);
-    lv_obj_set_flex_flow(t_status, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(t_status, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_hor(t_status, 24, 0);
-    lv_obj_set_style_pad_ver(t_status, 16, 0);
-    lv_obj_set_style_pad_row(t_status, 8, 0);
+    void build_networks_page() {
+        auto page_redes = v_stack_wifi_.add_page("redes_wifi", 10);
 
-    lv_obj_t *clamp_status = lv_obj_create(t_status);
-    lv_obj_remove_style_all(clamp_status);
-    adw_set_scrollable(clamp_status, false);
-    lv_obj_set_size(clamp_status, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_max_width(clamp_status, 640, 0);
-    lv_obj_set_flex_flow(clamp_status, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(clamp_status, 8, 0);
+        adw::Box hdr_redes(page_redes, adw::Orientation::Horizontal, 10);
+        hdr_redes.set_padding(14);
+        hdr_redes.set_align(LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-    make_section_header(clamp_status, "Inalámbrica", "Conectar Wi-Fi",
-                        false, 0, &ui->btn_redes);
-    lv_obj_t *list_wifi = adw_boxed_list_create(clamp_status);
-    ui->lbl_ssid_wifi = make_dim_value_row(list_wifi, "Red", "Maxicajero_Oficina_5G", true);
-    ui->lbl_ip_wifi   = make_dim_value_row(list_wifi, "Dirección IP", "192.168.1.45", true);
-    ui->lbl_mac_wifi  = make_dim_value_row(list_wifi, "Dirección MAC", "A4:CF:12:88:1B:09", false);
+        adw::Label lbl_disp(hdr_redes, "Redes disponibles", ADW_FONT_TITLE_2);
+        lbl_disp.set_flex_grow(1);
+        v_btn_refresh_ = adw::IconButton(hdr_redes, LV_SYMBOL_REFRESH, adw::BtnVariant::Default);
 
-    make_section_header(clamp_status, "Ethernet", "Gestionar conexiones",
-                        true, 16, &ui->btn_red);
-    lv_obj_t *list_eth = adw_boxed_list_create(clamp_status);
-    ui->lbl_ip_eth  = make_dim_value_row(list_eth, "Dirección IP", "192.168.10.20", true);
-    ui->lbl_mac_eth = make_dim_value_row(list_eth, "Dirección MAC", "DC:A6:32:44:91:F2", false);
+        adw::ScrollView scroll_redes(page_redes, 18);
+        v_list_box_wifi_ = adw::ListBox(scroll_redes);
+    }
 
-    /* ---------- Página 2: redes_wifi ---------- */
-    lv_obj_t *t_redes = lv_tileview_add_tile(ui->stack_wifi, 1, 0, LV_DIR_NONE);
-    adw_set_scrollable(t_redes, false);
-    lv_obj_set_flex_flow(t_redes, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(t_redes, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_hor(t_redes, 24, 0);
-    lv_obj_set_style_pad_ver(t_redes, 16, 0);
-    lv_obj_set_style_pad_row(t_redes, 12, 0);
+    void connect_signals() {
+        v_btn_red_.signal_clicked().connect([]() {
+            adw::Toast::show("Abriendo gestor de conexiones...");
+        });
 
-    lv_obj_t *top = lv_obj_create(t_redes);
-    lv_obj_remove_style_all(top);
-    adw_set_scrollable(top, false);
-    lv_obj_set_size(top, lv_pct(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_max_width(top, 640, 0);
-    lv_obj_set_flex_flow(top, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(top, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(top, 12, 0);
+        v_btn_redes_.signal_clicked().connect([this]() {
+            v_stack_wifi_.set_visible_child("redes_wifi");
+        });
 
-    ui->btn_regresar = make_icon_button(top, LV_SYMBOL_LEFT);
+        v_btn_back_header_.signal_clicked().connect([this]() {
+            v_stack_wifi_.set_visible_child("status_red");
+        });
 
-    lv_obj_t *lbl_disp = lv_label_create(top);
-    lv_label_set_text(lbl_disp, "Redes disponibles");
-    lv_obj_set_flex_grow(lbl_disp, 1);
-    lv_obj_set_style_text_font(lbl_disp, ADW_FONT_TITLE_2, 0);
-    lv_obj_set_style_text_color(lbl_disp, ADW_COLOR_FG, 0);
 
-    ui->btn_refresh = make_icon_button(top, LV_SYMBOL_REFRESH);
+        v_btn_refresh_.signal_clicked().connect([this]() {
+            simular_escaneo();
+        });
 
-    /* GtkScrolledWindow + list_box_wifi */
-    lv_obj_t *scroll = lv_obj_create(t_redes);
-    lv_obj_remove_style_all(scroll);
-    lv_obj_set_scroll_dir(scroll, LV_DIR_VER);
-    lv_obj_set_width(scroll, lv_pct(100));
-    lv_obj_set_style_max_width(scroll, 640, 0);
-    lv_obj_set_flex_grow(scroll, 1);
-    lv_obj_set_flex_flow(scroll, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_ver(scroll, 4, 0);
+        v_stack_wifi_.on_page_shown([this](const std::string& page) {
+            if (page == "redes_wifi") {
+                simular_escaneo();
+            }
+        });
+    }
 
-    ui->list_box_wifi = adw_boxed_list_create(scroll);
-    populate_mock_wifi_list(ui);
+    void simular_escaneo() {
+        loading_.show("Escaneando redes...");
 
-    /* Eventos */
-    lv_obj_add_event_cb(ui->btn_redes, nav_to_redes_cb, LV_EVENT_CLICKED, ui);
-    lv_obj_add_event_cb(ui->btn_regresar, nav_to_status_cb, LV_EVENT_CLICKED, ui);
-    lv_obj_add_event_cb(ui->btn_refresh, refresh_wifi_cb, LV_EVENT_CLICKED, ui);
-    lv_obj_add_event_cb(ui->btn_red, btn_eth_cb, LV_EVENT_CLICKED, ui);
-}
+        // Timer de un solo disparo (retorna false) para simular la latencia del escaneo
+        scan_timer_.start(600, [this]() {
+            loading_.close();
+            poblar_redes({
+                {"Sucursal_5G",      "92", "WPA2", true},
+                {"Maxicajero_Admin", "78", "WPA2", false},
+                {"Invitados_Local",  "54", "WPA2", false},
+                {"",                 "41", "WPA3", false},
+            });
+            return false;
+        });
+    }
+
+    void poblar_redes(const std::vector<MockNetwork>& redes) {
+        v_list_box_wifi_.remove_all();
+
+        for (size_t i = 0; i < redes.size(); ++i) {
+            const auto& net = redes[i];
+            std::string titulo = net.ssid.empty() ? "[Red Oculta]" : net.ssid;
+            std::string sub    = net.security + " - " + net.signal + "%";
+            std::string estado = net.is_connected ? "Conectada" : "";
+            bool divisor       = (i + 1 < redes.size());
+
+            v_list_box_wifi_.add_nav_row(
+                LV_SYMBOL_WIFI, titulo, sub, estado,
+                [this, ssid = titulo]() { abrir_dialogo_password(ssid); },
+                divisor);
+        }
+    }
+
+    void abrir_dialogo_password(const std::string& ssid) {
+        adw::PromptDialog::show(
+            "Conectar Wi-Fi",
+            "Ingresa la contraseña para la red: " + ssid,
+            "Contraseña",
+            true,
+            "Cancelar",
+            "Conectar",
+            [this, ssid](std::string password) {
+                if (password.empty()) {
+                    adw::Toast::show("Contraseña vacía");
+                    return;
+                }
+                v_lbl_red_[4].set_value(ssid);
+                v_lbl_red_[0].set_value("192.168.1.52");
+                v_stack_wifi_.set_visible_child("status_red");
+                adw::Toast::show("Conectado a " + ssid);
+            });
+    }
+
+    adw::Screen scr_;
+    adw::HeaderBar header_;
+    adw::Stack v_stack_wifi_;
+    std::array<adw::ValueRow, 5> v_lbl_red_;
+    adw::Button v_btn_red_;
+    adw::Button v_btn_redes_;
+    adw::IconButton v_btn_back_header_;
+    adw::IconButton v_btn_refresh_;
+    adw::ListBox v_list_box_wifi_;
+    adw::LoadingOverlay loading_;
+    adw::Timer scan_timer_;
+};
+
+static std::unique_ptr<WifiPreview> g_app;
 
 static void ui_init(void) {
-    lv_obj_t *scr = adw_screen_prepare(lv_screen_active());
-    lv_obj_t *btn_back = NULL;
-    adw_headerbar_create(scr, "Configuración de red", &btn_back);
-
-    ui_red_page_create(scr, &g_red_ui);
-    adw_keyboard_init(scr);
+    adw::UiDispatcher::init();
+    g_app.reset(); // Limpia timers/overlays previos si el previsualizador recarga en vivo
+    g_app = std::make_unique<WifiPreview>();
 }
 
 #ifdef LVGL_LIVE_PREVIEW
-void lvgl_live_preview_init(void) {
+extern "C" void lvgl_live_preview_init(void) {
     ui_init();
 }
 #endif
